@@ -1,0 +1,47 @@
+# Python
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.venv
+venv
+.env
+*.egg-info
+build
+dist
+
+# Node
+node_modules
+dist
+.vite
+*.tsbuildinfo
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+gcp-service-account*.json
+serviceAccountKey*.json
+
+# GCP/Firebase
+.firebase
+firebase-debug.log
+.gcloudignore
+
+# Compliance/scratch
+pipeline/compliance/*
+pipeline/raw_data/
+pipeline/cache/
