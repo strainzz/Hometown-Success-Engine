@@ -27,6 +27,8 @@ class Hometown(BaseModel):
     model_config = ConfigDict(extra="forbid")
     wikidata_uri: str
     label: str
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 class Athlete(BaseModel):
