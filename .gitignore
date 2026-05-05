@@ -43,5 +43,6 @@ firebase-debug.log
 
 # Compliance/scratch
 pipeline/compliance/*
+!pipeline/compliance/data-sources.md
 pipeline/raw_data/
 pipeline/cache/
