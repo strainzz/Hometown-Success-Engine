@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "hometown-success-engine-frontend",
   "version": "0.1.0",
   "type": "module",
@@ -9,11 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@deck.gl/core": "^9.2.9",
-    "@deck.gl/google-maps": "^9.2.9",
-    "@deck.gl/layers": "^9.2.9",
-    "@googlemaps/js-api-loader": "^2.0.2",
-    "@material/web": "^2.0.0"
+    "@deck.gl/core": "^9.3.2",
+    "@deck.gl/google-maps": "^9.3.2",
+    "@deck.gl/layers": "^9.3.2",
+    "@googlemaps/js-api-loader": "^1.16.10",
+    "@material/web": "^2.0.0",
+    "deck.gl": "^9.3.2"
   },
   "devDependencies": {
     "@types/google.maps": "^3.64.0",
