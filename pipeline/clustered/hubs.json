@@ -559,7 +559,7 @@
     "states": [
       "CO",
       "NM",
-      "OK"
+      "TX"
     ],
     "total_athletes": 109,
     "composition": {
@@ -723,7 +723,7 @@
     "macro_region": "Southwest",
     "states": [
       "OK",
-      "TX",
+      "KS",
       "AR"
     ],
     "total_athletes": 86,
@@ -889,7 +889,7 @@
     "states": [
       "NE",
       "IA",
-      "OK"
+      "KS"
     ],
     "total_athletes": 74,
     "composition": {
@@ -944,8 +944,8 @@
     "macro_region": "Southwest",
     "states": [
       "TX",
-      "LA",
-      "AR"
+      "OK",
+      "LA"
     ],
     "total_athletes": 72,
     "composition": {
@@ -1152,8 +1152,8 @@
     ]
   },
   {
-    "hub_id": "HUB_MS_BRINKLEY",
-    "display_name": "Brinkley Region, MS",
+    "hub_id": "HUB_AR_BRINKLEY",
+    "display_name": "Brinkley Region, AR",
     "centroid_latitude": 34.8903,
     "centroid_longitude": -91.1917,
     "medoid_hometown": "Brinkley",
@@ -1162,8 +1162,8 @@
     "region_name": "Mississippi Heartland",
     "macro_region": "South",
     "states": [
-      "MS",
       "AR",
+      "MS",
       "TN"
     ],
     "total_athletes": 63,
@@ -1203,7 +1203,7 @@
     ],
     "search_aliases": [
       "Brinkley",
-      "MS"
+      "AR"
     ]
   },
   {
@@ -1373,8 +1373,8 @@
     ]
   },
   {
-    "hub_id": "HUB_OK_KANSAS_CITY",
-    "display_name": "Kansas City Region, OK",
+    "hub_id": "HUB_MO_KANSAS_CITY",
+    "display_name": "Kansas City Region, MO",
     "centroid_latitude": 39.050000000000004,
     "centroid_longitude": -94.583333333,
     "medoid_hometown": "Kansas City",
@@ -1383,8 +1383,8 @@
     "region_name": "Cornbelt / Heartland Plains",
     "macro_region": "Midwest",
     "states": [
-      "OK",
       "MO",
+      "KS",
       "IA"
     ],
     "total_athletes": 55,
@@ -1424,7 +1424,7 @@
     ],
     "search_aliases": [
       "Kansas City",
-      "OK"
+      "MO"
     ]
   },
   {
