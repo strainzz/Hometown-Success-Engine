@@ -9,6 +9,8 @@ from typing import Any, Literal, Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
+from google import genai
+from google.genai import types as genai_types
 
 logging.basicConfig(level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s")
@@ -205,6 +207,108 @@ class ZoomToHubRequest(BaseModel):
     hub_id: str
 
 
+class ChatRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    message: str = Field(..., min_length=1, max_length=2000)
+    history: list[dict] = Field(default_factory=list)
+
+
+class ChatToolCall(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: Literal[
+        "select_hub",
+        "filter_to_paralympic",
+        "zoom_to_hub",
+        "reset_view",
+    ]
+    args: dict
+
+
+class ChatResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    text: str
+    tool_calls: list[ChatToolCall] = Field(default_factory=list)
+    history: list[dict] = Field(default_factory=list)
+
+
+CHATBOT_TOOLS = [
+    genai_types.Tool(
+        function_declarations=[
+            genai_types.FunctionDeclaration(
+                name="select_hub",
+                description="Select a specific hometown hub on the map by its hub_id. Use when user asks about a specific city, region, or named hub.",
+                parameters=genai_types.Schema(
+                    type="OBJECT",
+                    properties={
+                        "hub_id": genai_types.Schema(
+                            type="STRING",
+                            description="The hub identifier, e.g. HUB_AZ_PHOENIX, HUB_CA_MERCED, HUB_AK_ANCHORAGE, HUB_NE_LINCOLN, HUB_OK_STILLWATER",
+                        ),
+                    },
+                    required=["hub_id"],
+                ),
+            ),
+            genai_types.FunctionDeclaration(
+                name="filter_to_paralympic",
+                description="Filter the map to highlight Paralympic Hot Spots, optionally narrowed to a specific macro_region. Use when user asks about Paralympic athletes, Paralympic representation, or wants to see Para Hot Spots.",
+                parameters=genai_types.Schema(
+                    type="OBJECT",
+                    properties={
+                        "macro_region": genai_types.Schema(
+                            type="STRING",
+                            enum=["Pacific", "Mountain", "Plains", "Midwest", "Northeast", "South", "Caribbean"],
+                            description="Optional macro region to filter to. Pacific includes AK, HI, WA, OR, CA. Mountain includes NV, AZ, NM, UT, CO, MT, ID, WY.",
+                        ),
+                    },
+                ),
+            ),
+            genai_types.FunctionDeclaration(
+                name="zoom_to_hub",
+                description="Zoom the map to a specific hub at higher zoom level. Use when user wants to focus on or see closer detail of a single hub.",
+                parameters=genai_types.Schema(
+                    type="OBJECT",
+                    properties={
+                        "hub_id": genai_types.Schema(
+                            type="STRING",
+                            description="The hub identifier to zoom to.",
+                        ),
+                    },
+                    required=["hub_id"],
+                ),
+            ),
+            genai_types.FunctionDeclaration(
+                name="reset_view",
+                description="Reset the map to the default continental US view, clearing any selections or filters. Use when user asks to start over, see everything, or reset.",
+                parameters=genai_types.Schema(
+                    type="OBJECT",
+                    properties={},
+                ),
+            ),
+        ]
+    )
+]
+
+CHATBOT_SYSTEM_PROMPT = """You are the Hometown Success Engine assistant — an AI guide for Team USA's Olympic and Paralympic athlete geography. You help users explore where America's 5,012 Olympians and Paralympians come from across 37 hometown regions.
+
+The map currently shows:
+- 37 hometown hubs (clusters of athletes by geography)
+- 5 Paralympic Hot Spots: Phoenix AZ, Anchorage AK, Lincoln NE, Stillwater OK, Merced CA — regions where the Paralympic share of athletes is significantly above the 4.6% national baseline
+- All 50 states + DC + Puerto Rico shaded by athlete density
+- Individual athlete dots showing each athlete's hometown
+
+You have access to 4 tools that control the map:
+- select_hub: highlight a specific hub
+- filter_to_paralympic: spotlight Paralympic Hot Spots, optionally by region
+- zoom_to_hub: focus on a specific hub at high zoom
+- reset_view: return to the full US overview
+
+USE TOOLS LIBERALLY. When a user asks about a place, region, or Paralympic story, CALL THE APPROPRIATE TOOL alongside your text response. Don't just describe what the user could click — actually drive the map.
+
+Use conditional language ("could help find", "is associated with", "tends to produce") rather than implying geography guarantees athletic results. This is per IPC and Team USA guidance — never claim that being from a region predicts Olympic success.
+
+Keep responses to 2-4 short sentences. Be conversational, knowledgeable, and direct. No filler words, no excessive hedging. If you don't know, say so."""
+
+
 _state: dict[str, Any] = {
     "hubs": [],
     "hubs_by_id": {},
@@ -383,6 +487,86 @@ def tool_zoom_to_hub(req: ZoomToHubRequest) -> SelectHubAction:
         raise HTTPException(404, f"Hub {req.hub_id} not found")
     return SelectHubAction(hub_id=req.hub_id)
 
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat(req: ChatRequest) -> ChatResponse:
+    try:
+        client = genai.Client(
+            vertexai=True,
+            project=os.environ.get("GOOGLE_CLOUD_PROJECT", "hometown-success-engine"),
+            location="global",
+        )
+
+        # Reconstruct conversation history
+        contents = []
+        for turn in req.history:
+            role = turn.get("role", "user")
+            text = turn.get("text", "")
+            if text:
+                contents.append(
+                    genai_types.Content(
+                        role=role,
+                        parts=[genai_types.Part(text=text)],
+                    )
+                )
+        contents.append(
+            genai_types.Content(
+                role="user",
+                parts=[genai_types.Part(text=req.message)],
+            )
+        )
+
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=contents,
+            config=genai_types.GenerateContentConfig(
+                system_instruction=CHATBOT_SYSTEM_PROMPT,
+                tools=CHATBOT_TOOLS,
+                temperature=0.4,
+                max_output_tokens=400,
+            ),
+        )
+
+        text_parts: list[str] = []
+        tool_calls: list[ChatToolCall] = []
+
+        if response.candidates and response.candidates[0].content:
+            for part in response.candidates[0].content.parts or []:
+                if getattr(part, "text", None):
+                    text_parts.append(part.text)
+                if getattr(part, "function_call", None):
+                    fc = part.function_call
+                    tool_calls.append(
+                        ChatToolCall(
+                            name=fc.name,
+                            args=dict(fc.args) if fc.args else {},
+                        )
+                    )
+
+        reply_text = " ".join(text_parts).strip()
+        if not reply_text and tool_calls:
+            reply_text = "Done."
+        elif not reply_text:
+            reply_text = "I'm not sure how to help with that. Try asking about a specific hub, Paralympic Hot Spots, or a region like Pacific or Mountain."
+
+        new_history = list(req.history)
+        new_history.append({"role": "user", "text": req.message})
+        new_history.append({"role": "model", "text": reply_text})
+
+        return ChatResponse(
+            text=reply_text,
+            tool_calls=tool_calls,
+            history=new_history,
+        )
+
+    except Exception as e:
+        import traceback
+        logger.error(f"Chat endpoint error: {e}\n{traceback.format_exc()}")
+        return ChatResponse(
+            text=f"I ran into an issue: {str(e)[:120]}. Try rephrasing.",
+            tool_calls=[],
+            history=req.history,
+        )
 
 if __name__ == "__main__":
     import uvicorn
