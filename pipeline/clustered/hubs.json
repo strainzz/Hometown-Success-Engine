@@ -109,8 +109,8 @@
     ]
   },
   {
-    "hub_id": "HUB_MI_CHICAGO",
-    "display_name": "Chicago Region, MI",
+    "hub_id": "HUB_IL_CHICAGO",
+    "display_name": "Chicago Region, IL",
     "centroid_latitude": 41.881944444,
     "centroid_longitude": -87.62777777700002,
     "medoid_hometown": "Chicago",
@@ -119,7 +119,7 @@
     "region_name": "Chicagoland",
     "macro_region": "Midwest",
     "states": [
-      "MI",
+      "IL",
       "WI",
       "IA"
     ],
@@ -160,7 +160,7 @@
     ],
     "search_aliases": [
       "Chicago",
-      "MI"
+      "IL"
     ]
   },
   {
@@ -448,7 +448,7 @@
     "macro_region": "Midwest",
     "states": [
       "MO",
-      "KY",
+      "XX",
       "TN"
     ],
     "total_athletes": 114,
@@ -822,8 +822,8 @@
     ]
   },
   {
-    "hub_id": "HUB_KY_CINCINNATI",
-    "display_name": "Cincinnati Region, KY",
+    "hub_id": "HUB_OH_CINCINNATI",
+    "display_name": "Cincinnati Region, OH",
     "centroid_latitude": 39.1,
     "centroid_longitude": -84.51250000000002,
     "medoid_hometown": "Cincinnati",
@@ -832,9 +832,9 @@
     "region_name": "Cincinnati / Southwest Ohio + N. KY",
     "macro_region": "Midwest",
     "states": [
-      "KY",
       "OH",
-      "VA"
+      "IN",
+      "XX"
     ],
     "total_athletes": 75,
     "composition": {
@@ -873,7 +873,7 @@
     ],
     "search_aliases": [
       "Cincinnati",
-      "KY"
+      "OH"
     ]
   },
   {
@@ -1273,7 +1273,8 @@
     "macro_region": "Midwest",
     "states": [
       "IN",
-      "KY"
+      "IL",
+      "XX"
     ],
     "total_athletes": 56,
     "composition": {
@@ -1819,7 +1820,7 @@
     "states": [
       "MI",
       "IN",
-      "WI"
+      "OH"
     ],
     "total_athletes": 33,
     "composition": {
