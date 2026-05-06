@@ -10,9 +10,9 @@
     "region_name": "Greater NYC / Tri-State",
     "macro_region": "Northeast",
     "states": [
-      "XX",
-      "NY",
-      "MA"
+      "NJ",
+      "MA",
+      "NY"
     ],
     "total_athletes": 1438,
     "composition": {
@@ -65,7 +65,6 @@
     "region_name": "Greater Los Angeles",
     "macro_region": "Pacific",
     "states": [
-      "XX",
       "CA",
       "NV"
     ],
@@ -110,8 +109,8 @@
     ]
   },
   {
-    "hub_id": "HUB_IL_CHICAGO",
-    "display_name": "Chicago Region, IL",
+    "hub_id": "HUB_MI_CHICAGO",
+    "display_name": "Chicago Region, MI",
     "centroid_latitude": 41.881944444,
     "centroid_longitude": -87.62777777700002,
     "medoid_hometown": "Chicago",
@@ -120,9 +119,9 @@
     "region_name": "Chicagoland",
     "macro_region": "Midwest",
     "states": [
-      "IL",
-      "XX",
-      "WI"
+      "MI",
+      "WI",
+      "IA"
     ],
     "total_athletes": 357,
     "composition": {
@@ -161,7 +160,7 @@
     ],
     "search_aliases": [
       "Chicago",
-      "IL"
+      "MI"
     ]
   },
   {
@@ -175,9 +174,7 @@
     "region_name": "Bay Area",
     "macro_region": "Pacific",
     "states": [
-      "XX",
-      "CA",
-      "PA"
+      "CA"
     ],
     "total_athletes": 241,
     "composition": {
@@ -230,9 +227,9 @@
     "region_name": "Cornbelt / Heartland Plains",
     "macro_region": "Midwest",
     "states": [
-      "XX",
       "MN",
-      "IA"
+      "IA",
+      "ND"
     ],
     "total_athletes": 234,
     "composition": {
@@ -288,7 +285,6 @@
     "macro_region": "Midwest",
     "states": [
       "MI",
-      "XX",
       "OH"
     ],
     "total_athletes": 146,
@@ -342,9 +338,8 @@
     "region_name": "San Juan Metro",
     "macro_region": "Territories",
     "states": [
-      "XX",
       "PR",
-      "KS"
+      "VI"
     ],
     "total_athletes": 142,
     "composition": {
@@ -398,8 +393,8 @@
     "macro_region": "Pacific",
     "states": [
       "WA",
-      "XX",
-      "MT"
+      "MT",
+      "ID"
     ],
     "total_athletes": 122,
     "composition": {
@@ -453,8 +448,8 @@
     "macro_region": "Midwest",
     "states": [
       "MO",
-      "XX",
-      "CA"
+      "KY",
+      "TN"
     ],
     "total_athletes": 114,
     "composition": {
@@ -507,9 +502,9 @@
     "region_name": "Greater Atlanta",
     "macro_region": "South",
     "states": [
-      "XX",
       "GA",
-      "AL"
+      "AL",
+      "TN"
     ],
     "total_athletes": 112,
     "composition": {
@@ -563,8 +558,8 @@
     "macro_region": "Mountain West",
     "states": [
       "CO",
-      "XX",
-      "NM"
+      "NM",
+      "OK"
     ],
     "total_athletes": 109,
     "composition": {
@@ -617,8 +612,8 @@
     "region_name": "Carolina Lowcountry & Outer Banks",
     "macro_region": "South",
     "states": [
-      "XX",
       "NC",
+      "VA",
       "SC"
     ],
     "total_athletes": 101,
@@ -672,9 +667,9 @@
     "region_name": "Wasatch Front",
     "macro_region": "Mountain West",
     "states": [
-      "XX",
+      "MT",
       "UT",
-      "MS"
+      "XX"
     ],
     "total_athletes": 88,
     "composition": {
@@ -727,9 +722,9 @@
     "region_name": "OKC / Frontier Country",
     "macro_region": "Southwest",
     "states": [
-      "XX",
       "OK",
-      "KS"
+      "TX",
+      "AR"
     ],
     "total_athletes": 86,
     "composition": {
@@ -783,9 +778,8 @@
     "region_name": "Tampa Bay / Suncoast",
     "macro_region": "South",
     "states": [
-      "XX",
       "FL",
-      "OH"
+      "GA"
     ],
     "total_athletes": 82,
     "composition": {
@@ -828,8 +822,8 @@
     ]
   },
   {
-    "hub_id": "HUB_OH_CINCINNATI",
-    "display_name": "Cincinnati Region, OH",
+    "hub_id": "HUB_KY_CINCINNATI",
+    "display_name": "Cincinnati Region, KY",
     "centroid_latitude": 39.1,
     "centroid_longitude": -84.51250000000002,
     "medoid_hometown": "Cincinnati",
@@ -838,9 +832,9 @@
     "region_name": "Cincinnati / Southwest Ohio + N. KY",
     "macro_region": "Midwest",
     "states": [
+      "KY",
       "OH",
-      "XX",
-      "KY"
+      "VA"
     ],
     "total_athletes": 75,
     "composition": {
@@ -879,7 +873,7 @@
     ],
     "search_aliases": [
       "Cincinnati",
-      "OH"
+      "KY"
     ]
   },
   {
@@ -893,9 +887,9 @@
     "region_name": "Cornbelt / Heartland Plains",
     "macro_region": "Midwest",
     "states": [
-      "XX",
       "NE",
-      "IA"
+      "IA",
+      "OK"
     ],
     "total_athletes": 74,
     "composition": {
@@ -950,8 +944,8 @@
     "macro_region": "Southwest",
     "states": [
       "TX",
-      "XX",
-      "NC"
+      "LA",
+      "AR"
     ],
     "total_athletes": 72,
     "composition": {
@@ -1005,8 +999,7 @@
     "macro_region": "Southwest",
     "states": [
       "TX",
-      "XX",
-      "CA"
+      "LA"
     ],
     "total_athletes": 69,
     "composition": {
@@ -1059,9 +1052,9 @@
     "region_name": "Western Pennsylvania / Pittsburgh",
     "macro_region": "Northeast",
     "states": [
-      "XX",
       "PA",
-      "NC"
+      "WV",
+      "VA"
     ],
     "total_athletes": 68,
     "composition": {
@@ -1115,8 +1108,8 @@
     "macro_region": "Pacific",
     "states": [
       "OR",
-      "XX",
-      "NY"
+      "WA",
+      "ID"
     ],
     "total_athletes": 64,
     "composition": {
@@ -1159,8 +1152,8 @@
     ]
   },
   {
-    "hub_id": "HUB_XX_BRINKLEY",
-    "display_name": "Brinkley Region, XX",
+    "hub_id": "HUB_MS_BRINKLEY",
+    "display_name": "Brinkley Region, MS",
     "centroid_latitude": 34.8903,
     "centroid_longitude": -91.1917,
     "medoid_hometown": "Brinkley",
@@ -1169,7 +1162,7 @@
     "region_name": "Mississippi Heartland",
     "macro_region": "South",
     "states": [
-      "XX",
+      "MS",
       "AR",
       "TN"
     ],
@@ -1210,7 +1203,7 @@
     ],
     "search_aliases": [
       "Brinkley",
-      "XX"
+      "MS"
     ]
   },
   {
@@ -1225,8 +1218,8 @@
     "macro_region": "Midwest",
     "states": [
       "OH",
-      "XX",
-      "NC"
+      "PA",
+      "WV"
     ],
     "total_athletes": 61,
     "composition": {
@@ -1280,7 +1273,7 @@
     "macro_region": "Midwest",
     "states": [
       "IN",
-      "XX"
+      "KY"
     ],
     "total_athletes": 56,
     "composition": {
@@ -1334,8 +1327,8 @@
     "macro_region": "Southwest",
     "states": [
       "AZ",
-      "XX",
-      "CA"
+      "TX",
+      "NM"
     ],
     "total_athletes": 55,
     "composition": {
@@ -1379,8 +1372,8 @@
     ]
   },
   {
-    "hub_id": "HUB_MO_KANSAS_CITY",
-    "display_name": "Kansas City Region, MO",
+    "hub_id": "HUB_OK_KANSAS_CITY",
+    "display_name": "Kansas City Region, OK",
     "centroid_latitude": 39.050000000000004,
     "centroid_longitude": -94.583333333,
     "medoid_hometown": "Kansas City",
@@ -1389,9 +1382,9 @@
     "region_name": "Cornbelt / Heartland Plains",
     "macro_region": "Midwest",
     "states": [
-      "XX",
+      "OK",
       "MO",
-      "KS"
+      "IA"
     ],
     "total_athletes": 55,
     "composition": {
@@ -1430,7 +1423,7 @@
     ],
     "search_aliases": [
       "Kansas City",
-      "MO"
+      "OK"
     ]
   },
   {
@@ -1445,7 +1438,8 @@
     "macro_region": "Hawaii",
     "states": [
       "HI",
-      "XX"
+      "GU",
+      "AS"
     ],
     "total_athletes": 51,
     "composition": {
@@ -1498,8 +1492,7 @@
     "region_name": "South Florida (Gold Coast)",
     "macro_region": "South",
     "states": [
-      "FL",
-      "XX"
+      "FL"
     ],
     "total_athletes": 50,
     "composition": {
@@ -1553,7 +1546,8 @@
     "macro_region": "South",
     "states": [
       "LA",
-      "XX"
+      "MS",
+      "FL"
     ],
     "total_athletes": 49,
     "composition": {
@@ -1607,8 +1601,7 @@
     "macro_region": "Northeast",
     "states": [
       "NY",
-      "XX",
-      "KY"
+      "PA"
     ],
     "total_athletes": 45,
     "composition": {
@@ -1661,9 +1654,8 @@
     "region_name": "Northern California / Central Valley North",
     "macro_region": "Pacific",
     "states": [
-      "XX",
       "CA",
-      "TX"
+      "NV"
     ],
     "total_athletes": 43,
     "composition": {
@@ -1717,9 +1709,9 @@
     "region_name": "Columbus / Central Ohio",
     "macro_region": "Midwest",
     "states": [
-      "XX",
       "OH",
-      "SC"
+      "VA",
+      "WV"
     ],
     "total_athletes": 43,
     "composition": {
@@ -1772,9 +1764,7 @@
     "region_name": "Texas Triangle",
     "macro_region": "Southwest",
     "states": [
-      "XX",
-      "TX",
-      "CA"
+      "TX"
     ],
     "total_athletes": 42,
     "composition": {
@@ -1817,8 +1807,8 @@
     ]
   },
   {
-    "hub_id": "HUB_XX_DOWAGIAC",
-    "display_name": "Dowagiac Region, XX",
+    "hub_id": "HUB_MI_DOWAGIAC",
+    "display_name": "Dowagiac Region, MI",
     "centroid_latitude": 41.984166666,
     "centroid_longitude": -86.108611111,
     "medoid_hometown": "Dowagiac",
@@ -1827,9 +1817,9 @@
     "region_name": "Continental US",
     "macro_region": "Other",
     "states": [
-      "XX",
-      "NJ",
-      "MI"
+      "MI",
+      "IN",
+      "WI"
     ],
     "total_athletes": 33,
     "composition": {
@@ -1868,7 +1858,7 @@
     ],
     "search_aliases": [
       "Dowagiac",
-      "XX"
+      "MI"
     ]
   },
   {
@@ -1882,8 +1872,9 @@
     "region_name": "Northern Nevada / Reno-Tahoe",
     "macro_region": "Mountain West",
     "states": [
-      "XX",
-      "NV"
+      "NV",
+      "CA",
+      "OR"
     ],
     "total_athletes": 29,
     "composition": {
@@ -1936,9 +1927,9 @@
     "region_name": "Continental US",
     "macro_region": "Other",
     "states": [
-      "XX",
+      "IL",
       "IN",
-      "IL"
+      "MO"
     ],
     "total_athletes": 29,
     "composition": {
@@ -1991,8 +1982,7 @@
     "region_name": "Southcentral Alaska",
     "macro_region": "Alaska",
     "states": [
-      "AK",
-      "XX"
+      "AK"
     ],
     "total_athletes": 24,
     "composition": {

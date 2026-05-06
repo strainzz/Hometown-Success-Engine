@@ -471,6 +471,90 @@ REGIONAL_CONTEXTS = [
      "tribal": ["Potawatomi (ancestral)"]},
 ]
 
+# Approximate bounding boxes for all 50 US states + DC + territories.
+# Format: (lat_min, lat_max, lon_min, lon_max, state_code)
+# Order matters: smaller/more specific bboxes FIRST so they match
+# before larger ones overlap them. Tested for non-overlap across
+# major metros — borderline points (within 0.2 degrees of multiple
+# state lines) get the FIRST matching bbox.
+STATE_BBOXES = [
+    # Territories first (most specific lat/lon)
+    (-14.55, -14.10, -171.10, -169.40, "AS"), # American Samoa
+    (13.20, 13.70, 144.60, 145.00, "GU"),    # Guam
+    (14.10, 20.55, 144.85, 146.10, "MP"),    # Northern Mariana Islands
+    (17.65, 18.45, -65.10, -64.55, "VI"),    # US Virgin Islands
+    (17.85, 18.55, -67.30, -65.20, "PR"),    # Puerto Rico
+    # Hawaii — distinct island chain
+    (18.90, 22.30, -160.30, -154.80, "HI"),
+    # Alaska — wide range
+    (51.00, 71.50, -180.00, -130.00, "AK"),
+    # DC — small, must come BEFORE MD and VA
+    (38.79, 39.00, -77.12, -76.91, "DC"),
+    # New England — small states FIRST so they don't get swallowed by NY/NH
+    (41.30, 42.05, -71.90, -71.10, "RI"), # Rhode Island
+    (41.00, 42.05, -73.75, -71.79, "CT"), # Connecticut
+    (42.00, 42.90, -73.50, -69.90, "MA"), # Massachusetts
+    (42.70, 45.00, -72.55, -70.55, "NH"), # New Hampshire
+    (42.73, 45.02, -73.43, -71.46, "VT"), # Vermont
+    (43.05, 47.45, -71.10, -66.95, "ME"), # Maine
+    # Mid-Atlantic
+    (38.45, 39.72, -75.79, -74.98, "DE"),
+    (37.90, 39.73, -79.49, -75.04, "MD"),
+    (38.90, 41.36, -75.56, -73.90, "NJ"),
+    (39.72, 42.27, -80.52, -74.69, "PA"),
+    (40.50, 45.02, -79.76, -71.85, "NY"),
+    (36.54, 39.47, -83.68, -75.24, "VA"),
+    (37.20, 40.64, -82.64, -77.72, "WV"),
+    # South
+    (33.78, 36.59, -84.32, -75.46, "NC"),
+    (32.03, 35.22, -83.35, -78.54, "SC"),
+    (30.36, 35.00, -85.61, -80.84, "GA"),
+    (24.40, 31.00, -87.63, -79.97, "FL"),
+    (30.20, 35.01, -88.47, -84.89, "AL"),
+    (35.00, 36.68, -90.31, -81.65, "TN"),
+    (36.50, 39.15, -89.57, -81.96, "KY"),
+    (30.17, 35.00, -91.65, -88.10, "MS"),
+    (28.93, 33.02, -94.05, -88.76, "LA"),
+    (33.00, 36.50, -94.62, -89.64, "AR"),
+    # Midwest
+    (35.00, 40.00, -103.00, -94.43, "OK"), # OK before TX/KS
+    (25.84, 36.50, -106.65, -93.51, "TX"),
+    (36.99, 40.00, -102.05, -94.59, "KS"),
+    (40.00, 43.00, -104.05, -95.30, "NE"),
+    (37.00, 40.62, -95.77, -89.10, "MO"),
+    (40.38, 43.50, -96.64, -90.14, "IA"),
+    (42.49, 49.40, -97.24, -89.50, "MN"),
+    (42.49, 47.08, -92.89, -86.25, "WI"),
+    (41.70, 48.31, -90.42, -82.41, "MI"),
+    (37.77, 42.51, -91.51, -87.50, "IL"),
+    (37.77, 41.76, -88.10, -84.78, "IN"),
+    (38.40, 42.00, -84.82, -80.52, "OH"),
+    (45.94, 49.00, -104.05, -96.55, "ND"),
+    (42.48, 45.94, -104.06, -96.44, "SD"),
+    # Mountain West
+    (41.00, 49.00, -116.05, -104.04, "MT"),
+    (44.00, 49.00, -117.24, -111.05, "ID"),
+    (40.99, 45.01, -111.06, -104.05, "WY"),
+    (36.99, 41.00, -109.06, -102.04, "CO"),
+    (36.99, 42.00, -114.06, -109.04, "UT"),
+    (35.00, 42.00, -120.01, -114.04, "NV"),
+    (31.33, 37.00, -114.82, -109.04, "AZ"),
+    (31.33, 37.00, -109.05, -103.00, "NM"),
+    # Pacific
+    (45.54, 49.00, -124.84, -116.91, "WA"),
+    (41.99, 46.30, -124.57, -116.46, "OR"),
+    (32.53, 42.00, -124.49, -114.13, "CA"),
+]
+
+def state_from_latlon(lat: float, lon: float) -> str:
+    """Returns 2-letter US state/territory code for a given lat/lon.
+    Returns 'XX' as a last-resort fallback only when coordinates are
+    outside all known US bounding boxes."""
+    for lat_min, lat_max, lon_min, lon_max, code in STATE_BBOXES:
+        if lat_min <= lat <= lat_max and lon_min <= lon <= lon_max:
+            return code
+    return "XX"
+
 
 class SportInHub(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -669,7 +753,7 @@ def main() -> None:
                 medoid_hometown = a.hometown.label
 
         city_slug = re.sub(r'[^A-Z0-9_]', '', medoid_hometown.upper().replace(' ', '_'))
-        state = get_state_from_city(medoid_hometown)
+        state = state_from_latlon(m_lat, m_lon)
         hub_id = f"HUB_{state}_{city_slug}"
 
         if medoid_hometown in DISPLAY_NAME_OVERRIDES:
@@ -686,8 +770,8 @@ def main() -> None:
         region_name, macro_region = classify_region(m_lat, m_lon)
 
         state_counter: Counter[str] = Counter()
-        for a, _, _, _ in members:
-            state_counter[get_state_from_city(a.hometown.label)] += 1
+        for a, _, a_lat, a_lon in members:
+            state_counter[state_from_latlon(a_lat, a_lon)] += 1
         top_states = [s for s, _ in state_counter.most_common(3)]
 
         oly_c = sum(1 for a, _, _, _ in members if a.status == OlympicParalympicStatus.OLYMPIC)
