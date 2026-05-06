@@ -66,14 +66,26 @@ NON-NEGOTIABLE RULES:
 4. If paralympic_share > 0, mention Para athletes in the FIRST TWO
   sentences of the summary. This is the equal-prominence rule.
 5. Summary must be 80-120 words.
-6. Ground all claims to the provided hub_data JSON. No invented stats.
-7. If is_paralympic_hot_spot is true, the paralympic_callout field is
+6. REGIONAL CONTEXT: The hub_data includes region_name (the
+  culturally-authentic regional name like "Valley of the Sun",
+  "Mid-South / Mississippi Delta", or "Southcentral Alaska") and
+  macro_region (one of: Northeast, Mid-Atlantic, South, Midwest,
+  Southwest, Mountain West, Pacific, Alaska, Hawaii, Territories).
+  USE the region_name in the headline OR first sentence of summary
+  to ground the narrative in how locals actually identify. This is
+  critical for cultural authenticity — locals from these regions
+  identify by region_name, not just by city. Examples:
+  - "Phoenix, anchored in the Valley of the Sun, is associated with..."
+  - "The Bay Area, California's tech and Olympic crucible, may foster..."
+  - "Stillwater sits in Oklahoma's Frontier Country, where..."
+7. Ground all claims to the provided hub_data JSON. No invented stats.
+8. If is_paralympic_hot_spot is true, the paralympic_callout field is
   REQUIRED and should celebrate the regional Paralympic strength
   without comparing to Olympic counts.
-8. headline must be evocative, 10-80 chars, no clickbait.
-9. top_sport_phrase format: 'could help find [SPORT1], [SPORT2], and
+9. headline must be evocative, 10-80 chars, no clickbait.
+10. top_sport_phrase format: 'could help find [SPORT1], [SPORT2], and
   [SPORT3]' — use the top 3 sports from the hub data.
-10. confidence_qualifier must be one of:
+11. confidence_qualifier must be one of:
   'could help find', 'may foster', 'is associated with',
   'appears to support'.
 
@@ -117,7 +129,7 @@ async def generate_narrative(hub: dict, client: genai.Client) -> tuple[HubNarrat
         response_mime_type="application/json",
         response_schema=HubNarrative,
         temperature=0.4,
-        max_output_tokens=4096,
+        max_output_tokens=8192,
         system_instruction=SYSTEM_INSTRUCTION,
     )
 
