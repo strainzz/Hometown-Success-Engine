@@ -814,6 +814,24 @@ export class HometownHubMap extends HTMLElement {
       const stateCode = STATE_NAME_TO_CODE[inset.stateName] || "XX";
       const fillColor = colorFor(stateCode);
 
+      // Athlete dots inside the inset, scattered at their real positions
+      let athleteDots = "";
+      if (this.athletes.length > 0) {
+        const stateAthletes = this.athletes.filter(a => a.state === stateCode);
+        athleteDots = stateAthletes.map(a => {
+          const projected = projection([a.lon, a.lat]);
+          if (!projected) return "";
+          const [ax, ay] = projected;
+          // Skip points that fall outside the viewBox (clipped Aleutians, etc.)
+          if (ax < 0 || ax > inset.width || ay < 0 || ay > inset.height) return "";
+          const isPara = a.status === "paralympic" || a.status === "both";
+          const dotFill = isPara ? "#d31118" : "#152969";
+          const dotOpacity = isPara ? "0.7" : "0.4";
+          return `<circle cx="${ax.toFixed(2)}" cy="${ay.toFixed(2)}" r="1.2"
+            fill="${dotFill}" opacity="${dotOpacity}" />`;
+        }).join("");
+      }
+
       let hubDot = "";
       if (hub) {
         const [hx, hy] = projection([
@@ -855,6 +873,7 @@ export class HometownHubMap extends HTMLElement {
              stroke="#ffffff"
              stroke-width="1"
              stroke-linejoin="round" />
+          ${athleteDots}
           ${hubDot}
          </svg>
          <div style="font-size: 10px; color: #484645;
