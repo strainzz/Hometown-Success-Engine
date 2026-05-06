@@ -1,0 +1,46 @@
+<!-- frontend/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hometown Success Engine Widget</title>
+</head>
+<body style="font-family: sans-serif; padding: 20px; max-width: 800px; margin: 0 auto;">
+  <h1>Hometown Hub Map - Dev Preview</h1>
+
+  <div style="margin-bottom: 20px; display: flex; gap: 10px;">
+    <button id="btn-select-phoenix">Select Phoenix Hub</button>
+    <button id="btn-filter-pacific">Filter to Pacific Paralympic</button>
+    <button id="btn-reset">Reset View</button>
+  </div>
+
+  <hometown-hub-map api-url="https://hometown-success-engine-yumatgk63a-uc.a.run.app"></hometown-hub-map>
+
+  <h3 style="margin-top: 30px;">Current State:</h3>
+  <pre id="state" style="background: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 12px;"></pre>
+
+  <script>
+  customElements.whenDefined('hometown-hub-map').then(() => {
+    const mapEl = document.querySelector('hometown-hub-map');
+    const statePre = document.getElementById('state');
+
+    document.getElementById('btn-select-phoenix').addEventListener('click', () => {
+      mapEl.selectHub('HUB_AZ_PHOENIX');
+    });
+
+    document.getElementById('btn-filter-pacific').addEventListener('click', () => {
+      mapEl.filterToParalympic('Pacific');
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      mapEl.resetView();
+    });
+
+    document.addEventListener('hubmap:state-update', (e) => {
+      statePre.textContent = JSON.stringify(e.detail.state, null, 2);
+    });
+  });
+</script>
+</body>
+</html>
