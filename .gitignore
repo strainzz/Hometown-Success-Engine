@@ -46,3 +46,7 @@ pipeline/compliance/*
 !pipeline/compliance/data-sources.md
 pipeline/raw_data/
 pipeline/cache/
+
+# Allow specific JSON outputs to deploy with Cloud Run
+!pipeline/clustered/hubs.json
+!pipeline/narratives/hubs.json
