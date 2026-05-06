@@ -5,6 +5,7 @@ import { ApiClient } from "./api-client";
 import { Loader } from "@googlemaps/js-api-loader";
 import { GoogleMapsOverlay } from "@deck.gl/google-maps";
 import { ScatterplotLayer, GeoJsonLayer } from "@deck.gl/layers";
+import { geoMercator, geoPath } from "d3-geo";
 
 type StateAggregate = {
   state: string;
@@ -25,10 +26,17 @@ type Narrative = {
   confidence_qualifier: string;
 };
 
+type AthleteGeoPoint = {
+  hub_id: string;
+  lat: number;
+  lon: number;
+  status: "olympic" | "paralympic" | "both";
+  state: string;
+};
+
 const US_STATES_GEOJSON_URL =
   "https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json";
 
-// State NAME (as in PublicaMundi GeoJSON) → 2-letter USPS code
 const STATE_NAME_TO_CODE: Record<string, string> = {
   "Alabama": "AL", "Alaska": "AK", "Arizona": "AZ", "Arkansas": "AR",
   "California": "CA", "Colorado": "CO", "Connecticut": "CT",
@@ -49,6 +57,24 @@ const STATE_NAME_TO_CODE: Record<string, string> = {
   "Wyoming": "WY",
 };
 
+function clipAlaskaForInset(feature: any): any {
+  if (!feature?.geometry) return feature;
+  const geom = feature.geometry;
+  if (geom.type !== "MultiPolygon") return feature;
+  const filtered = geom.coordinates.filter((poly: any) =>
+    poly.some((ring: any[]) =>
+      ring.some(([lng, lat]: [number, number]) => lng >= -170 && lng <= -130 && lat >= 50)
+    )
+  );
+  return {
+    ...feature,
+    geometry: {
+      ...geom,
+      coordinates: filtered.length ? filtered : geom.coordinates,
+    },
+  };
+}
+
 const DEFAULT_API_URL = import.meta.env.VITE_API_BASE_URL || "https://hometown-success-engine-yumatgk63a-uc.a.run.app";
 const GMAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const GMAPS_MAP_ID = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID;
@@ -65,6 +91,7 @@ export class HometownHubMap extends HTMLElement {
   private stateAggregates: StateAggregate[] = [];
   private stateGeoJson: any = null;
   private narrativeCache: Map<string, Narrative> = new Map();
+  private athletes: AthleteGeoPoint[] = [];
 
   constructor() {
     super();
@@ -84,6 +111,14 @@ export class HometownHubMap extends HTMLElement {
     if (!this.shellRendered) {
       this.renderShell();
       this.shellRendered = true;
+      const resetBtn = this.querySelector("#hubmap-reset-btn");
+      if (resetBtn) {
+        resetBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.resetView();
+        });
+      }
     }
 
     await this.initMap();
@@ -133,11 +168,12 @@ export class HometownHubMap extends HTMLElement {
       const state = this.getState();
       const hub = state.hubs.find(h => h.hub_id === hub_id);
       if (hub) {
-        this.map.panTo({ lat: hub.centroid_latitude, lng: hub.centroid_longitude });
         const currentZoom = this.map.getZoom();
-        if (currentZoom === undefined || currentZoom < 6) {
-          this.map.setZoom(6);
-        }
+        const targetZoom = (currentZoom === undefined || currentZoom < 6) ? 6 : currentZoom;
+        this.map.moveCamera({
+          center: { lat: hub.centroid_latitude, lng: hub.centroid_longitude },
+          zoom: targetZoom,
+        });
       }
     }
     void this.ensureNarrative(hub_id);
@@ -152,22 +188,30 @@ export class HometownHubMap extends HTMLElement {
 
   zoomToHub(hub_id: string): void {
     this.dispatch({ type: "SELECT_HUB", hub_id });
-    if (this.mapInitialized && this.map) {
-      const state = this.getState();
-      const hub = state.hubs.find(h => h.hub_id === hub_id);
-      if (hub) {
-        this.map.panTo({ lat: hub.centroid_latitude, lng: hub.centroid_longitude });
-        this.map.setZoom(7);
-      }
-    }
+    void this.ensureNarrative(hub_id);
+    if (!this.map) return;
+    const hub = this.store.getState().hubs.find(h => h.hub_id === hub_id);
+    if (!hub) return;
+
+    let zoomLevel = 6;
+    if (hub_id === "HUB_AK_ANCHORAGE") zoomLevel = 5;
+    else if (hub_id === "HUB_HI_HONOLULU") zoomLevel = 7;
+    else if (hub_id === "HUB_PR_SAN_JUAN") zoomLevel = 8;
+
+    this.map.moveCamera({
+      center: { lat: hub.centroid_latitude, lng: hub.centroid_longitude },
+      zoom: zoomLevel,
+    });
   }
 
   resetView(): void {
     this.dispatch({ type: "CLEAR_SELECTION" });
     this.dispatch({ type: "CLEAR_FILTERS" });
     if (this.mapInitialized && this.map) {
-      this.map.panTo({ lat: 39.5, lng: -98.0 });
-      this.map.setZoom(4);
+      this.map.moveCamera({
+        center: { lat: 39.5, lng: -98.0 },
+        zoom: 4,
+      });
     }
   }
 
@@ -197,18 +241,19 @@ export class HometownHubMap extends HTMLElement {
   private async fetchStateData(): Promise<void> {
     const baseUrl = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_URL;
     try {
-      const [aggregates, geoJson] = await Promise.all([
+      const [aggregates, geoJson, athletes] = await Promise.all([
         fetch(`${baseUrl}/states/aggregate`).then(r => r.json()),
         fetch(US_STATES_GEOJSON_URL).then(r => r.json()),
+        fetch(`${baseUrl}/athletes`).then(r => r.json()),
       ]);
       this.stateAggregates = aggregates;
       this.stateGeoJson = geoJson;
-      // Re-trigger overlay update with state layer included
+      this.athletes = athletes;
       if (this.overlay) {
         this.updateLayers();
       }
+      this.renderInsets();
     } catch (err) {
-      // Non-fatal: state choropleth missing, but hubs still render
       console.warn("Failed to fetch state data:", err);
     }
   }
@@ -247,7 +292,6 @@ export class HometownHubMap extends HTMLElement {
       backgroundColor: "#ffffff",
     });
 
-    // Constrain default view to continental US
     const usBounds = new google.maps.LatLngBounds(
       { lat: 24.0, lng: -125.0 },
       { lat: 49.5, lng: -66.0 }
@@ -275,7 +319,6 @@ export class HometownHubMap extends HTMLElement {
     const state = this.store.getState();
     const layers: any[] = [];
 
-    // STATE CHOROPLETH LAYER (background)
     if (this.stateGeoJson && this.stateAggregates.length > 0) {
       const stateCounts: Record<string, number> = {};
       let maxCount = 1;
@@ -291,10 +334,8 @@ export class HometownHubMap extends HTMLElement {
           const stateName = f.properties?.name || "";
           const code = STATE_NAME_TO_CODE[stateName];
           const count = code ? (stateCounts[code] || 0) : 0;
-          if (count === 0) return [239, 234, 230, 100]; // ts-cream faint
-          // Sqrt scale for better visual spread
+          if (count === 0) return [239, 234, 230, 100];
           const t = Math.sqrt(count) / Math.sqrt(maxCount);
-          // Interpolate from light blue to ts-navy
           const r = Math.round(220 - (220 - 21) * t);
           const g = Math.round(228 - (228 - 41) * t);
           const b = Math.round(240 - (240 - 105) * t);
@@ -309,7 +350,27 @@ export class HometownHubMap extends HTMLElement {
       }));
     }
 
-    // HUB CENTROIDS LAYER (foreground, clickable)
+    if (this.athletes.length > 0) {
+      layers.push(new ScatterplotLayer({
+        id: "athlete-constellation",
+        data: this.athletes,
+        getPosition: (a: AthleteGeoPoint) => [a.lon, a.lat],
+        getRadius: 1500,
+        radiusUnits: "meters",
+        radiusMinPixels: 1.5,
+        radiusMaxPixels: 3,
+        getFillColor: (a: AthleteGeoPoint) => {
+          if (a.status === "paralympic" || a.status === "both") {
+            return [211, 17, 24, 180];
+          }
+          return [21, 41, 105, 100];
+        },
+        stroked: false,
+        filled: true,
+        pickable: false,
+      }));
+    }
+
     layers.push(new ScatterplotLayer({
       id: "hub-centroids",
       data: state.hubs,
@@ -351,7 +412,38 @@ export class HometownHubMap extends HTMLElement {
     }));
 
     if (this.overlay) {
-      this.overlay.setProps({ layers });
+      this.overlay.setProps({
+        layers,
+        getTooltip: ({ object }: any) => {
+          if (!object || !object.hub_id) return null;
+          const hub = object as Hub;
+          const paraPct = (hub.composition.paralympic_share * 100).toFixed(1);
+          const hotSpotTag = hub.is_paralympic_hot_spot
+            ? `<div style="color: #d31118; font-weight: 700; font-size: 10px; letter-spacing: 1px; margin-top: 4px;">★ PARALYMPIC HOT SPOT</div>`
+            : "";
+          return {
+            html: `
+              <div style="font-family: system-ui, sans-serif;">
+                <div style="font-weight: 700; font-size: 14px; color: #152969;">${hub.display_name}</div>
+                <div style="font-size: 12px; color: #171fbe; margin-top: 2px;">${hub.region_name}</div>
+                <div style="font-size: 11px; color: #484645; margin-top: 4px;">
+                  ${hub.total_athletes} athletes · ${paraPct}% Paralympic
+                </div>
+                ${hotSpotTag}
+              </div>
+            `,
+            style: {
+              backgroundColor: "rgba(255, 255, 255, 0.98)",
+              border: "1px solid #b9bfd2",
+              borderRadius: "4px",
+              padding: "8px 10px",
+              boxShadow: "0 2px 6px rgba(0, 0, 0, 0.15)",
+              fontSize: "12px",
+              pointerEvents: "none",
+            },
+          };
+        },
+      });
     }
   }
 
@@ -361,10 +453,11 @@ export class HometownHubMap extends HTMLElement {
     } else if (this.overlay) {
       this.updateLayers();
     }
-    
+
     if (this.shellRendered) {
       this.updateLegendCards(state);
       this.updateNarrativeCard(state);
+      this.renderInsets();
     }
   }
 
@@ -373,23 +466,120 @@ export class HometownHubMap extends HTMLElement {
       <div style="display: flex; flex-direction: column;
             background: #ffffff; font-family: system-ui, -apple-system, sans-serif;">
 
-        <header style="background: #152969; color: #ffffff;
-              padding: 16px 24px; display: flex;
-              align-items: center; justify-content: space-between;">
-          <div style="font-size: 20px; font-weight: 700;
-                letter-spacing: 0.5px;">
-            Hometown Success Engine
+        <header style="background: #152969; color: #ffffff; padding: 16px 24px;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">
+              Hometown Success Engine
+            </div>
+            <div style="font-size: 13px; color: #b9bfd2;
+                  text-transform: uppercase; letter-spacing: 1px;">
+              Team USA Athletic Hub Map
+            </div>
           </div>
-          <div style="font-size: 13px; color: #b9bfd2;
-                text-transform: uppercase;
-                letter-spacing: 1px;">
-            Team USA Athletic Hub Map
+          <div style="font-size: 14px; color: #b9bfd2;
+                margin-top: 6px; font-weight: 400; letter-spacing: 0.3px;">
+            Mapping 5,012 Olympians and Paralympians across 37 hometown regions where America's next Team USA roster could emerge
           </div>
         </header>
 
-        <div id="hubmap-canvas"
-            style="width: 100%; height: 600px;
-                background: #ffffff;"></div>
+        <div style="position: relative; width: 100%; height: 600px;">
+          <div id="hubmap-canvas"
+              style="width: 100%; height: 100%; background: #ffffff;"></div>
+          <div id="hubmap-insets-wrapper"
+              style="position: absolute; bottom: 12px; left: 12px;
+                 display: flex; flex-direction: column;
+                 gap: 8px; align-items: flex-start;
+                 pointer-events: auto;">
+            <button id="hubmap-reset-btn"
+                    type="button"
+                    title="Reset to continental US view"
+                    style="display: flex; align-items: center; gap: 6px;
+                       background: rgba(255, 255, 255, 0.95);
+                       color: #152969;
+                       border: 1px solid #b9bfd2; border-radius: 18px;
+                       cursor: pointer; padding: 6px 12px;
+                       font-size: 12px; font-weight: 600;
+                       letter-spacing: 0.5px;
+                       font-family: system-ui, -apple-system, sans-serif;
+                       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+                       transition: background 0.15s;"
+                    onmouseover="this.style.background='#efeae6';"
+                    onmouseout="this.style.background='rgba(255, 255, 255, 0.95)';">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                   stroke="#152969" stroke-width="2.5"
+                   stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 12a9 9 0 1 0 3-6.7" />
+                <polyline points="3 4 3 10 9 10" />
+              </svg>
+              Reset View
+            </button>
+            <div id="hubmap-color-legend"
+                style="background: rgba(255, 255, 255, 0.95);
+                   border: 1px solid #b9bfd2; border-radius: 6px;
+                   padding: 10px 12px;
+                   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+                   font-family: system-ui, -apple-system, sans-serif;">
+              <div style="font-size: 10px; color: #484645;
+                    text-transform: uppercase; letter-spacing: 1px;
+                    font-weight: 600; margin-bottom: 6px;">
+                Athletes per state
+              </div>
+              <div style="width: 140px; height: 10px;
+                    background: linear-gradient(to right,
+                      rgb(220, 228, 240),
+                      rgb(120, 134, 172),
+                      rgb(21, 41, 105));
+                    border-radius: 2px;"></div>
+              <div style="display: flex; justify-content: space-between;
+                    margin-top: 4px;
+                    font-size: 10px; color: #484645;">
+                <span>1</span>
+                <span>~100</span>
+                <span>749</span>
+              </div>
+              <div style="margin-top: 10px; padding-top: 8px;
+                    border-top: 1px solid #e4e4e7;
+                    display: flex; gap: 12px;
+                    font-size: 11px; color: #484645;">
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <span style="display: inline-block; width: 10px;
+                         height: 10px; border-radius: 50%;
+                         background: #d31118;"></span>
+                  Hot Spot
+                </div>
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <span style="display: inline-block; width: 10px;
+                         height: 10px; border-radius: 50%;
+                         background: #152969;"></span>
+                  Hub
+                </div>
+              </div>
+              <div style="display: flex; gap: 12px;
+                    margin-top: 6px;
+                    font-size: 11px; color: #484645;">
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <span style="display: inline-block; width: 4px;
+                         height: 4px; border-radius: 50%;
+                         background: #d31118;"></span>
+                  Para athlete
+                </div>
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <span style="display: inline-block; width: 4px;
+                         height: 4px; border-radius: 50%;
+                         background: #152969; opacity: 0.4;"></span>
+                  Olympian
+                </div>
+              </div>
+            </div>
+            <div id="hubmap-insets"
+                style="display: flex; gap: 8px;
+                   background: rgba(255, 255, 255, 0.95);
+                   border: 1px solid #b9bfd2;
+                   border-radius: 6px; padding: 8px;
+                   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);">
+            </div>
+          </div>
+        </div>
 
         <section id="hubmap-legend"
               style="display: grid; grid-template-columns: repeat(4, 1fr);
@@ -553,5 +743,137 @@ export class HometownHubMap extends HTMLElement {
        ${callout}
       </div>
      `;
+  }
+
+  private renderInsets(): void {
+    if (!this.stateGeoJson || this.stateAggregates.length === 0) return;
+    const container = this.querySelector("#hubmap-insets") as HTMLElement;
+    if (!container) return;
+
+    const stateCounts: Record<string, number> = {};
+    let maxCount = 1;
+    for (const s of this.stateAggregates) {
+      stateCounts[s.state] = s.total_athletes;
+      if (s.total_athletes > maxCount) maxCount = s.total_athletes;
+    }
+    const colorFor = (code: string): string => {
+      const count = stateCounts[code] || 0;
+      if (count === 0) return "#efeae6";
+      const t = Math.sqrt(count) / Math.sqrt(maxCount);
+      const r = Math.round(220 - (220 - 21) * t);
+      const g = Math.round(228 - (228 - 41) * t);
+      const b = Math.round(240 - (240 - 105) * t);
+      return `rgb(${r}, ${g}, ${b})`;
+    };
+
+    const state = this.store.getState();
+    const insets = [
+      {
+        label: "AK",
+        stateName: "Alaska",
+        hubId: "HUB_AK_ANCHORAGE",
+        width: 110,
+        height: 80,
+      },
+      {
+        label: "HI",
+        stateName: "Hawaii",
+        hubId: "HUB_HI_HONOLULU",
+        width: 90,
+        height: 70,
+      },
+      {
+        label: "PR",
+        stateName: "Puerto Rico",
+        hubId: "HUB_PR_SAN_JUAN",
+        width: 90,
+        height: 60,
+      },
+    ];
+
+    container.innerHTML = insets.map(inset => {
+      const feature = this.stateGeoJson.features.find(
+        (f: any) => f.properties?.name === inset.stateName
+      );
+      if (!feature) return "";
+
+      const hub = state.hubs.find(h => h.hub_id === inset.hubId);
+
+      const displayFeature = inset.label === "AK"
+        ? clipAlaskaForInset(feature)
+        : feature;
+
+      const projection = geoMercator().fitExtent(
+        [[4, 4], [inset.width - 4, inset.height - 4]],
+        displayFeature
+      );
+
+      const pathGen = geoPath(projection);
+      const pathData = pathGen(displayFeature) || "";
+
+      const stateCode = STATE_NAME_TO_CODE[inset.stateName] || "XX";
+      const fillColor = colorFor(stateCode);
+
+      let hubDot = "";
+      if (hub) {
+        const [hx, hy] = projection([
+          hub.centroid_longitude,
+          hub.centroid_latitude
+        ]) || [0, 0];
+        const isSelected = hub.hub_id === state.selectedHubId;
+        const isHotSpot = hub.is_paralympic_hot_spot;
+        const dotFill = isSelected ? "#d31118"
+          : isHotSpot ? "#d31118" : "#152969";
+        const dotStroke = isHotSpot ? "#d31118" : "#ffffff";
+        const dotR = isSelected ? 5 : 4;
+        const strokeW = isHotSpot ? 2 : 1;
+        hubDot = `<circle
+          cx="${hx}" cy="${hy}" r="${dotR}"
+          fill="${dotFill}"
+          stroke="${dotStroke}"
+          stroke-width="${strokeW}"
+          style="cursor: pointer;"
+          data-hub-id="${hub.hub_id}"
+        />`;
+      }
+
+      return `
+        <div data-inset="${inset.label}"
+           data-hub-id="${inset.hubId}"
+           style="display: flex; flex-direction: column;
+              align-items: center; cursor: pointer;
+              padding: 4px; border-radius: 4px;
+              transition: background 0.15s;"
+           onmouseover="this.style.background='#efeae6';"
+           onmouseout="this.style.background='transparent';">
+         <svg width="${inset.width}" height="${inset.height}"
+            viewBox="0 0 ${inset.width} ${inset.height}"
+            style="background: #ffffff; border: 1px solid #e4e4e7;
+               border-radius: 3px; pointer-events: none;">
+          <path d="${pathData}"
+             fill="${fillColor}"
+             stroke="#ffffff"
+             stroke-width="1"
+             stroke-linejoin="round" />
+          ${hubDot}
+         </svg>
+         <div style="font-size: 10px; color: #484645;
+               font-weight: 600; letter-spacing: 1px;
+               margin-top: 4px;">
+          ${inset.label}
+         </div>
+        </div>
+      `;
+    }).join("");
+
+    container.querySelectorAll("[data-inset][data-hub-id]").forEach(el => {
+      const hubId = el.getAttribute("data-hub-id");
+      if (!hubId) return;
+      el.addEventListener("click", (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.zoomToHub(hubId);
+      });
+    });
   }
 }
