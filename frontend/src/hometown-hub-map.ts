@@ -34,6 +34,22 @@ type AthleteGeoPoint = {
   state: string;
 };
 
+type ChatToolCall = {
+  name: "select_hub" | "filter_to_paralympic" | "zoom_to_hub" | "reset_view";
+  args: Record<string, any>;
+};
+
+type ChatTurn = {
+  role: "user" | "model";
+  text: string;
+};
+
+type ChatResponse = {
+  text: string;
+  tool_calls: ChatToolCall[];
+  history: ChatTurn[];
+};
+
 const US_STATES_GEOJSON_URL =
   "https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json";
 
@@ -79,6 +95,13 @@ const DEFAULT_API_URL = import.meta.env.VITE_API_BASE_URL || "https://hometown-s
 const GMAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const GMAPS_MAP_ID = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID;
 
+const SUGGESTED_PROMPTS = [
+  "Show Paralympic Hot Spots",
+  "Tell me about Anchorage",
+  "Show me Mountain region athletes",
+  "Reset the view",
+];
+
 export class HometownHubMap extends HTMLElement {
   private store: Store;
   private api: ApiClient | null = null;
@@ -92,6 +115,10 @@ export class HometownHubMap extends HTMLElement {
   private stateGeoJson: any = null;
   private narrativeCache: Map<string, Narrative> = new Map();
   private athletes: AthleteGeoPoint[] = [];
+
+  private chatOpen: boolean = false;
+  private chatHistory: ChatTurn[] = [];
+  private chatLoading: boolean = false;
 
   constructor() {
     super();
@@ -111,14 +138,8 @@ export class HometownHubMap extends HTMLElement {
     if (!this.shellRendered) {
       this.renderShell();
       this.shellRendered = true;
-      const resetBtn = this.querySelector("#hubmap-reset-btn");
-      if (resetBtn) {
-        resetBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          this.resetView();
-        });
-      }
+      this.wireResetButton();
+      this.wireChatUI();
     }
 
     await this.initMap();
@@ -215,6 +236,197 @@ export class HometownHubMap extends HTMLElement {
     }
   }
 
+  // ===== CHAT =====
+
+  private async sendChatMessage(message: string): Promise<void> {
+    if (!message.trim() || this.chatLoading) return;
+    this.chatLoading = true;
+    this.chatHistory.push({ role: "user", text: message });
+    this.renderChatBody();
+
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_URL;
+    try {
+      const res = await fetch(`${baseUrl}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message,
+          history: this.chatHistory.slice(0, -1),
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: ChatResponse = await res.json();
+
+      this.chatHistory.push({ role: "model", text: data.text });
+
+      for (const call of data.tool_calls) {
+        this.dispatchToolCall(call);
+      }
+    } catch (err) {
+      this.chatHistory.push({
+        role: "model",
+        text: "Sorry, I had trouble connecting. Try again in a moment.",
+      });
+    } finally {
+      this.chatLoading = false;
+      this.renderChatBody();
+    }
+  }
+
+  private dispatchToolCall(call: ChatToolCall): void {
+    switch (call.name) {
+      case "select_hub":
+        if (call.args.hub_id) this.selectHub(call.args.hub_id);
+        break;
+      case "zoom_to_hub":
+        if (call.args.hub_id) this.zoomToHub(call.args.hub_id);
+        break;
+      case "filter_to_paralympic":
+        this.filterToParalympic(call.args.macro_region);
+        break;
+      case "reset_view":
+        this.resetView();
+        break;
+    }
+  }
+
+  private toggleChat(): void {
+    this.chatOpen = !this.chatOpen;
+    const panel = this.querySelector("#hubmap-chat-panel") as HTMLElement;
+    const btn = this.querySelector("#hubmap-chat-btn") as HTMLElement;
+    if (panel) panel.style.display = this.chatOpen ? "flex" : "none";
+    if (btn) btn.style.transform = this.chatOpen ? "scale(0.92)" : "scale(1)";
+    if (this.chatOpen) {
+      const input = this.querySelector("#hubmap-chat-input") as HTMLInputElement;
+      input?.focus();
+    }
+  }
+
+  private wireChatUI(): void {
+    const btn = this.querySelector("#hubmap-chat-btn");
+    if (btn) {
+      btn.addEventListener("click", () => this.toggleChat());
+    }
+
+    const closeBtn = this.querySelector("#hubmap-chat-close");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => this.toggleChat());
+    }
+
+    const form = this.querySelector("#hubmap-chat-form") as HTMLFormElement;
+    if (form) {
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const input = this.querySelector("#hubmap-chat-input") as HTMLInputElement;
+        if (input?.value) {
+          const msg = input.value;
+          input.value = "";
+          void this.sendChatMessage(msg);
+        }
+      });
+    }
+
+    this.renderChatBody();
+  }
+
+  private renderChatBody(): void {
+    const body = this.querySelector("#hubmap-chat-body") as HTMLElement;
+    if (!body) return;
+
+    const suggestionPills = `
+      <div style="padding: 12px; border-bottom: 1px solid #efeae6;
+            background: #ffffff; display: flex; flex-wrap: wrap; gap: 6px;">
+        ${SUGGESTED_PROMPTS.map(p => `
+          <button class="hubmap-chat-suggestion" type="button"
+            style="background: #efeae6; border: 1px solid #b9bfd2;
+                   border-radius: 14px; padding: 5px 10px;
+                   font-size: 11px; color: #152969; cursor: pointer;
+                   font-family: system-ui, -apple-system, sans-serif;
+                   transition: background 0.15s;"
+            onmouseover="this.style.background='#d7d3cf';"
+            onmouseout="this.style.background='#efeae6';">
+            ${p}
+          </button>
+        `).join("")}
+      </div>
+    `;
+
+    if (this.chatHistory.length === 0) {
+      body.innerHTML = `
+        ${suggestionPills}
+        <div style="padding: 16px; color: #484645;">
+          <div style="font-size: 13px; line-height: 1.55;">
+            I'm the Hometown Success Engine, powered by Gemini. Ask me about a region, a hub, or America's Paralympians, and I'll guide you through the map.
+          </div>
+        </div>
+      `;
+    } else {
+      const turns = this.chatHistory.map(turn => {
+        const isUser = turn.role === "user";
+        return `
+          <div style="display: flex;
+                justify-content: ${isUser ? "flex-end" : "flex-start"};
+                margin-bottom: 8px;">
+            <div style="max-width: 82%;
+                  background: ${isUser ? "#152969" : "#efeae6"};
+                  color: ${isUser ? "#ffffff" : "#484645"};
+                  padding: 8px 12px; border-radius: 12px;
+                  font-size: 13px; line-height: 1.5;
+                  ${isUser ? "border-bottom-right-radius: 4px;" : "border-bottom-left-radius: 4px;"}">
+              ${this.escapeHtml(turn.text)}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      const loading = this.chatLoading
+        ? `
+          <div style="display: flex; justify-content: flex-start;
+                margin-bottom: 8px;">
+            <div style="background: #efeae6; color: #b9bfd2;
+                  padding: 8px 12px; border-radius: 12px;
+                  border-bottom-left-radius: 4px;
+                  font-size: 13px; font-style: italic;">
+              Thinking...
+            </div>
+          </div>
+        `
+        : "";
+
+      body.innerHTML = `
+        ${suggestionPills}
+        <div style="padding: 12px;">
+          ${turns}${loading}
+        </div>
+      `;
+      body.scrollTop = body.scrollHeight;
+    }
+
+    body.querySelectorAll(".hubmap-chat-suggestion").forEach((el) => {
+      el.addEventListener("click", () => {
+        const prompt = el.textContent?.trim() || "";
+        if (prompt) void this.sendChatMessage(prompt);
+      });
+    });
+  }
+
+  private escapeHtml(s: string): string {
+    const div = document.createElement("div");
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
+  private wireResetButton(): void {
+    const resetBtn = this.querySelector("#hubmap-reset-btn");
+    if (resetBtn) {
+      resetBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.resetView();
+      });
+    }
+  }
+
   // ===== INTERNAL =====
 
   private async loadHubs(): Promise<void> {
@@ -286,7 +498,15 @@ export class HometownHubMap extends HTMLElement {
       mapId: GMAPS_MAP_ID,
       center: { lat: 39.5, lng: -98.0 },
       zoom: 4,
-      disableDefaultUI: false,
+      disableDefaultUI: true,
+      zoomControl: true,
+      zoomControlOptions: {
+        position: 1, // google.maps.ControlPosition.TOP_LEFT
+      },
+      keyboardShortcuts: true,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
       clickableIcons: false,
       gestureHandling: "greedy",
       backgroundColor: "#ffffff",
@@ -360,14 +580,19 @@ export class HometownHubMap extends HTMLElement {
         radiusMinPixels: 1.5,
         radiusMaxPixels: 3,
         getFillColor: (a: AthleteGeoPoint) => {
-          if (a.status === "paralympic" || a.status === "both") {
-            return [211, 17, 24, 180];
+          const paraFilter = state.filters?.paralympic_focus === true;
+          const isPara = a.status === "paralympic" || a.status === "both";
+          if (paraFilter) {
+            return isPara ? [211, 17, 24, 220] : [21, 41, 105, 30];
           }
-          return [21, 41, 105, 100];
+          return isPara ? [211, 17, 24, 180] : [21, 41, 105, 100];
         },
         stroked: false,
         filled: true,
         pickable: false,
+        updateTriggers: {
+          getFillColor: [state.filters?.paralympic_focus],
+        },
       }));
     }
 
@@ -383,30 +608,34 @@ export class HometownHubMap extends HTMLElement {
       radiusMinPixels: 10,
       radiusMaxPixels: 50,
       getFillColor: (h: Hub) => {
+        const paraFilter = state.filters?.paralympic_focus === true;
         if (h.hub_id === state.selectedHubId) return [211, 17, 24, 255];
+        if (paraFilter && !h.is_paralympic_hot_spot) return [21, 41, 105, 60];
         if (h.is_paralympic_hot_spot) return [211, 17, 24, 230];
         return [21, 41, 105, 230];
       },
       getLineColor: (h: Hub) => {
-        if (h.hub_id === state.selectedHubId) return [255, 255, 255, 255];
-        if (h.is_paralympic_hot_spot) return [211, 17, 24, 255];
+        const paraFilter = state.filters?.paralympic_focus === true;
+        if (paraFilter && !h.is_paralympic_hot_spot) return [255, 255, 255, 80];
         return [255, 255, 255, 255];
       },
       getLineWidth: (h: Hub) => {
-        if (h.hub_id === state.selectedHubId) return 6;
-        return h.is_paralympic_hot_spot ? 4 : 2;
+        if (h.hub_id === state.selectedHubId) return 5;
+        return h.is_paralympic_hot_spot ? 3 : 2;
       },
       lineWidthUnits: "pixels",
       stroked: true,
       filled: true,
       pickable: true,
+      autoHighlight: true,
+      highlightColor: [255, 255, 255, 100],
       onClick: (info: any) => {
         if (info.object) this.selectHub(info.object.hub_id);
       },
       updateTriggers: {
         getRadius: [state.selectedHubId],
-        getFillColor: [state.selectedHubId],
-        getLineColor: [state.selectedHubId],
+        getFillColor: [state.selectedHubId, state.filters?.paralympic_focus],
+        getLineColor: [state.selectedHubId, state.filters?.paralympic_focus],
         getLineWidth: [state.selectedHubId],
       },
     }));
@@ -464,7 +693,8 @@ export class HometownHubMap extends HTMLElement {
   private renderShell(): void {
     this.innerHTML = `
       <div style="display: flex; flex-direction: column;
-            background: #ffffff; font-family: system-ui, -apple-system, sans-serif;">
+            background: #ffffff; font-family: system-ui, -apple-system, sans-serif;
+            position: relative;">
 
         <header style="background: #152969; color: #ffffff; padding: 16px 24px;">
           <div style="display: flex; align-items: center; justify-content: space-between;">
@@ -485,8 +715,9 @@ export class HometownHubMap extends HTMLElement {
         <div style="position: relative; width: 100%; height: 600px;">
           <div id="hubmap-canvas"
               style="width: 100%; height: 100%; background: #ffffff;"></div>
+
           <div id="hubmap-insets-wrapper"
-              style="position: absolute; bottom: 12px; left: 12px;
+              style="position: absolute; bottom: 32px; left: 12px;
                  display: flex; flex-direction: column;
                  gap: 8px; align-items: flex-start;
                  pointer-events: auto;">
@@ -561,7 +792,7 @@ export class HometownHubMap extends HTMLElement {
                   <span style="display: inline-block; width: 4px;
                          height: 4px; border-radius: 50%;
                          background: #d31118;"></span>
-                  Para athlete
+                  Paralympian
                 </div>
                 <div style="display: flex; align-items: center; gap: 4px;">
                   <span style="display: inline-block; width: 4px;
@@ -578,6 +809,94 @@ export class HometownHubMap extends HTMLElement {
                    border-radius: 6px; padding: 8px;
                    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);">
             </div>
+          </div>
+
+          <button id="hubmap-chat-btn"
+                  type="button"
+                  title="Ask the Hometown Success Engine"
+                  style="position: absolute; bottom: 20px; right: 20px;
+                     width: 56px; height: 56px;
+                     background: #152969; color: #ffffff;
+                     border: none; border-radius: 50%;
+                     cursor: pointer;
+                     display: flex; align-items: center; justify-content: center;
+                     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+                     transition: transform 0.15s, background 0.15s;
+                     z-index: 100;"
+                  onmouseover="this.style.background='#171fbe';"
+                  onmouseout="this.style.background='#152969';">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
+                 stroke="#ffffff" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+          </button>
+
+          <div id="hubmap-chat-panel"
+              style="position: absolute; bottom: 88px; right: 20px;
+                 width: 360px; height: 460px;
+                 background: #ffffff;
+                 border: 1px solid #b9bfd2;
+                 border-radius: 12px;
+                 box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+                 display: none;
+                 flex-direction: column;
+                 z-index: 99;
+                 overflow: hidden;">
+            <div style="background: #152969; color: #ffffff;
+                  padding: 12px 16px;
+                  display: flex; align-items: center; justify-content: space-between;">
+              <div>
+                <div style="font-size: 14px; font-weight: 700;">
+                  Ask the Engine
+                </div>
+                <div style="font-size: 11px; color: #b9bfd2;
+                      margin-top: 1px;">
+                  Powered by Gemini
+                </div>
+              </div>
+              <button id="hubmap-chat-close"
+                      type="button"
+                      style="background: transparent; border: none;
+                         color: #ffffff; cursor: pointer; padding: 4px;
+                         display: flex; align-items: center;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                     stroke="#ffffff" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div id="hubmap-chat-body"
+                style="flex: 1; overflow-y: auto; background: #ffffff;">
+            </div>
+            <form id="hubmap-chat-form"
+                  style="display: flex; gap: 8px; padding: 12px;
+                     border-top: 1px solid #b9bfd2; background: #ffffff;">
+              <input id="hubmap-chat-input"
+                     type="text"
+                     placeholder="Ask about a region or hub..."
+                     autocomplete="off"
+                     style="flex: 1; padding: 8px 12px;
+                        border: 1px solid #b9bfd2; border-radius: 16px;
+                        font-size: 13px; color: #484645;
+                        font-family: system-ui, -apple-system, sans-serif;
+                        outline: none;" />
+              <button type="submit"
+                      style="background: #152969; color: #ffffff;
+                         border: none; border-radius: 50%;
+                         width: 36px; height: 36px;
+                         cursor: pointer;
+                         display: flex; align-items: center; justify-content: center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="#ffffff" stroke-width="2.5"
+                     stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13" />
+                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                </svg>
+              </button>
+            </form>
           </div>
         </div>
 
@@ -768,27 +1087,9 @@ export class HometownHubMap extends HTMLElement {
 
     const state = this.store.getState();
     const insets = [
-      {
-        label: "AK",
-        stateName: "Alaska",
-        hubId: "HUB_AK_ANCHORAGE",
-        width: 110,
-        height: 80,
-      },
-      {
-        label: "HI",
-        stateName: "Hawaii",
-        hubId: "HUB_HI_HONOLULU",
-        width: 90,
-        height: 70,
-      },
-      {
-        label: "PR",
-        stateName: "Puerto Rico",
-        hubId: "HUB_PR_SAN_JUAN",
-        width: 90,
-        height: 60,
-      },
+      { label: "AK", stateName: "Alaska", hubId: "HUB_AK_ANCHORAGE", width: 110, height: 80 },
+      { label: "HI", stateName: "Hawaii", hubId: "HUB_HI_HONOLULU", width: 90, height: 70 },
+      { label: "PR", stateName: "Puerto Rico", hubId: "HUB_PR_SAN_JUAN", width: 90, height: 60 },
     ];
 
     container.innerHTML = insets.map(inset => {
@@ -814,7 +1115,6 @@ export class HometownHubMap extends HTMLElement {
       const stateCode = STATE_NAME_TO_CODE[inset.stateName] || "XX";
       const fillColor = colorFor(stateCode);
 
-      // Athlete dots inside the inset, scattered at their real positions
       let athleteDots = "";
       if (this.athletes.length > 0) {
         const stateAthletes = this.athletes.filter(a => a.state === stateCode);
@@ -822,7 +1122,6 @@ export class HometownHubMap extends HTMLElement {
           const projected = projection([a.lon, a.lat]);
           if (!projected) return "";
           const [ax, ay] = projected;
-          // Skip points that fall outside the viewBox (clipped Aleutians, etc.)
           if (ax < 0 || ax > inset.width || ay < 0 || ay > inset.height) return "";
           const isPara = a.status === "paralympic" || a.status === "both";
           const dotFill = isPara ? "#d31118" : "#152969";
@@ -834,30 +1133,22 @@ export class HometownHubMap extends HTMLElement {
 
       let hubDot = "";
       if (hub) {
-        const [hx, hy] = projection([
-          hub.centroid_longitude,
-          hub.centroid_latitude
-        ]) || [0, 0];
+        const [hx, hy] = projection([hub.centroid_longitude, hub.centroid_latitude]) || [0, 0];
         const isSelected = hub.hub_id === state.selectedHubId;
         const isHotSpot = hub.is_paralympic_hot_spot;
-        const dotFill = isSelected ? "#d31118"
-          : isHotSpot ? "#d31118" : "#152969";
-        const dotStroke = isHotSpot ? "#d31118" : "#ffffff";
+        const dotFill = isSelected ? "#d31118" : isHotSpot ? "#d31118" : "#152969";
         const dotR = isSelected ? 5 : 4;
-        const strokeW = isHotSpot ? 2 : 1;
-        hubDot = `<circle
-          cx="${hx}" cy="${hy}" r="${dotR}"
-          fill="${dotFill}"
-          stroke="${dotStroke}"
-          stroke-width="${strokeW}"
-          style="cursor: pointer;"
+        const dotRHover = dotR + 2;
+        hubDot = `<circle cx="${hx}" cy="${hy}" r="${dotR}"
+          fill="${dotFill}" stroke="#ffffff" stroke-width="1.5"
+          style="cursor: pointer; transition: r 0.15s ease;"
           data-hub-id="${hub.hub_id}"
-        />`;
+          onmouseover="this.setAttribute('r', '${dotRHover}')"
+          onmouseout="this.setAttribute('r', '${dotR}')" />`;
       }
 
       return `
-        <div data-inset="${inset.label}"
-           data-hub-id="${inset.hubId}"
+        <div data-inset="${inset.label}" data-hub-id="${inset.hubId}"
            style="display: flex; flex-direction: column;
               align-items: center; cursor: pointer;
               padding: 4px; border-radius: 4px;
