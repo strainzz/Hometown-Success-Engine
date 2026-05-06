@@ -119,6 +119,7 @@ export class HometownHubMap extends HTMLElement {
   private chatOpen: boolean = false;
   private chatHistory: ChatTurn[] = [];
   private chatLoading: boolean = false;
+  private hoveredHubId: string | null = null;
 
   constructor() {
     super();
@@ -145,6 +146,9 @@ export class HometownHubMap extends HTMLElement {
     await this.initMap();
     await this.loadHubs();
     await this.fetchStateData();
+
+    // Default view IS Reset View. Same code path, no divergence possible.
+    this.resetView();
   }
 
   disconnectedCallback(): void {
@@ -498,32 +502,32 @@ export class HometownHubMap extends HTMLElement {
       mapId: GMAPS_MAP_ID,
       center: { lat: 39.5, lng: -98.0 },
       zoom: 4,
-      disableDefaultUI: true,
+      disableDefaultUI: false,
       zoomControl: true,
       zoomControlOptions: {
-        position: 1, // google.maps.ControlPosition.TOP_LEFT
+        position: google.maps.ControlPosition.TOP_LEFT,
       },
-      keyboardShortcuts: true,
+      rotateControl: true,
+      rotateControlOptions: {
+        position: google.maps.ControlPosition.TOP_LEFT,
+      },
+      cameraControl: true,
+      cameraControlOptions: {
+        position: google.maps.ControlPosition.TOP_LEFT,
+      },
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: false,
+      keyboardShortcuts: true,
       clickableIcons: false,
       gestureHandling: "greedy",
       backgroundColor: "#ffffff",
-    });
-
-    const usBounds = new google.maps.LatLngBounds(
-      { lat: 24.0, lng: -125.0 },
-      { lat: 49.5, lng: -66.0 }
-    );
-    this.map.fitBounds(usBounds, 0);
-    this.map.setOptions({
+      minZoom: 3,
+      maxZoom: 12,
       restriction: {
         latLngBounds: { north: 72, south: 17, west: -180, east: -60 },
         strictBounds: false,
       },
-      minZoom: 3,
-      maxZoom: 12,
     });
 
     this.mapInitialized = true;
@@ -602,7 +606,11 @@ export class HometownHubMap extends HTMLElement {
       getPosition: (h: Hub) => [h.centroid_longitude, h.centroid_latitude],
       getRadius: (h: Hub) => {
         const base = Math.sqrt(h.total_athletes) * 8000;
-        return h.hub_id === state.selectedHubId ? base * 1.4 : base;
+        if (h.hub_id === state.selectedHubId) return base * 1.4;
+        if (h.hub_id === this.hoveredHubId) {
+          return base * (h.is_paralympic_hot_spot ? 1.5 : 1.25);
+        }
+        return base;
       },
       radiusUnits: "meters",
       radiusMinPixels: 10,
@@ -621,6 +629,7 @@ export class HometownHubMap extends HTMLElement {
       },
       getLineWidth: (h: Hub) => {
         if (h.hub_id === state.selectedHubId) return 5;
+        if (h.hub_id === this.hoveredHubId) return 4;
         return h.is_paralympic_hot_spot ? 3 : 2;
       },
       lineWidthUnits: "pixels",
@@ -628,15 +637,26 @@ export class HometownHubMap extends HTMLElement {
       filled: true,
       pickable: true,
       autoHighlight: true,
-      highlightColor: [255, 255, 255, 100],
+      highlightColor: [255, 255, 255, 60],
+      onHover: (info: any) => {
+        const canvas = this.querySelector("#hubmap-canvas") as HTMLElement;
+        if (canvas) {
+          canvas.style.cursor = info.object ? "pointer" : "grab";
+        }
+        const newHoveredId = info.object ? info.object.hub_id : null;
+        if (newHoveredId !== this.hoveredHubId) {
+          this.hoveredHubId = newHoveredId;
+          this.updateLayers();
+        }
+      },
       onClick: (info: any) => {
         if (info.object) this.selectHub(info.object.hub_id);
       },
       updateTriggers: {
-        getRadius: [state.selectedHubId],
+        getRadius: [state.selectedHubId, this.hoveredHubId],
         getFillColor: [state.selectedHubId, state.filters?.paralympic_focus],
         getLineColor: [state.selectedHubId, state.filters?.paralympic_focus],
-        getLineWidth: [state.selectedHubId],
+        getLineWidth: [state.selectedHubId, this.hoveredHubId],
       },
     }));
 
@@ -814,7 +834,7 @@ export class HometownHubMap extends HTMLElement {
           <button id="hubmap-chat-btn"
                   type="button"
                   title="Ask the Hometown Success Engine"
-                  style="position: absolute; bottom: 20px; right: 20px;
+                  style="position: absolute; bottom: 32px; right: 20px;
                      width: 56px; height: 56px;
                      background: #152969; color: #ffffff;
                      border: none; border-radius: 50%;
@@ -833,7 +853,7 @@ export class HometownHubMap extends HTMLElement {
           </button>
 
           <div id="hubmap-chat-panel"
-              style="position: absolute; bottom: 88px; right: 20px;
+              style="position: absolute; bottom: 100px; right: 20px;
                  width: 360px; height: 460px;
                  background: #ffffff;
                  border: 1px solid #b9bfd2;
