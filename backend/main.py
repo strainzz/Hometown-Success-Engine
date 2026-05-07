@@ -231,83 +231,107 @@ class ChatResponse(BaseModel):
     history: list[dict] = Field(default_factory=list)
 
 
-CHATBOT_TOOLS = [
-    genai_types.Tool(
-        function_declarations=[
-            genai_types.FunctionDeclaration(
-                name="select_hub",
-                description="Select a specific hometown hub on the map by its hub_id. Use when user asks about a specific city, region, or named hub.",
-                parameters=genai_types.Schema(
-                    type="OBJECT",
-                    properties={
-                        "hub_id": genai_types.Schema(
-                            type="STRING",
-                            description="The hub identifier, e.g. HUB_AZ_PHOENIX, HUB_CA_MERCED, HUB_AK_ANCHORAGE, HUB_NE_LINCOLN, HUB_OK_STILLWATER",
-                        ),
-                    },
-                    required=["hub_id"],
-                ),
+CHATBOT_TOOLS = genai_types.Tool(
+    function_declarations=[
+        genai_types.FunctionDeclaration(
+            name="select_hub",
+            description="Select a specific hometown hub on the map by its hub_id. Use when user asks about a specific city, region, or named hub.",
+            parameters=genai_types.Schema(
+                type="OBJECT",
+                properties={
+                    "hub_id": genai_types.Schema(
+                        type="STRING",
+                        description="The hub identifier, e.g. HUB_AZ_PHOENIX, HUB_CA_MERCED, HUB_AK_ANCHORAGE, HUB_NE_LINCOLN, HUB_OK_STILLWATER",
+                    ),
+                },
+                required=["hub_id"],
             ),
-            genai_types.FunctionDeclaration(
-                name="filter_to_paralympic",
-                description="Filter the map to highlight Paralympic Hot Spots, optionally narrowed to a specific macro_region. Use when user asks about Paralympic athletes, Paralympic representation, or wants to see Para Hot Spots.",
-                parameters=genai_types.Schema(
-                    type="OBJECT",
-                    properties={
-                        "macro_region": genai_types.Schema(
-                            type="STRING",
-                            enum=["Pacific", "Mountain", "Plains", "Midwest", "Northeast", "South", "Caribbean"],
-                            description="Optional macro region to filter to. Pacific includes AK, HI, WA, OR, CA. Mountain includes NV, AZ, NM, UT, CO, MT, ID, WY.",
-                        ),
-                    },
-                ),
+        ),
+        genai_types.FunctionDeclaration(
+            name="filter_to_paralympic",
+            description="Filter the map to highlight Paralympic Hot Spots, optionally narrowed to a specific macro_region. Use when user asks about Paralympic athletes, Paralympic representation, or wants to see Para Hot Spots.",
+            parameters=genai_types.Schema(
+                type="OBJECT",
+                properties={
+                    "macro_region": genai_types.Schema(
+                        type="STRING",
+                        enum=["Pacific", "Mountain", "Plains", "Midwest", "Northeast", "South", "Caribbean"],
+                        description="Optional macro region to filter to. Pacific includes AK, HI, WA, OR, CA. Mountain includes NV, AZ, NM, UT, CO, MT, ID, WY.",
+                    ),
+                },
             ),
-            genai_types.FunctionDeclaration(
-                name="zoom_to_hub",
-                description="Zoom the map to a specific hub at higher zoom level. Use when user wants to focus on or see closer detail of a single hub.",
-                parameters=genai_types.Schema(
-                    type="OBJECT",
-                    properties={
-                        "hub_id": genai_types.Schema(
-                            type="STRING",
-                            description="The hub identifier to zoom to.",
-                        ),
-                    },
-                    required=["hub_id"],
-                ),
+        ),
+        genai_types.FunctionDeclaration(
+            name="zoom_to_hub",
+            description="Zoom the map to a specific hub at higher zoom level. Use when user wants to focus on or see closer detail of a single hub.",
+            parameters=genai_types.Schema(
+                type="OBJECT",
+                properties={
+                    "hub_id": genai_types.Schema(
+                        type="STRING",
+                        description="The hub identifier to zoom to.",
+                    ),
+                },
+                required=["hub_id"],
             ),
-            genai_types.FunctionDeclaration(
-                name="reset_view",
-                description="Reset the map to the default continental US view, clearing any selections or filters. Use when user asks to start over, see everything, or reset.",
-                parameters=genai_types.Schema(
-                    type="OBJECT",
-                    properties={},
-                ),
+        ),
+        genai_types.FunctionDeclaration(
+            name="reset_view",
+            description="Reset the map to the default continental US view, clearing any selections or filters. Use when user asks to start over, see everything, or reset.",
+            parameters=genai_types.Schema(
+                type="OBJECT",
+                properties={},
             ),
-        ]
-    )
-]
+        ),
+    ]
+)
 
-CHATBOT_SYSTEM_PROMPT = """You are the Hometown Success Engine assistant — an AI guide for Team USA's Olympic and Paralympic athlete geography. You help users explore where America's 5,012 Olympians and Paralympians come from across 37 hometown regions.
+CHATBOT_SYSTEM_PROMPT = """You are Gemini, the AI guide for the Hometown Success Engine — an interactive map of where America's elite athletes come from. The map shows 5,012 Olympians and Paralympians clustered into 37 regional hubs.
 
-The map currently shows:
-- 37 hometown hubs (clusters of athletes by geography)
-- 5 Paralympic Hot Spots: Phoenix AZ, Anchorage AK, Lincoln NE, Stillwater OK, Merced CA — regions where the Paralympic share of athletes is significantly above the 4.6% national baseline
-- All 50 states + DC + Puerto Rico shaded by athlete density
-- Individual athlete dots showing each athlete's hometown
+# YOUR JOB
+Help users explore the map. Call tools to drive it. Then narrate what changed using SPECIFIC NUMBERS from the tool results.
 
-You have access to 4 tools that control the map:
-- select_hub: highlight a specific hub
-- filter_to_paralympic: spotlight Paralympic Hot Spots, optionally by region
-- zoom_to_hub: focus on a specific hub at high zoom
-- reset_view: return to the full US overview
+# AVAILABLE TOOLS
+- select_hub(hub_id) — highlights a hub
+- zoom_to_hub(hub_id) — zooms to a hub
+- filter_to_paralympic(macro_region?) — highlights Paralympic Hot Spots
+- reset_view() — resets to continental US
 
-USE TOOLS LIBERALLY. When a user asks about a place, region, or Paralympic story, CALL THE APPROPRIATE TOOL alongside your text response. Don't just describe what the user could click — actually drive the map.
+# THE 5 PARALYMPIC HOT SPOTS
+- HUB_AZ_PHOENIX (12.7%), HUB_AK_ANCHORAGE (12.5%), HUB_NE_LINCOLN (10.8%), HUB_OK_STILLWATER (9.3%), HUB_CA_MERCED (9.3%)
+- National Paralympic baseline: 4.6%
+- Hot Spots = >2x national rate
 
-Use conditional language ("could help find", "is associated with", "tends to produce") rather than implying geography guarantees athletic results. This is per IPC and Team USA guidance — never claim that being from a region predicts Olympic success.
+# RESPONSE RULES — STRICT
+1. ALWAYS call a tool when the user mentions a place, region, or filter.
+2. After tool calls, your text MUST quote SPECIFIC numbers from the tool result. If the tool result says "12.7%", you say "12.7%". If it says "55 athletes", you say "55 athletes". Generic phrases like "significantly higher" without a number are FORBIDDEN.
+3. Every response must be 2-3 sentences. Never one sentence. Never one word.
+4. Always end with a suggestion for what to explore next ("Click any red hub..." / "Want me to zoom to Phoenix?" / "Try the Pacific region next.")
+5. Off-topic questions (weather, sports scores, news): redirect to map exploration.
 
-Keep responses to 2-4 short sentences. Be conversational, knowledgeable, and direct. No filler words, no excessive hedging. If you don't know, say so."""
+# RESPONSE FORMAT (FOLLOW EXACTLY)
+[Sentence 1: what changed on the map, with specific numbers from tool result]
+[Sentence 2: one interesting fact, with specific numbers]
+[Sentence 3: suggested next action]
 
+# EXAMPLES
+
+User: "Show Paralympic Hot Spots"
+Tool: filter_to_paralympic()
+Tool result: "Filter applied: highlighting all 5 Paralympic Hot Spots. Top spot: Phoenix Region at 12.7% Paralympic (55 athletes). All 5: Phoenix Region (12.7%), Anchorage Region (12.5%), Lincoln Region (10.8%), Stillwater Region (9.3%), Merced Region (9.3%)."
+Your response: "Highlighted the 5 Paralympic Hot Spots — regions with more than 2x the national 4.6% Paralympic rate. Phoenix leads at 12.7% with 55 athletes, followed by Anchorage at 12.5%. Click any red hub to read its full story."
+
+User: "Tell me about Anchorage"
+Tool: select_hub(hub_id="HUB_AK_ANCHORAGE")
+Tool result: "Map zoomed/selected: Anchorage Region (Anchorage, AK, Pacific). 24 athletes total, 12.5% Paralympic. Top sport: Skiing. This IS a Paralympic Hot Spot."
+Your response: "Zoomed to the Anchorage Region — Alaska's only hub on the map and one of just 5 national Paralympic Hot Spots. With 24 athletes and 12.5% representing Team USA at the Paralympic level, this is one of the most Paralympic-dense regions in the country, anchored by skiing. The narrative card below has the full story."
+
+User: "What's the weather?"
+Your response: "I focus on this map of America's elite athletes. Want me to show you a region or zoom to a Paralympic Hot Spot instead?"
+
+# TONE
+Warm, knowledgeable, specific. Never generic. Always cite numbers from the tool result.
+"""
 
 _state: dict[str, Any] = {
     "hubs": [],
@@ -487,17 +511,81 @@ def tool_zoom_to_hub(req: ZoomToHubRequest) -> SelectHubAction:
         raise HTTPException(404, f"Hub {req.hub_id} not found")
     return SelectHubAction(hub_id=req.hub_id)
 
+def _build_tool_result_context(tool_name: str, args: dict) -> str:
+    """Build a fact-rich tool-result string that Gemini will use to narrate
+    what happened. The richer this string, the better the narration."""
+
+    if tool_name == "filter_to_paralympic":
+        macro_region = args.get("macro_region")
+        hot_spots = [h for h in _state["hubs"] if h.is_paralympic_hot_spot]
+        if macro_region:
+            filtered = [h for h in hot_spots if h.macro_region == macro_region]
+            if not filtered:
+                return (
+                    f"The Paralympic filter was applied for the {macro_region} region, "
+                    f"but no Paralympic Hot Spots are present there. The 5 national Hot Spots "
+                    f"are in: " + ", ".join(f"{h.display_name}" for h in hot_spots) + "."
+                )
+            top = max(filtered, key=lambda h: h.composition.paralympic_share)
+            return (
+                f"Filter applied: highlighting Paralympic Hot Spots in {macro_region}. "
+                f"Hubs visible: {', '.join(h.display_name for h in filtered)}. "
+                f"Leading: {top.display_name} at {top.composition.paralympic_share*100:.1f}% Paralympic, "
+                f"{top.total_athletes} athletes total. National Paralympic baseline: 4.6%."
+            )
+        else:
+            sorted_hot = sorted(hot_spots, key=lambda h: -h.composition.paralympic_share)
+            top = sorted_hot[0]
+            return (
+                f"Filter applied: highlighting all 5 Paralympic Hot Spots — regions where "
+                f"Paralympic athletes are more than 2x the 4.6% national baseline. "
+                f"Top spot: {top.display_name} at {top.composition.paralympic_share*100:.1f}% Paralympic "
+                f"({top.total_athletes} athletes). All 5: " +
+                ", ".join(
+                    f"{h.display_name} ({h.composition.paralympic_share*100:.1f}%)"
+                    for h in sorted_hot
+                ) + "."
+            )
+
+    if tool_name == "select_hub" or tool_name == "zoom_to_hub":
+        hub_id = args.get("hub_id", "")
+        hub = _state["hubs_by_id"].get(hub_id)
+        if not hub:
+            return f"Action {tool_name} attempted but hub {hub_id} not found."
+        narrative = _state["narratives"].get(hub_id)
+        para_pct = hub.composition.paralympic_share * 100
+        top_sport = hub.top_sports[0].sport if hub.top_sports else "various sports"
+        result = (
+            f"Map zoomed/selected: {hub.display_name} ({hub.region_name}, {hub.macro_region}). "
+            f"{hub.total_athletes} athletes total, {para_pct:.1f}% Paralympic. "
+            f"Top sport: {top_sport}. "
+            f"{'This IS a Paralympic Hot Spot.' if hub.is_paralympic_hot_spot else 'Not a Paralympic Hot Spot.'}"
+        )
+        if narrative:
+            result += f" Narrative headline: '{narrative.headline}'."
+            if narrative.paralympic_callout:
+                result += f" Paralympic callout: '{narrative.paralympic_callout}'."
+        return result
+
+    if tool_name == "reset_view":
+        return (
+            "Map reset to default continental US view. All filters cleared. "
+            f"Total athletes mapped: {sum(h.total_athletes for h in _state['hubs'])}. "
+            f"Total hubs: {len(_state['hubs'])}. "
+            f"Total Paralympic Hot Spots: {sum(1 for h in _state['hubs'] if h.is_paralympic_hot_spot)}."
+        )
+
+    return f"Action {tool_name} executed with args {args}."
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest) -> ChatResponse:
     try:
         client = genai.Client(
             vertexai=True,
-            project=os.environ.get("GOOGLE_CLOUD_PROJECT", "hometown-success-engine"),
+            project="hometown-success-engine",
             location="global",
         )
 
-        # Reconstruct conversation history
         contents = []
         for turn in req.history:
             role = turn.get("role", "user")
@@ -516,25 +604,27 @@ async def chat(req: ChatRequest) -> ChatResponse:
             )
         )
 
+        # First pass: let Gemini decide whether to call a tool
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=contents,
             config=genai_types.GenerateContentConfig(
                 system_instruction=CHATBOT_SYSTEM_PROMPT,
-                tools=CHATBOT_TOOLS,
-                temperature=0.4,
+                tools=[CHATBOT_TOOLS],
+                temperature=0.6,
                 max_output_tokens=400,
             ),
         )
 
         text_parts: list[str] = []
         tool_calls: list[ChatToolCall] = []
+        function_call_parts: list[genai_types.Part] = []
 
         if response.candidates and response.candidates[0].content:
-            for part in response.candidates[0].content.parts or []:
-                if getattr(part, "text", None):
+            for part in response.candidates[0].content.parts:
+                if hasattr(part, "text") and part.text:
                     text_parts.append(part.text)
-                if getattr(part, "function_call", None):
+                if hasattr(part, "function_call") and part.function_call:
                     fc = part.function_call
                     tool_calls.append(
                         ChatToolCall(
@@ -542,12 +632,55 @@ async def chat(req: ChatRequest) -> ChatResponse:
                             args=dict(fc.args) if fc.args else {},
                         )
                     )
+                    function_call_parts.append(part)
 
         reply_text = " ".join(text_parts).strip()
-        if not reply_text and tool_calls:
-            reply_text = "Done."
-        elif not reply_text:
-            reply_text = "I'm not sure how to help with that. Try asking about a specific hub, Paralympic Hot Spots, or a region like Pacific or Mountain."
+
+        # Second pass: if tool calls were made but no text, send fake tool
+        # results back to Gemini and ask it to narrate what happened.
+        if tool_calls and not reply_text:
+            contents.append(
+                genai_types.Content(role="model", parts=function_call_parts)
+            )
+            tool_result_parts = []
+            for call in tool_calls:
+                tool_result_parts.append(
+                    genai_types.Part(
+                        function_response=genai_types.FunctionResponse(
+                            name=call.name,
+                            response={
+                                "status": "success",
+                                "result": _build_tool_result_context(call.name, call.args),
+                            },
+                        )
+                    )
+                )
+            contents.append(
+                genai_types.Content(role="user", parts=tool_result_parts)
+            )
+
+            # Re-call WITHOUT tools so Gemini must respond in text
+            narration = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=contents,
+                config=genai_types.GenerateContentConfig(
+                    system_instruction=CHATBOT_SYSTEM_PROMPT,
+                    temperature=0.7,
+                    max_output_tokens=300,
+                ),
+            )
+            if narration.candidates and narration.candidates[0].content:
+                narration_parts = []
+                for part in narration.candidates[0].content.parts:
+                    if hasattr(part, "text") and part.text:
+                        narration_parts.append(part.text)
+                reply_text = " ".join(narration_parts).strip()
+
+        if not reply_text:
+            reply_text = (
+                "I focused the map for you. Take a look — and ask me about "
+                "any of the highlighted regions if you want to dig in."
+            )
 
         new_history = list(req.history)
         new_history.append({"role": "user", "text": req.message})
@@ -567,13 +700,3 @@ async def chat(req: ChatRequest) -> ChatResponse:
             tool_calls=[],
             history=req.history,
         )
-
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.environ.get("PORT", "8080"))
-    uvicorn.run(
-        "backend.main:app",
-        host="0.0.0.0",
-        port=port,
-        reload=False,
-    )
