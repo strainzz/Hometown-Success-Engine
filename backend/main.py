@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # Format: (lat_min, lat_max, lon_min, lon_max, state_code)
 # Order matters: smaller/more specific bboxes FIRST so they match
 # before larger ones overlap them. Tested for non-overlap across
-# major metros — borderline points (within 0.2 degrees of multiple
+# major metros ,  borderline points (within 0.2 degrees of multiple
 # state lines) get the FIRST matching bbox.
 STATE_BBOXES = [
     # Territories first (most specific lat/lon)
@@ -29,13 +29,13 @@ STATE_BBOXES = [
     (14.10, 20.55, 144.85, 146.10, "MP"),    # Northern Mariana Islands
     (17.65, 18.45, -65.10, -64.55, "VI"),    # US Virgin Islands
     (17.85, 18.55, -67.30, -65.20, "PR"),    # Puerto Rico
-    # Hawaii — distinct island chain
+    # Hawaii ,  distinct island chain
     (18.90, 22.30, -160.30, -154.80, "HI"),
-    # Alaska — wide range
+    # Alaska ,  wide range
     (51.00, 71.50, -180.00, -130.00, "AK"),
-    # DC — small, must come BEFORE MD and VA
+    # DC ,  small, must come BEFORE MD and VA
     (38.79, 39.00, -77.12, -76.91, "DC"),
-    # New England — small states FIRST so they don't get swallowed by NY/NH
+    # New England ,  small states FIRST so they don't get swallowed by NY/NH
     (41.30, 42.05, -71.90, -71.10, "RI"), # Rhode Island
     (41.00, 42.05, -73.75, -71.79, "CT"), # Connecticut
     (42.00, 42.90, -73.50, -69.90, "MA"), # Massachusetts
@@ -286,23 +286,23 @@ CHATBOT_TOOLS = genai_types.Tool(
     ]
 )
 
-CHATBOT_SYSTEM_PROMPT = """You are Gemini, the AI guide for the Hometown Success Engine — an interactive map of where America's elite athletes come from. The map shows 5,012 Olympians and Paralympians clustered into 37 regional hubs.
+CHATBOT_SYSTEM_PROMPT = """You are Gemini, the AI guide for the Hometown Success Engine ,  an interactive map of where America's elite athletes come from. The map shows 5,012 Olympians and Paralympians clustered into 37 regional hubs.
 
 # YOUR JOB
 Help users explore the map. Call tools to drive it. Then narrate what changed using SPECIFIC NUMBERS from the tool results.
 
 # AVAILABLE TOOLS
-- select_hub(hub_id) — highlights a hub
-- zoom_to_hub(hub_id) — zooms to a hub
-- filter_to_paralympic(macro_region?) — highlights Paralympic Hot Spots
-- reset_view() — resets to continental US
+- select_hub(hub_id) ,  highlights a hub
+- zoom_to_hub(hub_id) ,  zooms to a hub
+- filter_to_paralympic(macro_region?) ,  highlights Paralympic Hot Spots
+- reset_view() ,  resets to continental US
 
 # THE 5 PARALYMPIC HOT SPOTS
 - HUB_AZ_PHOENIX (12.7%), HUB_AK_ANCHORAGE (12.5%), HUB_NE_LINCOLN (10.8%), HUB_OK_STILLWATER (9.3%), HUB_CA_MERCED (9.3%)
 - National Paralympic baseline: 4.6%
 - Hot Spots = >2x national rate
 
-# RESPONSE RULES — STRICT
+# RESPONSE RULES ,  STRICT
 1. ALWAYS call a tool when the user mentions a place, region, or filter.
 2. After tool calls, your text MUST quote SPECIFIC numbers from the tool result. If the tool result says "12.7%", you say "12.7%". If it says "55 athletes", you say "55 athletes". Generic phrases like "significantly higher" without a number are FORBIDDEN.
 3. Every response must be 2-3 sentences. Never one sentence. Never one word.
@@ -319,12 +319,12 @@ Help users explore the map. Call tools to drive it. Then narrate what changed us
 User: "Show Paralympic Hot Spots"
 Tool: filter_to_paralympic()
 Tool result: "Filter applied: highlighting all 5 Paralympic Hot Spots. Top spot: Phoenix Region at 12.7% Paralympic (55 athletes). All 5: Phoenix Region (12.7%), Anchorage Region (12.5%), Lincoln Region (10.8%), Stillwater Region (9.3%), Merced Region (9.3%)."
-Your response: "Highlighted the 5 Paralympic Hot Spots — regions with more than 2x the national 4.6% Paralympic rate. Phoenix leads at 12.7% with 55 athletes, followed by Anchorage at 12.5%. Click any red hub to read its full story."
+Your response: "Highlighted the 5 Paralympic Hot Spots ,  regions with more than 2x the national 4.6% Paralympic rate. Phoenix leads at 12.7% with 55 athletes, followed by Anchorage at 12.5%. Click any red hub to read its full story."
 
 User: "Tell me about Anchorage"
 Tool: select_hub(hub_id="HUB_AK_ANCHORAGE")
 Tool result: "Map zoomed/selected: Anchorage Region (Anchorage, AK, Pacific). 24 athletes total, 12.5% Paralympic. Top sport: Skiing. This IS a Paralympic Hot Spot."
-Your response: "Zoomed to the Anchorage Region — Alaska's only hub on the map and one of just 5 national Paralympic Hot Spots. With 24 athletes and 12.5% representing Team USA at the Paralympic level, this is one of the most Paralympic-dense regions in the country, anchored by skiing. The narrative card below has the full story."
+Your response: "Zoomed to the Anchorage Region ,  Alaska's only hub on the map and one of just 5 national Paralympic Hot Spots. With 24 athletes and 12.5% representing Team USA at the Paralympic level, this is one of the most Paralympic-dense regions in the country, anchored by skiing. The narrative card below has the full story."
 
 User: "What's the weather?"
 Your response: "I focus on this map of America's elite athletes. Want me to show you a region or zoom to a Paralympic Hot Spot instead?"
@@ -589,7 +589,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
             sorted_hot = sorted(hot_spots, key=lambda h: -h.composition.paralympic_share)
             top = sorted_hot[0]
             return (
-                f"Filter applied: highlighting all 5 Paralympic Hot Spots — regions where "
+                f"Filter applied: highlighting all 5 Paralympic Hot Spots ,  regions where "
                 f"Paralympic athletes are more than 2x the 4.6% national baseline. "
                 f"Top spot: {top.display_name} at {top.composition.paralympic_share*100:.1f}% Paralympic "
                 f"({top.total_athletes} athletes). All 5: " +
@@ -699,7 +699,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
 
         if not reply_text:
             reply_text = (
-                "I focused the map for you. Take a look — and ask me about "
+                "I focused the map for you. Take a look ,  and ask me about "
                 "any of the highlighted regions if you want to dig in."
             )
 
