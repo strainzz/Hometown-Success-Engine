@@ -4,7 +4,7 @@
 
 🌐 **Live:** [hometown-success-engine-11a06.web.app](https://hometown-success-engine-11a06.web.app/)
 
-📺 **Demo Video:** [Coming soon — submission for the Vibe Code for Gold Hackathon]
+📺 **Demo Video:** [Coming Soon]
 
 🏆 **Built for:** [Vibe Code for Gold with Google × Team USA Hackathon, Challenge 2](https://vibecodeforgoldwithgoogle.devpost.com/)
 
@@ -24,7 +24,7 @@ Five of those hubs are flagged as **Paralympic Hot Spots**, regions where the Pa
 | Stillwater Region, OK | 9.3% | 86 |
 | Merced Region, CA | 9.3% | 43 |
 
-The map is fully interactive. Click any hub for its narrative card. Filter by region. Or ask the **Gemini-powered chat assistant** to drive the map for you in plain language.
+The map is fully interactive. Click any hub for its narrative card. Filter by region. You can also ask the Gemini-powered chat assistant for the region or hub you want. The assistant uses Gemini 2.5 Flash with Function Calling to translate your request into a map action..
 
 ## How it works
 
