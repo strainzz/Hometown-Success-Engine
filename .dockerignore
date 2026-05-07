@@ -1,0 +1,32 @@
+# Python
+__pycache__
+*.pyc
+.venv
+pipeline/.venv
+venv
+
+# Node
+node_modules
+frontend/dist
+frontend/.vite
+frontend/node_modules
+
+# Git/IDE
+.git
+.gitignore
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Pipeline raw data (large, not needed in container)
+pipeline/raw_data/
+pipeline/cache/
+pipeline/geocoded/
+pipeline/normalized/
+pipeline/compliance/
+
+# Already-committed Dockerfile and supporting
+backend/Dockerfile

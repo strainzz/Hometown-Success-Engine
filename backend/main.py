@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Literal, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 from google import genai
@@ -343,11 +343,58 @@ _state: dict[str, Any] = {
 
 
 def _load_data() -> None:
-    project_root = Path(__file__).parent.parent
-    hubs_path = project_root / "pipeline" / "clustered" / "hubs.json"
-    narratives_path = project_root / "pipeline" / "narratives" / "hubs.json"
-    athletes_path = project_root / "pipeline" / "clustered" / "athletes.json"
+    # Try multiple possible roots so this works locally AND in Cloud Run.
+    # Local: backend/main.py -> parent.parent is project root
+    # Cloud Run: /app/main.py -> parent is /app, which has pipeline/ copied alongside
+    candidate_roots = [
+        Path(__file__).parent.parent,  # local dev
+        Path(__file__).parent,         # Cloud Run /app
+        Path("/app"),                  # absolute fallback
+    ]
 
+    hubs_path = None
+    narratives_path = None
+    athletes_path = None
+
+    for root in candidate_roots:
+        c_hubs = root / "pipeline" / "clustered" / "hubs.json"
+        c_narratives = root / "pipeline" / "narratives" / "hubs.json"
+        c_athletes = root / "pipeline" / "clustered" / "athletes.json"
+        if c_hubs.exists() and c_narratives.exists() and c_athletes.exists():
+            hubs_path = c_hubs
+            narratives_path = c_narratives
+            athletes_path = c_athletes
+            logger.info(f"Loading data from: {root}")
+            break
+
+    if hubs_path is None:
+        tried = [str(r) for r in candidate_roots]
+        raise RuntimeError(
+            f"Data files not found in any candidate location: {tried}"
+        )
+
+    hubs_path = None
+    narratives_path = None
+    athletes_path = None
+
+    for root in candidate_roots:
+        candidate_hubs = root / "pipeline" / "clustered" / "hubs.json"
+        candidate_narratives = root / "pipeline" / "narratives" / "hubs.json"
+        candidate_athletes = root / "pipeline" / "clustered" / "athletes.json"
+        if candidate_hubs.exists() and candidate_narratives.exists() and candidate_athletes.exists():
+            hubs_path = candidate_hubs
+            narratives_path = candidate_narratives
+            athletes_path = candidate_athletes
+            logger.info(f"Loading data from: {root}")
+            break
+
+    if hubs_path is None:
+        # No location worked. Show what we tried so the error log is actionable.
+        tried = [str(r) for r in candidate_roots]
+        raise RuntimeError(
+            f"Data files not found in any candidate location: {tried}. "
+            f"Looked for pipeline/clustered/hubs.json, pipeline/narratives/hubs.json, pipeline/clustered/athletes.json."
+        )
     if not hubs_path.exists():
         raise RuntimeError(f"Hubs file not found: {hubs_path}")
     if not narratives_path.exists():
@@ -641,45 +688,14 @@ async def chat(req: ChatRequest) -> ChatResponse:
 
         reply_text = " ".join(text_parts).strip()
 
-        # Second pass: if tool calls were made but no text, send fake tool
-        # results back to Gemini and ask it to narrate what happened.
+        # If Gemini called tools but returned no text, use the rich tool result
+        # context directly as the reply. No second Vertex AI call needed.
         if tool_calls and not reply_text:
-            contents.append(
-                genai_types.Content(role="model", parts=function_call_parts)
-            )
-            tool_result_parts = []
+            tool_summaries = []
             for call in tool_calls:
-                tool_result_parts.append(
-                    genai_types.Part(
-                        function_response=genai_types.FunctionResponse(
-                            name=call.name,
-                            response={
-                                "status": "success",
-                                "result": _build_tool_result_context(call.name, call.args),
-                            },
-                        )
-                    )
-                )
-            contents.append(
-                genai_types.Content(role="user", parts=tool_result_parts)
-            )
-
-            # Re-call WITHOUT tools so Gemini must respond in text
-            narration = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=contents,
-                config=genai_types.GenerateContentConfig(
-                    system_instruction=CHATBOT_SYSTEM_PROMPT,
-                    temperature=0.7,
-                    max_output_tokens=300,
-                ),
-            )
-            if narration.candidates and narration.candidates[0].content:
-                narration_parts = []
-                for part in narration.candidates[0].content.parts:
-                    if hasattr(part, "text") and part.text:
-                        narration_parts.append(part.text)
-                reply_text = " ".join(narration_parts).strip()
+                rich_context = _build_tool_result_context(call.name, call.args)
+                tool_summaries.append(rich_context)
+            reply_text = " ".join(tool_summaries)
 
         if not reply_text:
             reply_text = (
