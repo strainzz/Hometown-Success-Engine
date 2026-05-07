@@ -24,7 +24,7 @@ Five of those hubs are flagged as **Paralympic Hot Spots**, regions where the Pa
 | Stillwater Region, OK | 9.3% | 86 |
 | Merced Region, CA | 9.3% | 43 |
 
-The map is fully interactive. Click any hub for its narrative card. Filter by region. You can also ask the Gemini-powered chat assistant for the region or hub you want. The assistant uses Gemini 2.5 Flash with Function Calling to translate your request into a map action..
+The map is fully interactive. Click any hub for its narrative card. Filter by region. You can also ask the Gemini-powered chat assistant for the region or hub you want. The assistant uses Gemini 2.5 Flash with Function Calling to translate your request into a map action.
 
 ## How it works
 
@@ -61,6 +61,45 @@ The map is fully interactive. Click any hub for its narrative card. Filter by re
 **Backend** (`backend/`): FastAPI service deployed on Cloud Run. Serves hub data, narratives, athlete geo points, and state aggregates. The `/chat` endpoint wraps Gemini 2.5 Flash with four tools: `select_hub`, `zoom_to_hub`, `filter_to_paralympic`, `reset_view`. Two-pass Tool Use pattern means Gemini can both call a tool AND narrate the result with real data.
 
 **Frontend** (`frontend/`): A vanilla TypeScript Web Component. Map uses Google Maps Vector tiles with a Map ID, deck.gl GoogleMapsOverlay, and three layers: state choropleth, athlete constellation (5,012 dots), and hub centroids (37 dots). Served from Firebase Hosting.
+
+## How Gemini powers the engine
+
+The chat panel is not a chatbot bolted on top of a map. It is the map's primary navigation method, driven end-to-end by Gemini 2.5 Flash with Function Calling.
+
+### What Gemini sees on every turn
+
+Three things get passed to Gemini in a single call:
+
+1. A **system prompt** with the 5 Paralympic Hot Spots, the 4.6% national baseline, the four available tools, response rules, and three worked examples (one for filtering, one for hub selection, one for off-topic redirects)
+2. The **conversation history** so the model can handle follow-ups like "and Anchorage?"
+3. The user's **latest message** in plain language
+
+The system prompt enforces a strict format: every reply must be 2-3 sentences, must cite specific numbers from the tool result, and must end with a follow-up suggestion.
+
+### The four tools
+
+Gemini drives the map by calling one of four functions, each declared as a `genai_types.FunctionDeclaration` with a typed `Schema`:
+
+| Tool | What it does |
+|---|---|
+| `select_hub(hub_id)` | Highlights a hub and loads its narrative card |
+| `zoom_to_hub(hub_id)` | Camera flies to a hub at appropriate zoom level |
+| `filter_to_paralympic(macro_region?)` | Highlights the 5 Hot Spots, optionally narrowed to a region |
+| `reset_view()` | Clears selection and filters, returns to continental view |
+
+### Rich tool results, not just acknowledgments
+
+The novel piece is what happens after Gemini chooses a tool. The backend's `_build_tool_result_context()` function does NOT return `{"status": "ok"}`. It returns a fact-rich string built from the actual hub data:
+
+```
+"Filter applied: highlighting all 5 Paralympic Hot Spots, regions where Paralympic athletes are more than 2x the 4.6% national baseline. Top spot: Phoenix Region, AZ at 12.7% Paralympic (55 athletes). All 5: Phoenix Region, AZ (12.7%), Anchorage Region, AK (12.5%), Lincoln Region, NE (10.8%), Stillwater Region, OK (9.3%), Merced Region, CA (9.3%)."
+```
+
+That string becomes the chat reply. The user sees grounded narration with real percentages, real athlete counts, and real region names every single time. The model never hallucinates a number because the number is computed from `_state["hubs"]` before the response is sent.
+
+### Why this matters for Team USA fans
+
+Fans don't need to learn a query language. They type "Show me the Paralympic Hot Spots" and the map reorganizes to tell that story, with the chat narrating exactly what changed and why. The Gemini layer is what turns 5,012 athletes and 37 hubs from a static visualization into something a curious fan can interrogate.
 
 ## Tech stack
 
@@ -138,14 +177,14 @@ cd ..
 firebase deploy --only hosting
 ```
 
-## Compliance & content rules
+## Compliance and content rules
 
 This project follows the contest's content restrictions:
 
-- **No NIL violations.** No athlete names, images, or likenesses appear in the UI or in committed data files. Raw geocoded athlete data is gitignored.
+- **NIL safety.** No athlete names, images, or likenesses appear in the UI or in committed data files. Raw geocoded athlete data is gitignored.
 - **Olympic and Paralympic parity.** Both groups are mapped, surfaced, and discussed throughout. The Paralympic Hot Spot framing is the headline insight.
 - **Conditional phrasing.** Geography does not guarantee outcomes. The map could help find regions where the ingredients are present.
-- **No banned terminology.** No "Paris 2024", no "LA28", no "former Olympian/Paralympian" anywhere.
+- **Approved terminology only.** Sport names use official sport terminology. Olympic and Paralympic Games references follow the contest's required formats. Athletes are referred to as Olympians and Paralympians.
 
 ## Data
 

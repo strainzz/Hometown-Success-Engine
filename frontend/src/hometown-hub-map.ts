@@ -120,6 +120,8 @@ export class HometownHubMap extends HTMLElement {
   private chatHistory: ChatTurn[] = [];
   private chatLoading: boolean = false;
   private hoveredHubId: string | null = null;
+  private selectedStateCode: string | null = null;
+  private selectedStateName: string | null = null;
 
   constructor() {
     super();
@@ -186,6 +188,45 @@ export class HometownHubMap extends HTMLElement {
     return this.store.getState();
   }
 
+  private centerOnState(stateCode: string): void {
+      if (!this.map || !this.stateGeoJson) return;
+      const stateName = Object.keys(STATE_NAME_TO_CODE).find(k => STATE_NAME_TO_CODE[k] === stateCode);
+      if (!stateName) return;
+      const feature = this.stateGeoJson.features.find((f: any) => f.properties?.name === stateName);
+      if (!feature?.geometry) return;
+
+      let minLng = 180, maxLng = -180, minLat = 90, maxLat = -90;
+      const walk = (coords: any) => {
+        if (typeof coords[0] === "number") {
+          const [lng, lat] = coords;
+          if (lng < minLng) minLng = lng;
+          if (lng > maxLng) maxLng = lng;
+          if (lat < minLat) minLat = lat;
+          if (lat > maxLat) maxLat = lat;
+        } else {
+          coords.forEach(walk);
+        }
+      };
+      walk(feature.geometry.coordinates);
+
+      const centerLng = (minLng + maxLng) / 2;
+      const centerLat = (minLat + maxLat) / 2;
+      const lngSpan = maxLng - minLng;
+      const latSpan = maxLat - minLat;
+      const span = Math.max(lngSpan, latSpan);
+
+      let zoom = 6;
+      if (span > 30) zoom = 4;
+      else if (span > 15) zoom = 5;
+      else if (span > 8) zoom = 6;
+      else if (span > 4) zoom = 7;
+      else zoom = 8;
+
+      this.map.moveCamera({
+        center: { lat: centerLat, lng: centerLng },
+        zoom,
+      });
+    }
   selectHub(hub_id: string): void {
     this.dispatch({ type: "SELECT_HUB", hub_id });
     if (this.mapInitialized && this.map) {
@@ -297,6 +338,7 @@ export class HometownHubMap extends HTMLElement {
     this.chatOpen = !this.chatOpen;
     const panel = this.querySelector("#hubmap-chat-panel") as HTMLElement;
     const pill = this.querySelector("#hubmap-chat-pill") as HTMLElement;
+    const statePanel = this.querySelector("#hubmap-state-panel") as HTMLElement;
     if (panel) {
       panel.style.display = this.chatOpen ? "flex" : "none";
       if (this.chatOpen) {
@@ -306,6 +348,11 @@ export class HometownHubMap extends HTMLElement {
       }
     }
     if (pill) pill.style.display = this.chatOpen ? "none" : "flex";
+    if (statePanel && this.chatOpen) {
+      statePanel.style.display = "none";
+    } else if (statePanel && !this.chatOpen && this.selectedStateCode) {
+      this.renderStatePanel();
+    }
     if (this.chatOpen) {
       const input = this.querySelector("#hubmap-chat-input") as HTMLInputElement;
       input?.focus();
@@ -571,12 +618,40 @@ export class HometownHubMap extends HTMLElement {
           const b = Math.round(240 - (240 - 105) * t);
           return [r, g, b, 200];
         },
-        getLineColor: [255, 255, 255, 255],
-        getLineWidth: 1,
+        getLineColor: (f: any) => {
+          const stateName = f.properties?.name || "";
+          const code = STATE_NAME_TO_CODE[stateName];
+          if (code === this.selectedStateCode) return [255, 200, 50, 255];
+          return [255, 255, 255, 255];
+        },
+        getLineWidth: (f: any) => {
+          const stateName = f.properties?.name || "";
+          const code = STATE_NAME_TO_CODE[stateName];
+          return code === this.selectedStateCode ? 3 : 1;
+        },
         lineWidthUnits: "pixels",
         stroked: true,
         filled: true,
-        pickable: false,
+        pickable: true,
+        autoHighlight: true,
+        highlightColor: [255, 255, 255, 40],
+        onClick: (info: any) => {
+          if (info.object?.properties?.name) {
+            const name = info.object.properties.name;
+            const code = STATE_NAME_TO_CODE[name];
+            if (code) {
+              this.selectedStateCode = code;
+              this.selectedStateName = name;
+              this.renderStatePanel();
+              this.updateLayers();
+              this.centerOnState(code);
+            }
+          }
+        },
+        updateTriggers: {
+          getLineColor: [this.selectedStateCode],
+          getLineWidth: [this.selectedStateCode],
+        },
       }));
     }
 
@@ -790,7 +865,8 @@ export class HometownHubMap extends HTMLElement {
 
         @media (max-width: 640px) {
           hometown-hub-map .hsm-map-area { height: 480px !important; }
-          hometown-hub-map .hsm-header-title { font-size: 16px !important; }
+          hometown-hub-map .hsm-header-title { font-size: 16px !important; gap: 8px !important; }
+          hometown-hub-map .hsm-header-title svg { width: 26px !important; height: 14px !important; }
           hometown-hub-map .hsm-header-tag { display: none !important; }
           hometown-hub-map .hsm-header-sub { font-size: 12px !important; }
           hometown-hub-map .hsm-insets-wrapper {
@@ -841,9 +917,28 @@ export class HometownHubMap extends HTMLElement {
 
         <header style="background: #152969; color: #ffffff; padding: 16px 24px;">
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-            <div class="hsm-header-title" style="font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">
-              Hometown Success Engine
-            </div>
+            <div class="hsm-header-title" style="font-size: 20px; font-weight: 700; letter-spacing: 0.5px; display: flex; align-items: center; gap: 10px;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 32" width="32" height="17" style="border-radius: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); flex-shrink: 0;" aria-label="United States flag" role="img">
+        <rect width="60" height="32" fill="#B22234"/>
+        <path d="M0,3.692h60m-60,4.923h60m-60,4.923h60m-60,4.923h60m-60,4.923h60m-60,4.923h60" stroke="#FFFFFF" stroke-width="2.4615"/>
+        <rect width="24" height="17.231" fill="#3C3B6E"/>
+        <defs>
+          <polygon id="s" fill="#FFFFFF" points="0,-0.8 0.18,-0.25 0.76,-0.25 0.29,0.09 0.47,0.65 0,0.31 -0.47,0.65 -0.29,0.09 -0.76,-0.25 -0.18,-0.25"/>
+          <g id="r6"><use href="#s" x="2"/><use href="#s" x="6"/><use href="#s" x="10"/><use href="#s" x="14"/><use href="#s" x="18"/><use href="#s" x="22"/></g>
+          <g id="r5"><use href="#s" x="4"/><use href="#s" x="8"/><use href="#s" x="12"/><use href="#s" x="16"/><use href="#s" x="20"/></g>
+        </defs>
+        <use href="#r6" y="1.723"/>
+        <use href="#r5" y="3.446"/>
+        <use href="#r6" y="5.169"/>
+        <use href="#r5" y="6.892"/>
+        <use href="#r6" y="8.615"/>
+        <use href="#r5" y="10.339"/>
+        <use href="#r6" y="12.062"/>
+        <use href="#r5" y="13.785"/>
+        <use href="#r6" y="15.508"/>
+      </svg>
+      <span>Hometown Success Engine</span>
+    </div>
             <div class="hsm-header-tag" style="font-size: 13px; color: #b9bfd2;
                   text-transform: uppercase; letter-spacing: 1px;">
               Team USA Athletic Hub Map
@@ -975,10 +1070,6 @@ export class HometownHubMap extends HTMLElement {
                      z-index: 101;"
                   onmouseover="this.style.background='#f5f3f0'; this.style.boxShadow='0 6px 18px rgba(21, 41, 105, 0.25)';"
                   onmouseout="this.style.background='#ffffff'; this.style.boxShadow='0 4px 14px rgba(21, 41, 105, 0.18)';">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="#171fbe" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z"/>
-              <path d="M19 16L19.6 18.4L22 19L19.6 19.6L19 22L18.4 19.6L16 19L18.4 18.4L19 16Z" opacity="0.6"/>
-            </svg>
             Ask Gemini
           </button>
 
@@ -1062,6 +1153,19 @@ export class HometownHubMap extends HTMLElement {
                 </svg>
               </button>
             </form>
+          </div>
+
+          <div id="hubmap-state-panel"
+              class="hsm-state-panel"
+              style="position: absolute; top: 12px; right: 12px;
+                 display: none; flex-direction: column;
+                 background: rgba(255, 255, 255, 0.97);
+                 border: 1px solid #b9bfd2; border-radius: 8px;
+                 padding: 14px 16px;
+                 min-width: 220px; max-width: 280px;
+                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                 font-family: system-ui, -apple-system, sans-serif;
+                 z-index: 102;">
           </div>
         </div>
 
@@ -1233,6 +1337,97 @@ export class HometownHubMap extends HTMLElement {
      `;
   }
 
+  private renderStatePanel(): void {
+    const panel = this.querySelector("#hubmap-state-panel") as HTMLElement;
+    if (!panel) return;
+
+    if (!this.selectedStateCode || !this.selectedStateName) {
+      panel.style.display = "none";
+      return;
+    }
+
+    const agg = this.stateAggregates.find(s => s.state === this.selectedStateCode);
+
+    const state = this.store.getState();
+    const stateHubs = state.hubs.filter(h => h.states.includes(this.selectedStateCode!));
+    const topHub = stateHubs.length > 0
+      ? stateHubs.reduce((max, h) => h.total_athletes > max.total_athletes ? h : max)
+      : null;
+
+    const totalStatesCount = 52;
+    let totalRank: string | number = "—";
+    let paraRank: string | number = "—";
+    if (agg) {
+      const sortedByTotal = [...this.stateAggregates].sort((a, b) => b.total_athletes - a.total_athletes);
+      totalRank = sortedByTotal.findIndex(s => s.state === this.selectedStateCode) + 1;
+      const sortedByPara = [...this.stateAggregates].sort((a, b) =>
+        (b.paralympic_count + b.both_count) - (a.paralympic_count + a.both_count));
+      paraRank = sortedByPara.findIndex(s => s.state === this.selectedStateCode) + 1;
+    }
+
+    const paraTotal = agg ? (agg.paralympic_count + agg.both_count) : 0;
+    const paraPct = agg ? (agg.paralympic_share * 100).toFixed(1) : "0.0";
+    const totalAthletes = agg ? agg.total_athletes : 0;
+
+    panel.style.display = "flex";
+    panel.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="background: #152969; color: #ffffff; font-size: 14px; font-weight: 800; letter-spacing: 0.5px; padding: 6px 9px; border-radius: 4px; line-height: 1; min-width: 32px; text-align: center;">${this.selectedStateCode}</div>
+          <div>
+            <div style="font-size: 10px; color: #484645; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">State</div>
+            <div style="color: #152969; font-size: 17px; font-weight: 800; line-height: 1.15; margin-top: 1px;">${this.selectedStateName}</div>
+          </div>
+        </div>
+        <button class="hubmap-state-close" type="button" aria-label="Close"
+          style="background: transparent; border: none; cursor: pointer; padding: 2px; color: #484645; line-height: 1;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; padding: 12px 0; border-top: 1px solid #e4e4e7; border-bottom: 1px solid #e4e4e7;">
+        <div>
+          <div style="font-size: 10px; color: #484645; text-transform: uppercase; letter-spacing: 0.8px;">Total Athletes</div>
+          <div style="color: #152969; font-size: 20px; font-weight: 700; line-height: 1.1;">${totalAthletes}</div>
+          <div style="font-size: 11px; color: #484645; margin-top: 2px;">Rank <strong style="color: #152969;">#${totalRank}</strong> of ${totalStatesCount}</div>
+          </div>
+        <div>
+          <div style="font-size: 10px; color: #d31118; text-transform: uppercase; letter-spacing: 0.8px;">Paralympic</div>
+          <div style="color: #d31118; font-size: 20px; font-weight: 700; line-height: 1.1;">${paraTotal}</div>
+          <div style="font-size: 11px; color: #484645; margin-top: 2px;">Rank <strong style="color: #d31118;">#${paraRank}</strong> of ${totalStatesCount}</div>
+        </div>
+        <div style="grid-column: span 2;">
+          <div style="font-size: 10px; color: #484645; text-transform: uppercase; letter-spacing: 0.8px;">Paralympic Share</div>
+          <div style="color: #152969; font-size: 16px; font-weight: 700; line-height: 1.2;">${paraPct}%</div>
+        </div>
+      </div>
+      ${topHub ? `
+        <div style="margin-top: 12px;">
+          <div style="font-size: 10px; color: #484645; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px;">Top Hub</div>
+          <button class="hubmap-state-hub-link" type="button" data-hub-id="${topHub.hub_id}"
+            style="background: transparent; border: none; padding: 0; color: #171fbe; font-size: 13px; font-weight: 600; cursor: pointer; text-align: left; font-family: inherit;">
+            ${topHub.display_name} →
+          </button>
+        </div>
+      ` : ''}
+    `;
+
+    panel.querySelector(".hubmap-state-close")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.selectedStateCode = null;
+      this.selectedStateName = null;
+      this.renderStatePanel();
+      this.updateLayers();
+    });
+
+    panel.querySelector(".hubmap-state-hub-link")?.addEventListener("click", (e) => {
+      const hubId = (e.currentTarget as HTMLElement).getAttribute("data-hub-id");
+      if (hubId) this.zoomToHub(hubId);
+    });
+  }
+
   private renderInsets(): void {
     if (!this.stateGeoJson || this.stateAggregates.length === 0) return;
     const container = this.querySelector("#hubmap-insets") as HTMLElement;
@@ -1256,9 +1451,9 @@ export class HometownHubMap extends HTMLElement {
 
     const state = this.store.getState();
     const insets = [
-      { label: "AK", stateName: "Alaska", hubId: "HUB_AK_ANCHORAGE", width: 110, height: 80 },
-      { label: "HI", stateName: "Hawaii", hubId: "HUB_HI_HONOLULU", width: 90, height: 70 },
-      { label: "PR", stateName: "Puerto Rico", hubId: "HUB_PR_SAN_JUAN", width: 90, height: 60 },
+      { label: "Alaska", stateName: "Alaska", hubId: "HUB_AK_ANCHORAGE", width: 110, height: 80 },
+      { label: "Hawaii", stateName: "Hawaii", hubId: "HUB_HI_HONOLULU", width: 90, height: 70 },
+      { label: "Puerto Rico", stateName: "Puerto Rico", hubId: "HUB_PR_SAN_JUAN", width: 90, height: 60 },
     ];
 
     container.innerHTML = insets.map(inset => {
@@ -1269,7 +1464,7 @@ export class HometownHubMap extends HTMLElement {
 
       const hub = state.hubs.find(h => h.hub_id === inset.hubId);
 
-      const displayFeature = inset.label === "AK"
+      const displayFeature = inset.stateName === "Alaska"
         ? clipAlaskaForInset(feature)
         : feature;
 
@@ -1319,7 +1514,7 @@ export class HometownHubMap extends HTMLElement {
       }
 
       return `
-        <div data-inset="${inset.label}" data-hub-id="${inset.hubId}"
+        <div data-inset="${inset.label}" data-hub-id="${inset.hubId}" data-state-code="${stateCode}" data-state-name="${inset.stateName}"
            style="display: flex; flex-direction: column;
               align-items: center; cursor: pointer;
               padding: 4px; border-radius: 4px;
@@ -1339,21 +1534,29 @@ export class HometownHubMap extends HTMLElement {
           ${hubDot}
          </svg>
          <div style="font-size: 10px; color: #484645;
-               font-weight: 600; letter-spacing: 1px;
-               margin-top: 4px;">
+               font-weight: 600; letter-spacing: 0.5px;
+               margin-top: 4px; white-space: nowrap;">
           ${inset.label}
          </div>
         </div>
       `;
     }).join("");
 
-    container.querySelectorAll("[data-inset][data-hub-id]").forEach(el => {
+    container.querySelectorAll("[data-inset]").forEach(el => {
       const hubId = el.getAttribute("data-hub-id");
-      if (!hubId) return;
+      const stateCode = el.getAttribute("data-state-code");
+      const stateName = el.getAttribute("data-state-name");
       el.addEventListener("click", (e: Event) => {
         e.preventDefault();
         e.stopPropagation();
-        this.zoomToHub(hubId);
+        if (stateCode && stateName) {
+          this.selectedStateCode = stateCode;
+          this.selectedStateName = stateName;
+          this.renderStatePanel();
+          this.updateLayers();
+          this.centerOnState(stateCode);
+        }
+        if (hubId && hubId !== "null") this.zoomToHub(hubId);
       });
     });
   }

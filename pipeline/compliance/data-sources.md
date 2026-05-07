@@ -71,7 +71,7 @@ Per USOPC NIL guidelines and the hackathon's Paralympic-parity emphasis:
 - Project name: "Hometown Success Engine" (hackathon working title)
 - This is a hackathon submission, NOT a USOPC product, NOT a Team USA product, NOT a Google product.
 - Submission README will include a clear disclaimer: "Independent hackathon build. Not affiliated with or endorsed by USOPC, the IOC, IPC, or Google."
-- Olympic rings, Team USA logos, Paralympic logos: NOT used anywhere in the UI or marketing.
+- UI restrictions: No third-party logos or trademarks appear in the UI or marketing materials. Only Google Cloud branding is permitted per contest rules.
 
 ## User-Agent String
 
