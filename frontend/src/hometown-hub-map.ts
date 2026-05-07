@@ -147,7 +147,6 @@ export class HometownHubMap extends HTMLElement {
     await this.loadHubs();
     await this.fetchStateData();
 
-    // Default view IS Reset View. Same code path, no divergence possible.
     this.resetView();
   }
 
@@ -297,9 +296,16 @@ export class HometownHubMap extends HTMLElement {
   private toggleChat(): void {
     this.chatOpen = !this.chatOpen;
     const panel = this.querySelector("#hubmap-chat-panel") as HTMLElement;
-    const btn = this.querySelector("#hubmap-chat-btn") as HTMLElement;
-    if (panel) panel.style.display = this.chatOpen ? "flex" : "none";
-    if (btn) btn.style.transform = this.chatOpen ? "scale(0.92)" : "scale(1)";
+    const pill = this.querySelector("#hubmap-chat-pill") as HTMLElement;
+    if (panel) {
+      panel.style.display = this.chatOpen ? "flex" : "none";
+      if (this.chatOpen) {
+        panel.classList.remove("hsm-chat-open");
+        void panel.offsetWidth;
+        panel.classList.add("hsm-chat-open");
+      }
+    }
+    if (pill) pill.style.display = this.chatOpen ? "none" : "flex";
     if (this.chatOpen) {
       const input = this.querySelector("#hubmap-chat-input") as HTMLInputElement;
       input?.focus();
@@ -307,9 +313,9 @@ export class HometownHubMap extends HTMLElement {
   }
 
   private wireChatUI(): void {
-    const btn = this.querySelector("#hubmap-chat-btn");
-    if (btn) {
-      btn.addEventListener("click", () => this.toggleChat());
+    const pill = this.querySelector("#hubmap-chat-pill");
+    if (pill) {
+      pill.addEventListener("click", () => this.toggleChat());
     }
 
     const closeBtn = this.querySelector("#hubmap-chat-close");
@@ -360,7 +366,7 @@ export class HometownHubMap extends HTMLElement {
         ${suggestionPills}
         <div style="padding: 16px; color: #484645;">
           <div style="font-size: 13px; line-height: 1.55;">
-            I'm the Hometown Success Engine, powered by Gemini. Ask me about a region, a hub, or America's Paralympians, and I'll guide you through the map.
+            Hi! I'm <strong>Gemini</strong>, your guide through the Hometown Success Engine. Ask me about a region, a hub, or America's Paralympians, and I'll filter and zoom the map for you.
           </div>
         </div>
       `;
@@ -606,7 +612,9 @@ export class HometownHubMap extends HTMLElement {
       getPosition: (h: Hub) => [h.centroid_longitude, h.centroid_latitude],
       getRadius: (h: Hub) => {
         const base = Math.sqrt(h.total_athletes) * 8000;
-        if (h.hub_id === state.selectedHubId) return base * 1.4;
+        if (h.hub_id === state.selectedHubId) {
+          return base * (h.is_paralympic_hot_spot ? 1.5 : 1.3);
+        }
         if (h.hub_id === this.hoveredHubId) {
           return base * (h.is_paralympic_hot_spot ? 1.5 : 1.25);
         }
@@ -617,18 +625,21 @@ export class HometownHubMap extends HTMLElement {
       radiusMaxPixels: 50,
       getFillColor: (h: Hub) => {
         const paraFilter = state.filters?.paralympic_focus === true;
-        if (h.hub_id === state.selectedHubId) return [211, 17, 24, 255];
         if (paraFilter && !h.is_paralympic_hot_spot) return [21, 41, 105, 60];
         if (h.is_paralympic_hot_spot) return [211, 17, 24, 230];
         return [21, 41, 105, 230];
       },
       getLineColor: (h: Hub) => {
         const paraFilter = state.filters?.paralympic_focus === true;
+        if (h.hub_id === state.selectedHubId) {
+          // Gold ring for selected — distinct from hub fill colors
+          return [255, 200, 50, 255];
+        }
         if (paraFilter && !h.is_paralympic_hot_spot) return [255, 255, 255, 80];
         return [255, 255, 255, 255];
       },
       getLineWidth: (h: Hub) => {
-        if (h.hub_id === state.selectedHubId) return 5;
+        if (h.hub_id === state.selectedHubId) return 6;
         if (h.hub_id === this.hoveredHubId) return 4;
         return h.is_paralympic_hot_spot ? 3 : 2;
       },
@@ -712,31 +723,144 @@ export class HometownHubMap extends HTMLElement {
 
   private renderShell(): void {
     this.innerHTML = `
+      <style>
+        hometown-hub-map .hsm-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 16px;
+        }
+        hometown-hub-map .hsm-stat-card {
+          background: #ffffff;
+          padding: 18px 20px;
+          border-radius: 8px;
+          border: 1px solid #b9bfd2;
+          border-left: 4px solid #171fbe;
+          transition: transform 0.15s, box-shadow 0.15s;
+        }
+        hometown-hub-map .hsm-stat-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+        }
+        hometown-hub-map .hsm-stat-card.hsm-stat-hotspot {
+          border-left-color: #d31118;
+        }
+        hometown-hub-map .hsm-stat-label {
+          color: #484645;
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: 1.2px;
+          font-weight: 600;
+          margin-bottom: 8px;
+          line-height: 1.3;
+        }
+        hometown-hub-map .hsm-stat-value {
+          color: #152969;
+          font-size: 32px;
+          font-weight: 800;
+          line-height: 1;
+          margin-bottom: 4px;
+        }
+        hometown-hub-map .hsm-stat-sub {
+          color: #6b6b6b;
+          font-size: 11px;
+          line-height: 1.3;
+        }
+        @keyframes hsm-chat-slide-up {
+          from {
+            opacity: 0;
+            transform: translateY(20px) scale(0.96);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        hometown-hub-map .hsm-chat-panel.hsm-chat-open {
+          animation: hsm-chat-slide-up 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+          transform-origin: bottom right;
+        }
+      
+
+        @media (max-width: 1024px) {
+          hometown-hub-map .hsm-map-area { height: 520px !important; }
+          hometown-hub-map .hsm-stats-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+
+        @media (max-width: 640px) {
+          hometown-hub-map .hsm-map-area { height: 480px !important; }
+          hometown-hub-map .hsm-header-title { font-size: 16px !important; }
+          hometown-hub-map .hsm-header-tag { display: none !important; }
+          hometown-hub-map .hsm-header-sub { font-size: 12px !important; }
+          hometown-hub-map .hsm-insets-wrapper {
+            bottom: 28px !important;
+            left: 8px !important;
+            gap: 6px !important;
+          }
+          hometown-hub-map .hsm-color-legend { display: none !important; }
+          hometown-hub-map .hsm-insets-row {
+            padding: 4px !important;
+            gap: 4px !important;
+          }
+          hometown-hub-map .hsm-insets-row svg {
+            width: 70px !important;
+            height: 50px !important;
+          }
+          hometown-hub-map .hsm-chat-panel {
+            width: calc(100vw - 24px) !important;
+            max-width: 420px;
+            height: 78vh !important;
+            max-height: 580px;
+            right: 12px !important;
+            bottom: 28px !important;
+          }
+          hometown-hub-map .hsm-chat-pill {
+            bottom: 28px !important;
+            right: 12px !important;
+            font-size: 13px !important;
+            padding: 9px 14px !important;
+          }
+          hometown-hub-map .hsm-stats-grid {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 8px !important;
+          }
+          hometown-hub-map .hsm-stat-card {
+            padding: 12px 14px !important;
+          }
+          hometown-hub-map .hsm-stat-value { font-size: 26px !important; }
+          hometown-hub-map .hsm-stat-label { font-size: 10px !important; letter-spacing: 0.8px !important; }
+          hometown-hub-map .hsm-stats-section { padding: 16px !important; }
+          hometown-hub-map .hsm-narrative-section { padding: 16px !important; }
+        }
+      </style>
+
       <div style="display: flex; flex-direction: column;
             background: #ffffff; font-family: system-ui, -apple-system, sans-serif;
             position: relative;">
 
         <header style="background: #152969; color: #ffffff; padding: 16px 24px;">
-          <div style="display: flex; align-items: center; justify-content: space-between;">
-            <div style="font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+            <div class="hsm-header-title" style="font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">
               Hometown Success Engine
             </div>
-            <div style="font-size: 13px; color: #b9bfd2;
+            <div class="hsm-header-tag" style="font-size: 13px; color: #b9bfd2;
                   text-transform: uppercase; letter-spacing: 1px;">
               Team USA Athletic Hub Map
             </div>
           </div>
-          <div style="font-size: 14px; color: #b9bfd2;
+          <div class="hsm-header-sub" style="font-size: 14px; color: #b9bfd2;
                 margin-top: 6px; font-weight: 400; letter-spacing: 0.3px;">
             Mapping 5,012 Olympians and Paralympians across 37 hometown regions where America's next Team USA roster could emerge
           </div>
         </header>
 
-        <div style="position: relative; width: 100%; height: 600px;">
+        <div class="hsm-map-area" style="position: relative; width: 100%; height: 600px;">
           <div id="hubmap-canvas"
               style="width: 100%; height: 100%; background: #ffffff;"></div>
 
           <div id="hubmap-insets-wrapper"
+              class="hsm-insets-wrapper"
               style="position: absolute; bottom: 32px; left: 12px;
                  display: flex; flex-direction: column;
                  gap: 8px; align-items: flex-start;
@@ -765,6 +889,7 @@ export class HometownHubMap extends HTMLElement {
               Reset View
             </button>
             <div id="hubmap-color-legend"
+                class="hsm-color-legend"
                 style="background: rgba(255, 255, 255, 0.95);
                    border: 1px solid #b9bfd2; border-radius: 6px;
                    padding: 10px 12px;
@@ -823,6 +948,7 @@ export class HometownHubMap extends HTMLElement {
               </div>
             </div>
             <div id="hubmap-insets"
+                class="hsm-insets-row"
                 style="display: flex; gap: 8px;
                    background: rgba(255, 255, 255, 0.95);
                    border: 1px solid #b9bfd2;
@@ -831,52 +957,70 @@ export class HometownHubMap extends HTMLElement {
             </div>
           </div>
 
-          <button id="hubmap-chat-btn"
+          <button id="hubmap-chat-pill"
+                  class="hsm-chat-pill"
                   type="button"
-                  title="Ask the Hometown Success Engine"
+                  aria-label="Ask Gemini"
                   style="position: absolute; bottom: 32px; right: 20px;
-                     width: 56px; height: 56px;
-                     background: #152969; color: #ffffff;
-                     border: none; border-radius: 50%;
+                     background: #ffffff; color: #171fbe;
+                     border: 1px solid #b9bfd2; border-radius: 22px;
+                     padding: 11px 18px;
+                     font-size: 14px; font-weight: 700;
+                     letter-spacing: 0.3px;
+                     font-family: system-ui, -apple-system, sans-serif;
                      cursor: pointer;
-                     display: flex; align-items: center; justify-content: center;
-                     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-                     transition: transform 0.15s, background 0.15s;
-                     z-index: 100;"
-                  onmouseover="this.style.background='#171fbe';"
-                  onmouseout="this.style.background='#152969';">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
-                 stroke="#ffffff" stroke-width="2"
-                 stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                     display: flex; align-items: center; gap: 8px;
+                     box-shadow: 0 4px 14px rgba(21, 41, 105, 0.18);
+                     transition: box-shadow 0.15s, background 0.15s;
+                     z-index: 101;"
+                  onmouseover="this.style.background='#f5f3f0'; this.style.boxShadow='0 6px 18px rgba(21, 41, 105, 0.25)';"
+                  onmouseout="this.style.background='#ffffff'; this.style.boxShadow='0 4px 14px rgba(21, 41, 105, 0.18)';">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#171fbe" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z"/>
+              <path d="M19 16L19.6 18.4L22 19L19.6 19.6L19 22L18.4 19.6L16 19L18.4 18.4L19 16Z" opacity="0.6"/>
             </svg>
+            Ask Gemini
           </button>
 
           <div id="hubmap-chat-panel"
-              style="position: absolute; bottom: 100px; right: 20px;
-                 width: 360px; height: 460px;
+              class="hsm-chat-panel"
+              style="position: absolute; bottom: 32px; right: 20px;
+                 width: 420px; height: 580px;
                  background: #ffffff;
                  border: 1px solid #b9bfd2;
                  border-radius: 12px;
-                 box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+                 box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
                  display: none;
                  flex-direction: column;
                  z-index: 99;
                  overflow: hidden;">
+            <div style="background: linear-gradient(90deg, #4285F4 0%, #9B72CB 50%, #D96570 100%);
+                  color: #ffffff;
+                  padding: 6px 16px;
+                  display: flex; align-items: center; gap: 8px;
+                  font-size: 11px; font-weight: 600;
+                  letter-spacing: 0.8px; text-transform: uppercase;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#ffffff" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z"/>
+                <path d="M19 16L19.6 18.4L22 19L19.6 19.6L19 22L18.4 19.6L16 19L18.4 18.4L19 16Z" opacity="0.7"/>
+              </svg>
+              Powered by Google Gemini
+            </div>
             <div style="background: #152969; color: #ffffff;
                   padding: 12px 16px;
                   display: flex; align-items: center; justify-content: space-between;">
               <div>
                 <div style="font-size: 14px; font-weight: 700;">
-                  Ask the Engine
+                  Ask Gemini
                 </div>
                 <div style="font-size: 11px; color: #b9bfd2;
                       margin-top: 1px;">
-                  Powered by Gemini
+                  AI guide to the map
                 </div>
               </div>
               <button id="hubmap-chat-close"
                       type="button"
+                      aria-label="Close chat"
                       style="background: transparent; border: none;
                          color: #ffffff; cursor: pointer; padding: 4px;
                          display: flex; align-items: center;">
@@ -896,7 +1040,7 @@ export class HometownHubMap extends HTMLElement {
                      border-top: 1px solid #b9bfd2; background: #ffffff;">
               <input id="hubmap-chat-input"
                      type="text"
-                     placeholder="Ask about a region or hub..."
+                     placeholder="Ask Gemini about a region or hub..."
                      autocomplete="off"
                      style="flex: 1; padding: 8px 12px;
                         border: 1px solid #b9bfd2; border-radius: 16px;
@@ -904,6 +1048,7 @@ export class HometownHubMap extends HTMLElement {
                         font-family: system-ui, -apple-system, sans-serif;
                         outline: none;" />
               <button type="submit"
+                      aria-label="Send"
                       style="background: #152969; color: #ffffff;
                          border: none; border-radius: 50%;
                          width: 36px; height: 36px;
@@ -921,13 +1066,20 @@ export class HometownHubMap extends HTMLElement {
         </div>
 
         <section id="hubmap-legend"
-              style="display: grid; grid-template-columns: repeat(4, 1fr);
-                 gap: 16px; padding: 24px;
+              class="hsm-stats-section"
+              style="padding: 24px;
                  background: #efeae6;
                  border-top: 1px solid #b9bfd2;">
+          <div style="font-size: 11px; color: #484645;
+                text-transform: uppercase; letter-spacing: 1.5px;
+                font-weight: 600; margin-bottom: 14px;">
+            Roster intelligence
+          </div>
+          <div class="hsm-stats-grid"></div>
         </section>
 
         <section id="hubmap-narrative"
+              class="hsm-narrative-section"
               style="padding: 24px; background: #ffffff;
                  min-height: 100px;
                  border-top: 1px solid #b9bfd2;">
@@ -942,42 +1094,39 @@ export class HometownHubMap extends HTMLElement {
   }
 
   private updateLegendCards(state: WidgetState): void {
-    const legendEl = this.querySelector("#hubmap-legend");
-    if (!legendEl) return;
+    const grid = this.querySelector("#hubmap-legend .hsm-stats-grid");
+    if (!grid) return;
 
     let hotSpots = 0;
     let totalAthletes = 0;
-    let totalShare = 0;
+    let totalParalympic = 0;
 
     for (const h of state.hubs) {
       if (h.is_paralympic_hot_spot) hotSpots++;
       totalAthletes += h.total_athletes;
-      totalShare += h.composition.paralympic_share;
+      totalParalympic += h.composition.paralympic_share * h.total_athletes;
     }
 
-    const avgParaShare = state.hubs.length > 0 ? (totalShare / state.hubs.length) * 100 : 0;
+    const overallParaPct = totalAthletes > 0
+      ? (totalParalympic / totalAthletes) * 100
+      : 0;
     const hubsDiscovered = state.hubs.length;
 
-    const createCard = (label: string, value: string | number) => `
-      <div style="background: #ffffff; padding: 16px; border-radius: 4px;
-            border: 1px solid #b9bfd2;">
-        <div style="color: #484645; font-size: 11px;
-              text-transform: uppercase; letter-spacing: 1.5px;
-              font-weight: 600; margin-bottom: 8px;">
-          ${label}
-        </div>
-        <div style="color: #171fbe; font-size: 32px; font-weight: 700;
-              line-height: 1;">
-          ${value}
-        </div>
+    const fmtNumber = (n: number) => n.toLocaleString();
+
+    const card = (label: string, value: string | number, sub: string, isHotSpot = false) => `
+      <div class="hsm-stat-card${isHotSpot ? " hsm-stat-hotspot" : ""}">
+        <div class="hsm-stat-label">${label}</div>
+        <div class="hsm-stat-value">${value}</div>
+        <div class="hsm-stat-sub">${sub}</div>
       </div>
     `;
 
-    legendEl.innerHTML = `
-      ${createCard("Paralympic Hot Spots", hotSpots)}
-      ${createCard("Total Athletes", totalAthletes)}
-      ${createCard("Hubs Discovered", hubsDiscovered)}
-      ${createCard("Avg Para Share", avgParaShare.toFixed(1) + "%")}
+    grid.innerHTML = `
+      ${card("Paralympic Hot Spots", hotSpots, "regions w/ Paralympic share &gt;2x national rate", true)}
+      ${card("Athletes Mapped", fmtNumber(totalAthletes), "Olympians and Paralympians, 2020–2024")}
+      ${card("Hometown Hubs", hubsDiscovered, "regions discovered via HDBSCAN clustering")}
+      ${card("Paralympic Share", overallParaPct.toFixed(1) + "%", "of mapped athletes are Paralympians")}
     `;
   }
 
@@ -1035,7 +1184,7 @@ export class HometownHubMap extends HTMLElement {
 
     card.innerHTML = `
       <div>
-       <div style="display: flex; align-items: baseline; gap: 8px;">
+       <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
         <span style="color: #152969; font-size: 24px;
                font-weight: 800;">
          ${hub.display_name}
@@ -1055,7 +1204,7 @@ export class HometownHubMap extends HTMLElement {
        ${summary}
        <div style="display: flex; gap: 24px; margin-top: 16px;
              padding-top: 16px;
-             border-top: 1px solid #b9bfd2;">
+             border-top: 1px solid #b9bfd2; flex-wrap: wrap;">
         <div>
          <div style="font-size: 11px; color: #484645;
                text-transform: uppercase;
@@ -1156,11 +1305,13 @@ export class HometownHubMap extends HTMLElement {
         const [hx, hy] = projection([hub.centroid_longitude, hub.centroid_latitude]) || [0, 0];
         const isSelected = hub.hub_id === state.selectedHubId;
         const isHotSpot = hub.is_paralympic_hot_spot;
-        const dotFill = isSelected ? "#d31118" : isHotSpot ? "#d31118" : "#152969";
+        const dotFill = isHotSpot ? "#d31118" : "#152969";
+        const dotStroke = isSelected ? "#ffc832" : "#ffffff";
+        const dotStrokeWidth = isSelected ? 2.5 : 1.5;
         const dotR = isSelected ? 5 : 4;
         const dotRHover = dotR + 2;
         hubDot = `<circle cx="${hx}" cy="${hy}" r="${dotR}"
-          fill="${dotFill}" stroke="#ffffff" stroke-width="1.5"
+          fill="${dotFill}" stroke="${dotStroke}" stroke-width="${dotStrokeWidth}"
           style="cursor: pointer; transition: r 0.15s ease;"
           data-hub-id="${hub.hub_id}"
           onmouseover="this.setAttribute('r', '${dotRHover}')"

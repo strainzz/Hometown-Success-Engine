@@ -1,46 +1,120 @@
-<!-- frontend/index.html -->
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hometown Success Engine Widget</title>
-</head>
-<body style="font-family: sans-serif; padding: 20px; max-width: 800px; margin: 0 auto;">
-  <h1>Hometown Hub Map - Dev Preview</h1>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#152969" />
 
-  <div style="margin-bottom: 20px; display: flex; gap: 10px;">
-    <button id="btn-select-phoenix">Select Phoenix Hub</button>
-    <button id="btn-filter-pacific">Filter to Pacific Paralympic</button>
-    <button id="btn-reset">Reset View</button>
-  </div>
+    <title>Hometown Success Engine — Mapping America's Next Team USA</title>
+    <meta name="description" content="An interactive map of 5,012 Olympians and Paralympians across 37 hometown regions where America's next Team USA roster could emerge. Built with Gemini." />
 
-  <hometown-hub-map api-url="https://hometown-success-engine-yumatgk63a-uc.a.run.app"></hometown-hub-map>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Hometown Success Engine" />
+    <meta property="og:description" content="Mapping 5,012 Olympians and Paralympians across 37 hometown regions where America's next Team USA roster could emerge." />
+    <meta property="og:site_name" content="Hometown Success Engine" />
 
-  <h3 style="margin-top: 30px;">Current State:</h3>
-  <pre id="state" style="background: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 12px;"></pre>
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Hometown Success Engine" />
+    <meta name="twitter:description" content="Mapping 5,012 Olympians and Paralympians across 37 hometown regions where America's next Team USA roster could emerge." />
 
-  <script>
-  customElements.whenDefined('hometown-hub-map').then(() => {
-    const mapEl = document.querySelector('hometown-hub-map');
-    const statePre = document.getElementById('state');
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%23152969'/%3E%3Ccircle cx='50' cy='50' r='18' fill='%23d31118'/%3E%3C/svg%3E" />
 
-    document.getElementById('btn-select-phoenix').addEventListener('click', () => {
-      mapEl.selectHub('HUB_AZ_PHOENIX');
-    });
+    <style>
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: #ffffff;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        color: #484645;
+        -webkit-font-smoothing: antialiased;
+      }
+      main { display: block; }
 
-    document.getElementById('btn-filter-pacific').addEventListener('click', () => {
-      mapEl.filterToParalympic('Pacific');
-    });
+      .scroll-indicator {
+        text-align: center;
+        padding: 18px 16px;
+        background: #ffffff;
+        border-top: 1px solid #efeae6;
+        border-bottom: 1px solid #efeae6;
+        color: #6b6b6b;
+        font-size: 13px;
+        letter-spacing: 0.5px;
+      }
+      .scroll-indicator strong { color: #152969; }
 
-    document.getElementById('btn-reset').addEventListener('click', () => {
-      mapEl.resetView();
-    });
+      .page-about {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 32px 24px;
+      }
+      .page-about h2 {
+        color: #152969;
+        font-size: 22px;
+        font-weight: 700;
+        margin: 0 0 12px 0;
+        letter-spacing: 0.3px;
+      }
+      .page-about p {
+        font-size: 15px;
+        line-height: 1.6;
+        margin: 0 0 12px 0;
+        color: #484645;
+      }
+      .page-about strong { color: #152969; }
 
-    document.addEventListener('hubmap:state-update', (e) => {
-      statePre.textContent = JSON.stringify(e.detail.state, null, 2);
-    });
-  });
-</script>
-</body>
+      .page-footer {
+        background: #152969;
+        color: #b9bfd2;
+        padding: 24px;
+        text-align: center;
+        font-size: 12px;
+        letter-spacing: 0.3px;
+        line-height: 1.6;
+      }
+      .page-footer a {
+        color: #ffffff;
+        text-decoration: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+      }
+      .page-footer a:hover { border-bottom-color: #ffffff; }
+
+      @media (max-width: 640px) {
+        .page-about { padding: 24px 16px; }
+        .page-about h2 { font-size: 19px; }
+        .page-about p { font-size: 14px; }
+        .scroll-indicator { font-size: 12px; padding: 14px 12px; }
+        .page-footer { font-size: 11px; padding: 20px 16px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <hometown-hub-map></hometown-hub-map>
+
+      <div class="scroll-indicator">
+        ↓ <strong>Roster intelligence</strong> and <strong>About the Engine</strong> below ↓
+      </div>
+
+      <section class="page-about">
+        <h2>About the Engine</h2>
+        <p>
+          The <strong>Hometown Success Engine</strong> is a hackathon prototype that maps where America's elite athletes actually come from. We clustered the hometowns of 5,012 Olympians and Paralympians (2020–2024) into 37 regional hubs using HDBSCAN, then surfaced the 5 regions where Paralympic representation runs more than double the national rate.
+        </p>
+        <p>
+          Each hub combines real roster data with Gemini-generated narratives that explain its athletic identity. The chat assistant uses Gemini Tool Use to drive the map directly: ask about a region or hub, and it filters and zooms for you.
+        </p>
+        <p>
+          Built for the <strong>Google Cloud × Team USA Challenge</strong>. Imagined as a tool for USOPC scouts and youth-program leaders to spot under-represented hometowns where the next Team USA roster could emerge.
+        </p>
+      </section>
+
+      <footer class="page-footer">
+        Source: Team USA roster 2020–2024 · Built with Gemini, Google Maps, deck.gl, and Cloud Run<br />
+        <a href="https://github.com/strainzz/Hometown-Success-Engine" target="_blank" rel="noopener">View source on GitHub</a>
+      </footer>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
 </html>
