@@ -1,4 +1,4 @@
-import json
+﻿import json
 import logging
 import os
 from collections import defaultdict
@@ -15,6 +15,7 @@ from google.genai import types as genai_types
 logging.basicConfig(level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+# v2 build
 
 # Approximate bounding boxes for all 50 US states + DC + territories.
 # Format: (lat_min, lat_max, lon_min, lon_max, state_code)
@@ -721,3 +722,4 @@ async def chat(req: ChatRequest) -> ChatResponse:
             tool_calls=[],
             history=req.history,
         )
+
