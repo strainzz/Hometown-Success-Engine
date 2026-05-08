@@ -1,4 +1,4 @@
-﻿import json
+import json
 import logging
 import os
 from collections import defaultdict
@@ -92,6 +92,27 @@ STATE_BBOXES = [
     (32.53, 42.00, -124.49, -114.13, "CA"),
 ]
 
+STATE_CODE_TO_NAME = {
+    "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas",
+    "CA": "California", "CO": "Colorado", "CT": "Connecticut",
+    "DE": "Delaware", "DC": "District of Columbia", "FL": "Florida",
+    "GA": "Georgia", "HI": "Hawaii", "ID": "Idaho", "IL": "Illinois",
+    "IN": "Indiana", "IA": "Iowa", "KS": "Kansas", "KY": "Kentucky",
+    "LA": "Louisiana", "ME": "Maine", "MD": "Maryland",
+    "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota",
+    "MS": "Mississippi", "MO": "Missouri", "MT": "Montana",
+    "NE": "Nebraska", "NV": "Nevada", "NH": "New Hampshire",
+    "NJ": "New Jersey", "NM": "New Mexico", "NY": "New York",
+    "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio",
+    "OK": "Oklahoma", "OR": "Oregon", "PA": "Pennsylvania",
+    "PR": "Puerto Rico", "RI": "Rhode Island", "SC": "South Carolina",
+    "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas",
+    "UT": "Utah", "VT": "Vermont", "VA": "Virginia",
+    "WA": "Washington", "WV": "West Virginia", "WI": "Wisconsin",
+    "WY": "Wyoming",
+    "AS": "American Samoa", "GU": "Guam",
+    "MP": "Northern Mariana Islands", "VI": "U.S. Virgin Islands",
+}
 
 def state_from_latlon(lat: float, lon: float) -> str:
     """Returns 2-letter US state/territory code for a given lat/lon.
@@ -221,6 +242,7 @@ class ChatToolCall(BaseModel):
         "filter_to_paralympic",
         "zoom_to_hub",
         "reset_view",
+        "select_state",
     ]
     args: dict
 
@@ -284,6 +306,20 @@ CHATBOT_TOOLS = genai_types.Tool(
                 properties={},
             ),
         ),
+        genai_types.FunctionDeclaration(
+            name="select_state",
+            description="Open the state info panel for a US state, territory, or DC. Use when the user asks about a specific state by name or code (e.g. 'show me Kansas', 'go to D.C.', 'tell me about Wyoming', 'Texas?'). The panel shows total athletes, Paralympic count, rank, and top hub in that state.",
+            parameters=genai_types.Schema(
+                type="OBJECT",
+                properties={
+                    "state_code": genai_types.Schema(
+                        type="STRING",
+                        description="2-letter US state postal code. Examples: CA, TX, KS, DC (District of Columbia), PR (Puerto Rico), AK, HI. Always uppercase.",
+                    ),
+                },
+                required=["state_code"],
+            ),
+        ),
     ]
 )
 
@@ -296,7 +332,13 @@ Help users explore the map. Call tools to drive it. Then narrate what changed us
 - select_hub(hub_id) ,  highlights a hub
 - zoom_to_hub(hub_id) ,  zooms to a hub
 - filter_to_paralympic(macro_region?) ,  highlights Paralympic Hot Spots
+- select_state(state_code) ,  opens the state panel for any US state, DC, or territory
 - reset_view() ,  resets to continental US
+
+# WHEN TO USE STATE vs HUB
+- If user names a STATE (Kansas, Wyoming, D.C., Texas, California): use select_state
+- If user names a CITY or REGION (Phoenix, Anchorage, Stillwater, Lincoln, Merced): use select_hub
+- States have aggregated athlete counts; hubs are real geographic clusters with narratives
 
 # THE 5 PARALYMPIC HOT SPOTS
 - HUB_AZ_PHOENIX (12.7%), HUB_AK_ANCHORAGE (12.5%), HUB_NE_LINCOLN (10.8%), HUB_OK_STILLWATER (9.3%), HUB_CA_MERCED (9.3%)
@@ -329,6 +371,11 @@ Your response: "Zoomed to the Anchorage Region ,  Alaska's only hub on the map a
 
 User: "What's the weather?"
 Your response: "I focus on this map of America's elite athletes. Want me to show you a region or zoom to a Paralympic Hot Spot instead?"
+
+User: "Tell me about Kansas"
+Tool: select_state(state_code="KS")
+Tool result: "State panel opened: Kansas (KS). 59 athletes total, 6 Paralympians, 10.2% Paralympic share. This is above the 4.6% national baseline. Total athletes rank: #34. Paralympic rank: #29. Top hub in Kansas: Stillwater Region with 86 athletes (9.3% Paralympic, a Paralympic Hot Spot)."
+Your response: "Kansas has 59 Olympians and Paralympians in our dataset, with a 10.2% Paralympic share that runs more than 2x the national baseline. The state is anchored by the Stillwater Region, one of our 5 Paralympic Hot Spots at 9.3% Paralympic. Want to zoom into Stillwater itself?"
 
 # TONE
 Warm, knowledgeable, specific. Never generic. Always cite numbers from the tool result.
@@ -620,6 +667,46 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
                 result += f" Paralympic callout: '{narrative.paralympic_callout}'."
         return result
 
+    if tool_name == "select_state":
+            code = args.get("state_code", "").upper()
+            name = STATE_CODE_TO_NAME.get(code, code)
+            agg = next((s for s in _state["state_aggregates"] if s.state == code), None)
+            hubs_in_state = [h for h in _state["hubs"] if code in h.states]
+            top_hub = max(hubs_in_state, key=lambda h: h.total_athletes) if hubs_in_state else None
+            if not agg:
+                base = (
+                    f"State panel opened: {name} ({code}). "
+                    f"This state has 0 athletes mapped in our 2020 to 2024 dataset, "
+                    f"so it ranks last across our 52 mappable regions. "
+                    f"The 5 Paralympic Hot Spots are all elsewhere."
+                )
+                if top_hub:
+                    base += (
+                        f" One nearby hub does cover {name}: {top_hub.display_name} "
+                        f"with {top_hub.total_athletes} athletes."
+                    )
+                return base
+            para = agg.paralympic_count + agg.both_count
+            para_pct = agg.paralympic_share * 100
+            sorted_total = sorted(_state["state_aggregates"], key=lambda s: -s.total_athletes)
+            total_rank = next((i + 1 for i, s in enumerate(sorted_total) if s.state == code), None)
+            sorted_para = sorted(_state["state_aggregates"], key=lambda s: -(s.paralympic_count + s.both_count))
+            para_rank = next((i + 1 for i, s in enumerate(sorted_para) if s.state == code), None)
+            above_or_below = "above" if para_pct > 4.6 else "below"
+            parts = [
+                f"State panel opened: {name} ({code}).",
+                f"{agg.total_athletes} athletes total, {para} Paralympians, {para_pct:.1f}% Paralympic share.",
+                f"This is {above_or_below} the 4.6% national baseline.",
+                f"Total athletes rank: #{total_rank}. Paralympic rank: #{para_rank}.",
+            ]
+            if top_hub:
+                hot_tag = ", a Paralympic Hot Spot" if top_hub.is_paralympic_hot_spot else ""
+                parts.append(
+                    f"Top hub in {name}: {top_hub.display_name} with {top_hub.total_athletes} athletes "
+                    f"({top_hub.composition.paralympic_share*100:.1f}% Paralympic{hot_tag})."
+                )
+            return " ".join(parts)
+
     if tool_name == "reset_view":
         return (
             "Map reset to default continental US view. All filters cleared. "
@@ -722,4 +809,3 @@ async def chat(req: ChatRequest) -> ChatResponse:
             tool_calls=[],
             history=req.history,
         )
-

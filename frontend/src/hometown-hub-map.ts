@@ -35,7 +35,7 @@ type AthleteGeoPoint = {
 };
 
 type ChatToolCall = {
-  name: "select_hub" | "filter_to_paralympic" | "zoom_to_hub" | "reset_view";
+  name: "select_hub" | "filter_to_paralympic" | "zoom_to_hub" | "reset_view" | "select_state";
   args: Record<string, any>;
 };
 
@@ -327,6 +327,19 @@ export class HometownHubMap extends HTMLElement {
         break;
       case "filter_to_paralympic":
         this.filterToParalympic(call.args.macro_region);
+        break;
+      case "select_state":
+        if (call.args.state_code) {
+          const code = (call.args.state_code as string).toUpperCase();
+          const stateName = Object.keys(STATE_NAME_TO_CODE).find(k => STATE_NAME_TO_CODE[k] === code);
+          if (stateName) {
+            this.selectedStateCode = code;
+            this.selectedStateName = stateName;
+            this.renderStatePanel();
+            this.updateLayers();
+            this.centerOnState(code);
+          }
+        }
         break;
       case "reset_view":
         this.resetView();
