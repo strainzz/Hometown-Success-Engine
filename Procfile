@@ -1,1 +1,1 @@
-web: gunicorn backend.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind :$PORT --timeout 0
+web: gunicorn main:app --bind 0.0.0.0:8080 --worker-class uvicorn.workers.UvicornWorker --workers 1 --timeout 120 --keep-alive 75
