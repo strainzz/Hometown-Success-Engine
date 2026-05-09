@@ -115,6 +115,9 @@ STATE_CODE_TO_NAME = {
     "AS": "American Samoa", "GU": "Guam",
     "MP": "Northern Mariana Islands", "VI": "U.S. Virgin Islands",
 }
+STATE_NAME_TO_CODE = {
+    _name.lower(): _code for _code, _name in STATE_CODE_TO_NAME.items()
+}
 
 def state_from_latlon(lat: float, lon: float) -> str:
     """Returns 2-letter US state/territory code for a given lat/lon.
@@ -267,79 +270,190 @@ class ChatResponse(BaseModel):
     history: list[dict] = Field(default_factory=list)
 
 
-CHATBOT_TOOLS = genai_types.Tool(
-    function_declarations=[
-        genai_types.FunctionDeclaration(
-            name="query_data",
-            description="Look up specific data without moving the map. Use for ranking, comparison, top-N, or aggregate questions like 'which state ranks first', 'top 5 states for Paralympic representation', 'how many hubs are in the Pacific region', 'what are the most common sports in the Mountain West'. Use this whenever the user asks a data question that does NOT require navigating the map.",
-            parameters=genai_types.Schema(
-                type="OBJECT",
-                properties={
-                    "query_type": genai_types.Schema(
-                        type="STRING",
-                        enum=[
-                            "top_states_by_total",
-                            "top_states_by_paralympic",
-                            "top_states_by_paralympic_share",
-                            "top_hubs_by_total",
-                            "top_hubs_by_paralympic_share",
-                            "all_hot_spots",
-                            "hubs_by_sport",
-                            "hubs_by_macro_region",
-                            "summary",
-                        ],
-                        description="What kind of lookup. top_states_by_total/paralympic/paralympic_share return ranked state lists. top_hubs_by_total/paralympic_share return ranked hub lists. all_hot_spots returns the current Paralympic Hot Spots. hubs_by_sport filters by a sport name. hubs_by_macro_region filters by region. summary returns overall totals.",
-                    ),
-                    "limit": genai_types.Schema(
-                        type="INTEGER",
-                        description="How many results to return (default 5, max 20).",
-                    ),
-                    "sport": genai_types.Schema(
-                        type="STRING",
-                        description="Sport name for hubs_by_sport queries (e.g. 'swimming', 'cross-country skiing', 'wheelchair basketball').",
-                    ),
-                    "macro_region": genai_types.Schema(
-                        type="STRING",
-                        description="Macro region for hubs_by_macro_region queries (e.g. 'Pacific', 'Mountain West', 'Midwest').",
-                    ),
-                },
-                required=["query_type"],
-            ),
-        ),
-        genai_types.FunctionDeclaration(
-            name="select_state",
-            description="Open the state info panel for a US state, territory, or DC. Use when the user asks about a specific state by name or code (e.g. 'show me Kansas', 'go to D.C.', 'tell me about Wyoming', 'Texas?'). The panel shows total athletes, Paralympic count, rank, and top hub in that state.",
-            parameters=genai_types.Schema(
-                type="OBJECT",
-                properties={
-                    "state_code": genai_types.Schema(
-                        type="STRING",
-                        description="2-letter US state postal code. Examples: CA, TX, KS, DC (District of Columbia), PR (Puerto Rico), AK, HI. Always uppercase.",
-                    ),
-                },
-                required=["state_code"],
-            ),
-        ),
-    ]
-)
+QUERY_TYPES = [
+    "summary",
+    "rank_list",
+    "entity_rank",
+    "state_profile",
+    "hub_profile",
+    "compare_states",
+    "compare_hubs",
+    "all_hot_spots",
+    "hubs_by_sport",
+    "hubs_by_macro_region",
+]
+METRICS = [
+    "total_athletes",
+    "olympic_athletes",
+    "paralympic_athletes",
+    "paralympic_share",
+    "sport_count",
+]
+ENTITY_TYPES = ["hub", "state"]
+MACRO_REGIONS = [
+    "Northeast", "Mid-Atlantic", "South", "Midwest",
+    "Southwest", "Mountain West", "Pacific", "Alaska",
+    "Hawaii", "Territories",
+]
 
-CHATBOT_SYSTEM_PROMPT_TEMPLATE = """You are Gemini, the AI guide for the Hometown Success Engine, an interactive map of where America's elite athletes come from. The current map shows {athlete_count:,} mapped Olympians and Paralympians clustered into {hub_count} hometown hubs from Tokyo 2020 through Milan-Cortina 2026.
+
+def _build_chatbot_tools() -> genai_types.Tool:
+    hub_ids = sorted(_state["hubs_by_id"].keys())
+    state_codes = sorted({s.state for s in _state["state_aggregates"]})
+
+    return genai_types.Tool(
+        function_declarations=[
+            genai_types.FunctionDeclaration(
+                name="select_hub",
+                description="Select a specific hometown hub and open its narrative card. Use when the user names a hub, city, or region and wants to inspect it on the map.",
+                parameters=genai_types.Schema(
+                    type="OBJECT",
+                    properties={
+                        "hub_id": genai_types.Schema(
+                            type="STRING",
+                            enum=hub_ids,
+                            description="Exact hub_id from the current map dataset.",
+                        ),
+                    },
+                    required=["hub_id"],
+                ),
+            ),
+            genai_types.FunctionDeclaration(
+                name="zoom_to_hub",
+                description="Zoom the map to a specific hometown hub. Use when the user asks to go to, zoom to, or focus on a hub.",
+                parameters=genai_types.Schema(
+                    type="OBJECT",
+                    properties={
+                        "hub_id": genai_types.Schema(
+                            type="STRING",
+                            enum=hub_ids,
+                            description="Exact hub_id from the current map dataset.",
+                        ),
+                    },
+                    required=["hub_id"],
+                ),
+            ),
+            genai_types.FunctionDeclaration(
+                name="filter_to_paralympic",
+                description="Filter the map to Paralympic Hot Spots. Optionally narrow to one macro region.",
+                parameters=genai_types.Schema(
+                    type="OBJECT",
+                    properties={
+                        "macro_region": genai_types.Schema(
+                            type="STRING",
+                            enum=MACRO_REGIONS,
+                            description="Optional macro region filter. Omit to show all Hot Spots.",
+                        ),
+                    },
+                ),
+            ),
+            genai_types.FunctionDeclaration(
+                name="select_state",
+                description="Open the state info panel for a US state, territory, or DC. Use when the user asks about a specific state and is not asking for a ranking or comparison.",
+                parameters=genai_types.Schema(
+                    type="OBJECT",
+                    properties={
+                        "state_code": genai_types.Schema(
+                            type="STRING",
+                            enum=state_codes,
+                            description="2-letter US state or territory code from the current dataset.",
+                        ),
+                    },
+                    required=["state_code"],
+                ),
+            ),
+            genai_types.FunctionDeclaration(
+                name="reset_view",
+                description="Clear the current hub/state selection and filters, then return the map to the default national view.",
+                parameters=genai_types.Schema(type="OBJECT", properties={}),
+            ),
+            genai_types.FunctionDeclaration(
+                name="query_data",
+                description="Ask the Hometown Success Engine data layer for rankings, profiles, comparisons, totals, sports, regions, and Hot Spot intelligence without moving the map.",
+                parameters=genai_types.Schema(
+                    type="OBJECT",
+                    properties={
+                        "query_type": genai_types.Schema(
+                            type="STRING",
+                            enum=QUERY_TYPES,
+                            description="summary, rank_list, entity_rank, state_profile, hub_profile, compare_states, compare_hubs, all_hot_spots, hubs_by_sport, or hubs_by_macro_region.",
+                        ),
+                        "entity_type": genai_types.Schema(
+                            type="STRING",
+                            enum=ENTITY_TYPES,
+                            description="hub or state. Required for rank_list and entity_rank.",
+                        ),
+                        "metric": genai_types.Schema(
+                            type="STRING",
+                            enum=METRICS,
+                            description="Ranking or comparison metric.",
+                        ),
+                        "state_code": genai_types.Schema(
+                            type="STRING",
+                            enum=state_codes,
+                            description="Single state or territory code for state_profile or entity_rank.",
+                        ),
+                        "state_codes": genai_types.Schema(
+                            type="ARRAY",
+                            items=genai_types.Schema(type="STRING", enum=state_codes),
+                            description="State or territory codes for compare_states.",
+                        ),
+                        "hub_id": genai_types.Schema(
+                            type="STRING",
+                            enum=hub_ids,
+                            description="Single hub_id for hub_profile or entity_rank.",
+                        ),
+                        "hub_ids": genai_types.Schema(
+                            type="ARRAY",
+                            items=genai_types.Schema(type="STRING", enum=hub_ids),
+                            description="Hub IDs for compare_hubs.",
+                        ),
+                        "sport": genai_types.Schema(
+                            type="STRING",
+                            description="Sport name for sport_count rankings or hubs_by_sport.",
+                        ),
+                        "macro_region": genai_types.Schema(
+                            type="STRING",
+                            enum=MACRO_REGIONS,
+                            description="Macro region for hubs_by_macro_region.",
+                        ),
+                        "limit": genai_types.Schema(
+                            type="INTEGER",
+                            description="How many rows to return. Default 5, max 20.",
+                        ),
+                        "min_athletes": genai_types.Schema(
+                            type="INTEGER",
+                            description="Minimum athletes for share rankings. State Paralympic-share rankings default to 25.",
+                        ),
+                    },
+                    required=["query_type"],
+                ),
+            ),
+        ]
+    )
+
+
+CHATBOT_SYSTEM_PROMPT_TEMPLATE = """You are Gemini, the AI guide for the Hometown Success Engine, an interactive map of where America's elite athletes come from. The current map shows {athlete_count:,} mapped Olympians and Paralympians grouped into {hub_count} hometown hubs from Tokyo 2020 through Milan-Cortina 2026.
 
 Current national Paralympic baseline: {baseline_pct:.1f}%.
 Current Paralympic Hot Spots: {hot_spot_count}.
 
 # YOUR JOB
-Help users explore the map. Call tools to drive it, then narrate what changed using specific numbers from the tool result.
+Help users explore the map and understand the data. Call tools to drive the map or answer analyst questions, then narrate what happened using specific numbers from the tool result.
 
 # TOOL RULES
 - If the user asks to show, highlight, filter, or view Paralympic Hot Spots, call filter_to_paralympic.
-- If the user names a state, call select_state.
-- If the user names a city, hub, or region, call select_hub or zoom_to_hub.
-- If the user asks for rankings, totals, comparisons, or aggregate questions, call query_data.
+- If the user asks to reset, clear, start over, or go back to the national view, call reset_view.
+- If the user names a state and is not asking for rank or comparison, call select_state.
+- If the user names a city, hub, or region and is not asking for rank or comparison, call select_hub or zoom_to_hub.
+- If the user asks for rankings, totals, comparisons, profiles, sports, regions, or aggregate questions, call query_data.
+- For "what rank is X" questions, call query_data with query_type entity_rank, entity_type hub or state, and the requested metric.
+- For "rank/list/top" questions, call query_data with query_type rank_list, entity_type hub or state, metric, and limit.
 - Always cite exact numbers from the tool result.
 - Keep replies to 2-3 sentences.
-- Use conditional phrasing such as "could help foster", "may explain", or "is associated with". Never say a place produces athletes.
+- Use conditional phrasing such as "could help find", "may foster", "may explain", or "is associated with". Never say a place produces athletes.
 - Do not name individual athletes.
+- Focus on mapped hometown-region athlete counts, not medal counts.
 
 # CURRENT PARALYMPIC HOT SPOTS
 {hot_spot_lines}
@@ -401,6 +515,381 @@ def _build_chatbot_system_prompt() -> str:
     )
 
 
+def _limit(value: Any, default: int = 5) -> int:
+    try:
+        return max(1, min(int(value or default), 20))
+    except (TypeError, ValueError):
+        return default
+
+
+def _metric_label(metric: str) -> str:
+    return {
+        "total_athletes": "total athletes",
+        "olympic_athletes": "Olympians",
+        "paralympic_athletes": "Paralympians",
+        "paralympic_share": "Paralympic share",
+        "sport_count": "sport count",
+    }.get(metric, metric.replace("_", " "))
+
+
+def _normalize_metric(metric: str | None, fallback: str = "total_athletes") -> str:
+    value = (metric or "").lower().strip()
+    aliases = {
+        "total": "total_athletes",
+        "overall": "total_athletes",
+        "overall_athletes": "total_athletes",
+        "athletes": "total_athletes",
+        "olympic": "olympic_athletes",
+        "olympians": "olympic_athletes",
+        "paralympic": "paralympic_athletes",
+        "paralympians": "paralympic_athletes",
+        "para": "paralympic_athletes",
+        "share": "paralympic_share",
+        "paralympic_percentage": "paralympic_share",
+        "percentage": "paralympic_share",
+        "sport": "sport_count",
+        "sports": "sport_count",
+    }
+    return aliases.get(value, value if value in METRICS else fallback)
+
+
+def _metric_from_text(message: str) -> str:
+    msg = message.lower()
+    if "paralympic share" in msg or "para share" in msg or "percentage" in msg:
+        return "paralympic_share"
+    if "paralympic" in msg or "paralympian" in msg or " para " in f" {msg} ":
+        return "paralympic_athletes"
+    if "olympic" in msg or "olympian" in msg:
+        return "olympic_athletes"
+    if "sport" in msg or "ski" in msg or "swim" in msg:
+        return "sport_count"
+    return "total_athletes"
+
+
+def _hub_para_count(hub: Hub) -> int:
+    return hub.composition.paralympic_count + hub.composition.both_count
+
+
+def _state_para_count(state: StateAggregate) -> int:
+    return state.paralympic_count + state.both_count
+
+
+def _sport_query(value: str | None) -> str:
+    sport = (value or "").lower().strip().rstrip("?.!")
+    aliases = {
+        "skiing": "ski",
+        "ski": "ski",
+        "swimming": "swim",
+        "track": "athletics",
+        "track and field": "athletics",
+    }
+    return aliases.get(sport, sport)
+
+
+def _hub_sport_count(hub: Hub, sport: str | None) -> int:
+    query = _sport_query(sport)
+    if not query:
+        return 0
+    total = 0
+    for sp in hub.top_sports:
+        if query in sp.sport.lower():
+            total += sp.count
+    return total
+
+
+def _hub_metric_value(hub: Hub, metric: str, sport: str | None = None) -> float:
+    if metric == "total_athletes":
+        return float(hub.total_athletes)
+    if metric == "olympic_athletes":
+        return float(hub.composition.olympic_count)
+    if metric == "paralympic_athletes":
+        return float(_hub_para_count(hub))
+    if metric == "paralympic_share":
+        return float(hub.composition.paralympic_share)
+    if metric == "sport_count":
+        return float(_hub_sport_count(hub, sport))
+    return float(hub.total_athletes)
+
+
+def _state_metric_value(state: StateAggregate, metric: str) -> float:
+    if metric == "total_athletes":
+        return float(state.total_athletes)
+    if metric == "olympic_athletes":
+        return float(state.olympic_count)
+    if metric == "paralympic_athletes":
+        return float(_state_para_count(state))
+    if metric == "paralympic_share":
+        return float(state.paralympic_share)
+    return float(state.total_athletes)
+
+
+def _format_metric_value(value: float, metric: str) -> str:
+    if metric == "paralympic_share":
+        return f"{value * 100:.1f}%"
+    return f"{int(value):,}"
+
+
+def _state_name(code: str) -> str:
+    return STATE_CODE_TO_NAME.get(code, code)
+
+
+def _ranked_hubs(
+    metric: str,
+    sport: str | None = None,
+    min_athletes: int | None = None,
+) -> list[Hub]:
+    metric = _normalize_metric(metric)
+    hubs = list(_state["hubs"])
+    if min_athletes:
+        hubs = [h for h in hubs if h.total_athletes >= min_athletes]
+    if metric == "sport_count":
+        hubs = [h for h in hubs if _hub_sport_count(h, sport) > 0]
+    return sorted(
+        hubs,
+        key=lambda h: (
+            -_hub_metric_value(h, metric, sport),
+            -h.total_athletes,
+            h.display_name,
+        ),
+    )
+
+
+def _ranked_states(metric: str, min_athletes: int | None = None) -> list[StateAggregate]:
+    metric = _normalize_metric(metric)
+    states = list(_state["state_aggregates"])
+    if metric == "paralympic_share":
+        threshold = 25 if min_athletes is None else min_athletes
+        states = [s for s in states if s.total_athletes >= threshold]
+    elif min_athletes:
+        states = [s for s in states if s.total_athletes >= min_athletes]
+    return sorted(
+        states,
+        key=lambda s: (
+            -_state_metric_value(s, metric),
+            -s.total_athletes,
+            _state_name(s.state),
+        ),
+    )
+
+
+def _hub_rank(hub_id: str, metric: str, sport: str | None = None) -> tuple[int | None, int, Hub | None]:
+    ranked = _ranked_hubs(metric, sport)
+    hub = _state["hubs_by_id"].get(hub_id)
+    for index, item in enumerate(ranked, 1):
+        if item.hub_id == hub_id:
+            return index, len(ranked), hub
+    return None, len(ranked), hub
+
+
+def _state_rank(
+    state_code: str,
+    metric: str,
+    min_athletes: int | None = None,
+) -> tuple[int | None, int, StateAggregate | None]:
+    code = state_code.upper()
+    ranked = _ranked_states(metric, min_athletes)
+    agg = next((s for s in _state["state_aggregates"] if s.state == code), None)
+    for index, item in enumerate(ranked, 1):
+        if item.state == code:
+            return index, len(ranked), agg
+    return None, len(ranked), agg
+
+
+def _hub_rank_bundle(hub: Hub) -> str:
+    total_rank, total_n, _ = _hub_rank(hub.hub_id, "total_athletes")
+    para_rank, para_n, _ = _hub_rank(hub.hub_id, "paralympic_athletes")
+    share_rank, share_n, _ = _hub_rank(hub.hub_id, "paralympic_share")
+    return (
+        f"Ranks among hubs: total athletes #{total_rank} of {total_n}, "
+        f"Paralympic athletes #{para_rank} of {para_n}, "
+        f"Paralympic share #{share_rank} of {share_n}."
+    )
+
+
+def _state_rank_bundle(state: StateAggregate) -> str:
+    total_rank, total_n, _ = _state_rank(state.state, "total_athletes")
+    para_rank, para_n, _ = _state_rank(state.state, "paralympic_athletes")
+    share_rank, share_n, _ = _state_rank(state.state, "paralympic_share")
+    share_text = f"#{share_rank} of {share_n}" if share_rank else f"not ranked in the {share_n}-state 25+ athlete reliability set"
+    return (
+        f"Ranks among states/territories: total athletes #{total_rank} of {total_n}, "
+        f"Paralympic athletes #{para_rank} of {para_n}, "
+        f"Paralympic share {share_text}."
+    )
+
+
+def _hub_line(hub: Hub, metric: str, rank: int | None = None, sport: str | None = None) -> str:
+    value = _format_metric_value(_hub_metric_value(hub, metric, sport), metric)
+    para = _hub_para_count(hub)
+    hot = " Hot Spot" if hub.is_paralympic_hot_spot else ""
+    prefix = f"{rank}. " if rank else ""
+    sport_text = f" for {sport}" if metric == "sport_count" and sport else ""
+    return (
+        f"{prefix}{hub.display_name}{hot} - {value} {_metric_label(metric)}{sport_text}; "
+        f"{hub.total_athletes} total athletes, {para} Paralympians, "
+        f"{hub.composition.paralympic_share * 100:.1f}% Paralympic share"
+    )
+
+
+def _state_line(state: StateAggregate, metric: str, rank: int | None = None) -> str:
+    value = _format_metric_value(_state_metric_value(state, metric), metric)
+    para = _state_para_count(state)
+    prefix = f"{rank}. " if rank else ""
+    return (
+        f"{prefix}{_state_name(state.state)} ({state.state}) - {value} {_metric_label(metric)}; "
+        f"{state.total_athletes} total athletes, {para} Paralympians, "
+        f"{state.paralympic_share * 100:.1f}% Paralympic share"
+    )
+
+
+def _resolve_state_codes_from_text(message: str) -> list[str]:
+    normalized = f" {_normal_search_text(message)} "
+    found: list[str] = []
+    for name, code in STATE_NAME_TO_CODE.items():
+        if f" {_normal_search_text(name)} " in normalized and code not in found:
+            found.append(code)
+    words = set(normalized.split())
+    for code in STATE_CODE_TO_NAME:
+        if code.lower() in words and code not in found:
+            found.append(code)
+    return found
+
+
+def _extract_limit(message: str, default: int = 5) -> int:
+    match = re.search(r"\btop\s+(\d+)\b|\brank\s+(?:the\s+)?(?:top\s+)?(\d+)\b", message.lower())
+    if not match:
+        return default
+    return _limit(match.group(1) or match.group(2), default)
+
+
+def _extract_sport(message: str) -> str:
+    msg = message.lower()
+    for marker in [" for ", " in ", " at "]:
+        if marker in msg:
+            candidate = msg.rsplit(marker, 1)[-1]
+            candidate = re.sub(r"[^a-zA-Z -]", "", candidate).strip()
+            if candidate and candidate not in {"hubs", "states", "share", "athletes"}:
+                return candidate
+    if "ski" in msg:
+        return "skiing"
+    if "swim" in msg:
+        return "swimming"
+    return ""
+
+
+def _macro_region_from_text(message: str) -> str:
+    normalized = _normal_search_text(message)
+    for region in MACRO_REGIONS:
+        if _normal_search_text(region) in normalized:
+            return region
+    if "mountain" in normalized:
+        return "Mountain West"
+    if "mid atlantic" in normalized or "midatlantic" in normalized:
+        return "Mid-Atlantic"
+    return ""
+
+
+def _is_analyst_request(message: str) -> bool:
+    msg = message.lower()
+    analyst_terms = [
+        "rank", "ranking", "compare", "comparison", " versus ", " vs ",
+        "top ", "leading", "most", "least", "which", "how many",
+        "total", "overall", "share", "percentage", "strongest", "list",
+    ]
+    return any(term in msg for term in analyst_terms)
+
+
+def _direct_query_tool_call(message: str) -> ChatToolCall | None:
+    msg = message.lower()
+    metric = _metric_from_text(message)
+    limit = _extract_limit(message)
+    state_codes = _resolve_state_codes_from_text(message)
+    hub = _resolve_hub_from_message(message)
+    macro_region = _macro_region_from_text(message)
+
+    if "how many" in msg or "summary" in msg or ("athlete" in msg and "hub" in msg):
+        return ChatToolCall(name="query_data", args={"query_type": "summary"})
+
+    if macro_region and ("hub" in msg or "region" in msg or "athlete" in msg):
+        return ChatToolCall(
+            name="query_data",
+            args={
+                "query_type": "hubs_by_macro_region",
+                "macro_region": macro_region,
+                "limit": limit,
+            },
+        )
+
+    if "compare" in msg or " vs " in msg or " versus " in msg:
+        if len(state_codes) >= 2:
+            return ChatToolCall(
+                name="query_data",
+                args={"query_type": "compare_states", "state_codes": state_codes[:4]},
+            )
+        hubs = []
+        for candidate in _state["hubs"]:
+            if candidate.hub_id == (hub.hub_id if hub else ""):
+                hubs.append(candidate.hub_id)
+                continue
+            candidate_text = " ".join([
+                candidate.display_name,
+                candidate.medoid_hometown,
+                candidate.region_name,
+                *candidate.search_aliases,
+            ])
+            if _normal_search_text(candidate_text) in _normal_search_text(message):
+                hubs.append(candidate.hub_id)
+        if len(hubs) >= 2:
+            return ChatToolCall(
+                name="query_data",
+                args={"query_type": "compare_hubs", "hub_ids": hubs[:4]},
+            )
+
+    if "strongest" in msg or ("top" in msg and ("sport" in msg or "ski" in msg or "swim" in msg)):
+        sport = _extract_sport(message)
+        return ChatToolCall(
+            name="query_data",
+            args={"query_type": "hubs_by_sport", "sport": sport, "limit": limit},
+        )
+
+    if "what rank" in msg or "rank is" in msg or "rank does" in msg:
+        if hub:
+            return ChatToolCall(
+                name="query_data",
+                args={
+                    "query_type": "entity_rank",
+                    "entity_type": "hub",
+                    "hub_id": hub.hub_id,
+                    "metric": metric,
+                },
+            )
+        if state_codes:
+            return ChatToolCall(
+                name="query_data",
+                args={
+                    "query_type": "entity_rank",
+                    "entity_type": "state",
+                    "state_code": state_codes[0],
+                    "metric": metric,
+                },
+            )
+
+    if "rank" in msg or "top" in msg or "list" in msg:
+        entity_type = "state" if "state" in msg or "states" in msg else "hub"
+        return ChatToolCall(
+            name="query_data",
+            args={
+                "query_type": "rank_list",
+                "entity_type": entity_type,
+                "metric": metric,
+                "limit": limit,
+                **({"sport": _extract_sport(message)} if metric == "sport_count" else {}),
+            },
+        )
+
+    return None
+
+
 def _normal_search_text(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
 
@@ -435,9 +924,13 @@ def _direct_chat_response(req: ChatRequest) -> ChatResponse | None:
     msg = req.message.lower()
     tool_call: ChatToolCall | None = None
 
-    if "hot spot" in msg or "hotspot" in msg:
+    if any(term in msg for term in ["reset", "clear view", "start over", "national view"]):
+        tool_call = ChatToolCall(name="reset_view", args={})
+    elif (query_call := _direct_query_tool_call(req.message)) is not None:
+        tool_call = query_call
+    elif "hot spot" in msg or "hotspot" in msg:
         tool_call = ChatToolCall(name="filter_to_paralympic", args={})
-    else:
+    elif not _is_analyst_request(req.message):
         hub = _resolve_hub_from_message(req.message)
         if hub:
             tool_call = ChatToolCall(name="select_hub", args={"hub_id": hub.hub_id})
@@ -722,11 +1215,14 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
         narrative = _state["narratives"].get(hub_id)
         para_pct = hub.composition.paralympic_share * 100
         top_sport = hub.top_sports[0].sport if hub.top_sports else "various sports"
+        top_sports = ", ".join(f"{sp.sport} ({sp.count})" for sp in hub.top_sports[:3]) or "various sports"
         result = (
             f"Map zoomed/selected: {hub.display_name} ({hub.region_name}, {hub.macro_region}). "
-            f"{hub.total_athletes} athletes total, {para_pct:.1f}% Paralympic. "
-            f"Top sport: {top_sport}. "
-            f"{'This IS a Paralympic Hot Spot.' if hub.is_paralympic_hot_spot else 'Not a Paralympic Hot Spot.'}"
+            f"{hub.total_athletes} athletes total, {hub.composition.olympic_count} Olympians, "
+            f"{_hub_para_count(hub)} Paralympians, {para_pct:.1f}% Paralympic share. "
+            f"Top sport: {top_sport}. Top sports: {top_sports}. "
+            f"{_hub_rank_bundle(hub)} "
+            f"{'This is a Paralympic Hot Spot.' if hub.is_paralympic_hot_spot else 'Not a Paralympic Hot Spot.'}"
         )
         if narrative:
             result += f" Narrative headline: '{narrative.headline}'."
@@ -777,7 +1273,8 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
                 f"State panel opened: {name} ({code}).",
                 f"{agg.total_athletes} athletes total, {para} Paralympians, {para_pct:.1f}% Paralympic share.",
                 f"This is {above_or_below} the {baseline_text} national baseline.",
-                f"Total athletes rank: #{total_rank}. Paralympic rank: #{para_rank}.",
+                f"Total athletes rank: #{total_rank}. Paralympic athlete rank: #{para_rank}.",
+                _state_rank_bundle(agg),
             ]
             if top_hub:
                 hot_tag = ", a Paralympic Hot Spot" if top_hub.is_paralympic_hot_spot else ""
@@ -792,9 +1289,147 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
         limit = min(int(args.get("limit", 5) or 5), 20)
         sport = (args.get("sport") or "").lower().strip()
         macro_region = (args.get("macro_region") or "").strip()
+        entity_type = (args.get("entity_type") or "").lower().strip()
+        metric = _normalize_metric(args.get("metric"), "total_athletes")
+        state_code = (args.get("state_code") or "").upper().strip()
+        hub_id = (args.get("hub_id") or "").strip()
+        state_codes = [
+            str(code).upper()
+            for code in (args.get("state_codes") or [])
+            if str(code).upper() in STATE_CODE_TO_NAME
+        ]
+        hub_ids = [
+            str(hid)
+            for hid in (args.get("hub_ids") or [])
+            if str(hid) in _state["hubs_by_id"]
+        ]
+        min_athletes = args.get("min_athletes")
+        try:
+            min_athletes = int(min_athletes) if min_athletes is not None else None
+        except (TypeError, ValueError):
+            min_athletes = None
 
         aggregates = _state["state_aggregates"]
         hubs = _state["hubs"]
+
+        legacy_aliases = {
+            "top_states_by_total": {"query_type": "rank_list", "entity_type": "state", "metric": "total_athletes"},
+            "top_states_by_paralympic": {"query_type": "rank_list", "entity_type": "state", "metric": "paralympic_athletes"},
+            "top_states_by_paralympic_share": {"query_type": "rank_list", "entity_type": "state", "metric": "paralympic_share"},
+            "top_hubs_by_total": {"query_type": "rank_list", "entity_type": "hub", "metric": "total_athletes"},
+            "top_hubs_by_paralympic_share": {"query_type": "rank_list", "entity_type": "hub", "metric": "paralympic_share"},
+        }
+        if query_type in legacy_aliases:
+            legacy = legacy_aliases[query_type]
+            query_type = legacy["query_type"]
+            entity_type = legacy["entity_type"]
+            metric = legacy["metric"]
+
+        if query_type == "rank_list":
+            if entity_type == "state":
+                ranked_states = _ranked_states(metric, min_athletes)[:limit]
+                qualifier = ""
+                if metric == "paralympic_share":
+                    qualifier = " among states/territories with at least 25 mapped athletes"
+                lines = [f"Top {len(ranked_states)} states/territories by {_metric_label(metric)}{qualifier}:"]
+                for i, state in enumerate(ranked_states, 1):
+                    lines.append(_state_line(state, metric, i))
+                return " ".join(lines)
+
+            ranked_hubs = _ranked_hubs(metric, sport, min_athletes)[:limit]
+            sport_text = f" for {sport}" if metric == "sport_count" and sport else ""
+            lines = [f"Top {len(ranked_hubs)} hubs by {_metric_label(metric)}{sport_text}:"]
+            for i, hub in enumerate(ranked_hubs, 1):
+                lines.append(_hub_line(hub, metric, i, sport))
+            return " ".join(lines)
+
+        if query_type == "entity_rank":
+            if entity_type == "state" or state_code:
+                if not state_code:
+                    return "No state was specified for the ranking lookup."
+                rank, universe, agg = _state_rank(state_code, metric, min_athletes)
+                if not agg:
+                    return f"{_state_name(state_code)} ({state_code}) is not present in the mapped athlete dataset."
+                value = _format_metric_value(_state_metric_value(agg, metric), metric)
+                if rank is None:
+                    return (
+                        f"{_state_name(state_code)} ({state_code}) is outside the current {_metric_label(metric)} ranking universe "
+                        f"of {universe} states/territories because it does not meet the minimum-athlete threshold. "
+                        f"It has {agg.total_athletes} mapped athletes and {agg.paralympic_share * 100:.1f}% Paralympic share."
+                    )
+                baseline_note = ""
+                if metric == "paralympic_share":
+                    relation = "above" if agg.paralympic_share * 100 > baseline else "below"
+                    baseline_note = f" This is {relation} the {baseline_text} national baseline."
+                return (
+                    f"{_state_name(state_code)} ({state_code}) ranks #{rank} of {universe} states/territories by "
+                    f"{_metric_label(metric)} with {value}.{baseline_note} "
+                    f"{_state_line(agg, metric)}"
+                )
+
+            if not hub_id:
+                return "No hub was specified for the ranking lookup."
+            rank, universe, hub = _hub_rank(hub_id, metric, sport)
+            if not hub:
+                return f"Hub {hub_id} is not present in the current map dataset."
+            value = _format_metric_value(_hub_metric_value(hub, metric, sport), metric)
+            baseline_note = ""
+            if metric == "paralympic_share":
+                relation = "above" if hub.composition.paralympic_share * 100 > baseline else "below"
+                baseline_note = f" This is {relation} the {baseline_text} national baseline."
+            hot_note = " It is a Paralympic Hot Spot." if hub.is_paralympic_hot_spot else " It is not a Paralympic Hot Spot."
+            return (
+                f"{hub.display_name} ranks #{rank} of {universe} hubs by {_metric_label(metric)} with {value}."
+                f"{baseline_note}{hot_note} {_hub_line(hub, metric, None, sport)}"
+            )
+
+        if query_type == "state_profile":
+            if not state_code:
+                return "No state was specified for the state profile."
+            agg = next((s for s in aggregates if s.state == state_code), None)
+            if not agg:
+                return f"{_state_name(state_code)} ({state_code}) has no mapped athletes in this dataset."
+            top_hub = max(
+                [h for h in hubs if state_code in h.states],
+                key=lambda h: h.total_athletes,
+                default=None,
+            )
+            result = f"State profile: {_state_line(agg, 'total_athletes')} {_state_rank_bundle(agg)}"
+            if top_hub:
+                result += f" Leading hub: {top_hub.display_name}, {top_hub.total_athletes} athletes, {top_hub.composition.paralympic_share * 100:.1f}% Paralympic share."
+            return result
+
+        if query_type == "hub_profile":
+            if not hub_id:
+                return "No hub was specified for the hub profile."
+            hub = _state["hubs_by_id"].get(hub_id)
+            if not hub:
+                return f"Hub {hub_id} is not present in the current map dataset."
+            return _build_tool_result_context("select_hub", {"hub_id": hub_id})
+
+        if query_type == "compare_states":
+            if len(state_codes) < 2:
+                return "At least two states are required for a state comparison."
+            parts = ["State comparison:"]
+            for code in state_codes[:4]:
+                agg = next((s for s in aggregates if s.state == code), None)
+                if agg:
+                    parts.append(_state_line(agg, "total_athletes"))
+                    parts.append(_state_rank_bundle(agg))
+            return " ".join(parts)
+
+        if query_type == "compare_hubs":
+            if len(hub_ids) < 2:
+                return "At least two hubs are required for a hub comparison."
+            parts = ["Hub comparison:"]
+            for hid in hub_ids[:4]:
+                hub = _state["hubs_by_id"].get(hid)
+                if hub:
+                    parts.append(_hub_line(hub, "total_athletes"))
+                    parts.append(_hub_rank_bundle(hub))
+                    if hub.top_sports:
+                        parts.append("Top sports: " + ", ".join(f"{sp.sport} ({sp.count})" for sp in hub.top_sports[:3]) + ".")
+            return " ".join(parts)
 
         if query_type == "top_states_by_total":
             sorted_states = sorted(aggregates, key=lambda s: -s.total_athletes)[:limit]
@@ -888,8 +1523,8 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
             states_count = len(aggregates)
             overall_para_pct = (total_para / total_athletes * 100) if total_athletes else 0
             return (
-                f"Dataset summary: {total_athletes} Olympians and Paralympians from the 2020 to 2026 cycle, "
-                f"clustered into {len(hubs)} hometown hubs across {states_count} US states and territories. "
+                f"Dataset summary: {total_athletes:,} Olympians and Paralympians from the 2020 to 2026 cycle, "
+                f"mapped across {len(hubs)} hometown hubs and {states_count} US states and territories. "
                 f"{hot_spots} regions qualify as Paralympic Hot Spots (Paralympic share 2x+ above the {baseline_text} national baseline). "
                 f"Overall Paralympic share across the dataset: {overall_para_pct:.1f}%."
             )
@@ -899,7 +1534,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
     if tool_name == "reset_view":
         return (
             "Map reset to default continental US view. All filters cleared. "
-            f"Total athletes mapped: {sum(h.total_athletes for h in _state['hubs'])}. "
+            f"Total athletes mapped: {sum(h.total_athletes for h in _state['hubs']):,}. "
             f"Total hubs: {len(_state['hubs'])}. "
             f"Total Paralympic Hot Spots: {sum(1 for h in _state['hubs'] if h.is_paralympic_hot_spot)}."
         )
@@ -943,7 +1578,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
             contents=contents,
             config=genai_types.GenerateContentConfig(
                 system_instruction=_build_chatbot_system_prompt(),
-                tools=[CHATBOT_TOOLS],
+                tools=[_build_chatbot_tools()],
                 temperature=0.6,
                 max_output_tokens=400,
             ),
@@ -1004,7 +1639,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
                     contents=second_turn_contents,
                     config=genai_types.GenerateContentConfig(
                         system_instruction=_build_chatbot_system_prompt(),
-                        tools=[CHATBOT_TOOLS],
+                        tools=[_build_chatbot_tools()],
                         temperature=0.6,
                         max_output_tokens=400,
                     ),

@@ -44,7 +44,7 @@ type AthleteGeoPoint = {
 };
 
 type ChatToolCall = {
-  name: "select_hub" | "filter_to_paralympic" | "zoom_to_hub" | "reset_view" | "select_state";
+  name: "select_hub" | "filter_to_paralympic" | "zoom_to_hub" | "reset_view" | "select_state" | "query_data";
   args: Record<string, any>;
 };
 
@@ -352,6 +352,8 @@ export class HometownHubMap extends HTMLElement {
         break;
       case "reset_view":
         this.resetView();
+        break;
+      case "query_data":
         break;
     }
   }
