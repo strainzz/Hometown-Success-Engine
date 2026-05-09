@@ -2364,11 +2364,13 @@ def _build_voice_spoken_summary(tool_name: str, args: dict[str, Any], full_resul
             climate = narrative.climate
             climate_bits = []
             if climate.annual_avg_temp_f is not None:
-                climate_bits.append(f"{climate.annual_avg_temp_f} degrees Fahrenheit")
+                climate_bits.append(f"average annual temperature is {climate.annual_avg_temp_f} degrees Fahrenheit")
+            if climate.annual_precipitation_in is not None:
+                climate_bits.append(f"annual precipitation is {climate.annual_precipitation_in} inches")
             if climate.elevation_ft is not None:
-                climate_bits.append(f"{int(climate.elevation_ft):,} feet elevation")
+                climate_bits.append(f"elevation is {int(climate.elevation_ft):,} feet")
             if climate_bits:
-                summary += f" Climate: {', '.join(climate_bits)}."
+                summary += f" Climate context: {', '.join(climate_bits)}."
         return summary
 
     if tool_name == "select_state":
@@ -2511,6 +2513,8 @@ async def _stream_native_voice_summary(
                 system_instruction=(
                     "You are the Hometown Success Engine voice narrator. "
                     "Speak the provided map result naturally in one or two concise sentences. "
+                    "Preserve climate wording precisely: say 'average annual temperature', "
+                    "'annual precipitation', or 'elevation'; never say a temperature is 'the climate'. "
                     "Do not add facts, do not call tools, and do not mention that this is a retry."
                 ),
                 temperature=0.2,
