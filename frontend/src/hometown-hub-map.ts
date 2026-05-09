@@ -173,8 +173,9 @@ export class HometownHubMap extends HTMLElement {
   private audioEnabled: boolean = true;
   private audioContext: AudioContext | null = null;
   private audioPlayTime: number = 0;
-  private audioChunkBuffers: Map<string, { mimeType: string; total: number; chunks: string[] }> = new Map();
+  private audioChunkBuffers: Map<string, { mimeType: string; source: string; total: number; chunks: string[] }> = new Map();
   private audioSources: AudioBufferSourceNode[] = [];
+  private audioElements: HTMLAudioElement[] = [];
   private hoveredHubId: string | null = null;
   private selectedStateCode: string | null = null;
   private selectedStateName: string | null = null;
@@ -652,16 +653,26 @@ export class HometownHubMap extends HTMLElement {
       }
     }
     this.audioSources = [];
+    for (const element of this.audioElements) {
+      try {
+        element.pause();
+        element.src = "";
+      } catch (err) {
+        // Element may already be detached.
+      }
+    }
+    this.audioElements = [];
     this.audioChunkBuffers.clear();
     this.audioPlayTime = this.audioContext?.currentTime || 0;
   }
 
-  private toggleAudioOutput(): void {
+  private async toggleAudioOutput(): Promise<void> {
     this.audioEnabled = !this.audioEnabled;
     if (!this.audioEnabled) {
       this.stopAudioPlayback();
       this.setVoiceHud("idle", "Audio off", "Text and map actions still run.");
     } else {
+      await this.unlockAudioOutput();
       this.setVoiceHud("idle", "Audio on", "Gemini Live audio responses are enabled.");
     }
     this.setAudioButton();
@@ -791,8 +802,14 @@ export class HometownHubMap extends HTMLElement {
     if (message.type === "audio" && message.data) {
       if (this.voiceResponseTimer !== null) window.clearTimeout(this.voiceResponseTimer);
       this.voiceResponseTimer = null;
-      void this.playPcmAudio(message.data, message.mime_type || "audio/pcm;rate=24000");
-      this.setVoiceHud("replying", "Gemini replying", "Native Gemini Live audio is playing.");
+      void this.playPcmAudio(
+        message.data,
+        message.mime_type || "audio/pcm;rate=24000",
+        message.source || "gemini-live",
+      ).catch((err) => this.handleAudioPlaybackError(err));
+      this.setVoiceHud("replying", "Gemini replying", message.source === "gemini-tts-fallback"
+        ? "Gemini audio fallback is playing."
+        : "Native Gemini Live audio is playing.");
       return;
     }
     if (message.type === "audio_chunk" && message.data) {
@@ -803,6 +820,7 @@ export class HometownHubMap extends HTMLElement {
       const index = Number(message.index || 0);
       const buffer = this.audioChunkBuffers.get(id) || {
         mimeType: message.mime_type || "audio/L16;codec=pcm;rate=24000",
+        source: message.source || "gemini-live",
         total,
         chunks: new Array(total).fill(""),
       };
@@ -810,9 +828,15 @@ export class HometownHubMap extends HTMLElement {
       this.audioChunkBuffers.set(id, buffer);
       if (buffer.chunks.every(Boolean)) {
         this.audioChunkBuffers.delete(id);
-        void this.playPcmAudio(buffer.chunks.join(""), buffer.mimeType);
+        void this.playPcmAudio(
+          buffer.chunks.join(""),
+          buffer.mimeType,
+          buffer.source,
+        ).catch((err) => this.handleAudioPlaybackError(err));
       }
-      this.setVoiceHud("replying", "Gemini replying", "Native Gemini Live audio is streaming.");
+      this.setVoiceHud("replying", "Gemini replying", buffer.source === "gemini-tts-fallback"
+        ? "Gemini audio fallback is streaming."
+        : "Native Gemini Live audio is streaming.");
       return;
     }
     if (message.type === "tool_calls" && Array.isArray(message.tool_calls)) {
@@ -916,6 +940,9 @@ export class HometownHubMap extends HTMLElement {
     }
     try {
       this.stopAudioPlayback();
+      if (this.audioEnabled) {
+        await this.unlockAudioOutput();
+      }
       const socket = await this.ensureVoiceSocket();
       const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioContextCtor) throw new Error("AudioContext unavailable");
@@ -1098,7 +1125,7 @@ export class HometownHubMap extends HTMLElement {
     window.speechSynthesis.speak(utterance);
   }
 
-  private async playPcmAudio(base64: string, mimeType: string): Promise<void> {
+  private async unlockAudioOutput(): Promise<void> {
     if (!this.audioEnabled) return;
     const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextCtor) return;
@@ -1108,9 +1135,95 @@ export class HometownHubMap extends HTMLElement {
     if (this.audioContext.state === "suspended") {
       await this.audioContext.resume();
     }
+    const buffer = this.audioContext.createBuffer(1, 1, this.audioContext.sampleRate);
+    const source = this.audioContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(this.audioContext.destination);
+    source.start();
+    this.audioPlayTime = this.audioContext.currentTime;
+  }
 
+  private parsePcmSampleRate(mimeType: string): number {
     const rateMatch = /rate=(\d+)/.exec(mimeType);
-    const sampleRate = rateMatch ? Number(rateMatch[1]) : 24000;
+    return rateMatch ? Number(rateMatch[1]) : 24000;
+  }
+
+  private base64ToBytes(base64: string): Uint8Array {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  private wavBlobUrlFromPcm(base64: string, sampleRate: number): string {
+    const pcm = this.base64ToBytes(base64);
+    const header = new ArrayBuffer(44);
+    const view = new DataView(header);
+    const writeString = (offset: number, value: string) => {
+      for (let i = 0; i < value.length; i += 1) {
+        view.setUint8(offset + i, value.charCodeAt(i));
+      }
+    };
+    writeString(0, "RIFF");
+    view.setUint32(4, 36 + pcm.byteLength, true);
+    writeString(8, "WAVE");
+    writeString(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(36, "data");
+    view.setUint32(40, pcm.byteLength, true);
+    const pcmBuffer = pcm.buffer.slice(pcm.byteOffset, pcm.byteOffset + pcm.byteLength) as ArrayBuffer;
+    const blob = new Blob([header, pcmBuffer], { type: "audio/wav" });
+    return URL.createObjectURL(blob);
+  }
+
+  private async playWavElement(base64: string, sampleRate: number): Promise<void> {
+    const url = this.wavBlobUrlFromPcm(base64, sampleRate);
+    const audio = new Audio(url);
+    audio.preload = "auto";
+    this.audioElements.push(audio);
+    audio.onended = () => {
+      URL.revokeObjectURL(url);
+      this.audioElements = this.audioElements.filter((item) => item !== audio);
+    };
+    audio.onerror = () => {
+      URL.revokeObjectURL(url);
+      this.audioElements = this.audioElements.filter((item) => item !== audio);
+    };
+    await audio.play();
+  }
+
+  private handleAudioPlaybackError(err: unknown): void {
+    const message = err instanceof Error ? err.message : String(err || "unknown playback error");
+    this.setVoiceHud("error", "Audio blocked", message.slice(0, 120));
+  }
+
+  private async playPcmAudio(base64: string, mimeType: string, audioSource: string = "gemini-live"): Promise<void> {
+    if (!this.audioEnabled) return;
+    const sampleRate = this.parsePcmSampleRate(mimeType);
+    if (audioSource === "gemini-tts-fallback") {
+      await this.playWavElement(base64, sampleRate);
+      return;
+    }
+    const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextCtor) {
+      await this.playWavElement(base64, sampleRate);
+      return;
+    }
+    if (!this.audioContext) {
+      this.audioContext = new AudioContextCtor();
+    }
+    if (this.audioContext.state === "suspended") {
+      await this.audioContext.resume();
+    }
+
     const binary = atob(base64);
     const sampleCount = Math.floor(binary.length / 2);
     const buffer = this.audioContext.createBuffer(1, sampleCount, sampleRate);
@@ -1124,15 +1237,15 @@ export class HometownHubMap extends HTMLElement {
       channel[i] = signed / 0x8000;
     }
 
-    const source = this.audioContext.createBufferSource();
-    source.buffer = buffer;
-    source.connect(this.audioContext.destination);
-    this.audioSources.push(source);
-    source.onended = () => {
-      this.audioSources = this.audioSources.filter(s => s !== source);
+    const bufferSource = this.audioContext.createBufferSource();
+    bufferSource.buffer = buffer;
+    bufferSource.connect(this.audioContext.destination);
+    this.audioSources.push(bufferSource);
+    bufferSource.onended = () => {
+      this.audioSources = this.audioSources.filter(s => s !== bufferSource);
     };
     const startAt = Math.max(this.audioContext.currentTime, this.audioPlayTime);
-    source.start(startAt);
+    bufferSource.start(startAt);
     this.audioPlayTime = startAt + buffer.duration;
   }
 
