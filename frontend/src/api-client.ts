@@ -19,4 +19,8 @@ export class ApiClient {
     }
     return await res.json();
   }
+
+  async prewarmVoice(): Promise<void> {
+    await fetch(`${this.baseUrl}/voice/prewarm`, { method: "GET" });
+  }
 }

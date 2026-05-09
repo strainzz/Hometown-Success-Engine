@@ -199,6 +199,7 @@ export class HometownHubMap extends HTMLElement {
   async connectedCallback(): Promise<void> {
     const apiUrl = this.getAttribute("api-url") || DEFAULT_API_URL;
     this.api = new ApiClient(apiUrl);
+    void this.prewarmVoiceAudio();
 
     this.unsubscribe = this.store.subscribe(state => this.handleStateUpdate(state));
 
@@ -214,6 +215,14 @@ export class HometownHubMap extends HTMLElement {
     await this.fetchStateData();
 
     this.resetView();
+  }
+
+  private async prewarmVoiceAudio(): Promise<void> {
+    try {
+      await this.api?.prewarmVoice();
+    } catch (err) {
+      // Voice still works without prewarm; this only reduces first-turn latency.
+    }
   }
 
   disconnectedCallback(): void {

@@ -1560,7 +1560,13 @@ def _load_data() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _load_data()
-    yield
+    prewarm_task = asyncio.create_task(_prewarm_voice_tts_cache())
+    try:
+        yield
+    finally:
+        prewarm_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await prewarm_task
 
 
 app = FastAPI(
@@ -1593,6 +1599,11 @@ def health_check() -> dict:
         "athletes_loaded": len(_state["athletes_geo_points"]),
         "states_with_athletes": len(_state["state_aggregates"]),
     }
+
+
+@app.get("/voice/prewarm")
+async def prewarm_voice_audio() -> dict[str, int]:
+    return await _prewarm_voice_tts_cache()
 
 
 @app.get("/hubs", response_model=list[Hub])
@@ -2238,6 +2249,201 @@ async def chat(req: ChatRequest) -> ChatResponse:
         )
 
 
+VOICE_NATIVE_AUDIO_GRACE_SECONDS = float(os.getenv("GEMINI_VOICE_NATIVE_AUDIO_GRACE_SECONDS", "1.5"))
+VOICE_CACHED_AUDIO_GRACE_SECONDS = float(os.getenv("GEMINI_VOICE_CACHED_AUDIO_GRACE_SECONDS", "0.2"))
+VOICE_PREWARM_ENABLED = os.getenv("GEMINI_VOICE_PREWARM", "1") != "0"
+_voice_tts_cache: dict[str, tuple[str, str]] = {}
+_voice_tts_inflight: dict[str, asyncio.Task] = {}
+_voice_prewarm_lock: asyncio.Lock | None = None
+
+
+def _voice_short_place(name: str) -> str:
+    short = re.sub(r"\s+Region\b", "", name).strip()
+    return short.split(",", 1)[0].strip()
+
+
+def _voice_compact(text: str, max_chars: int = 340) -> str:
+    clean = (
+        re.sub(r"\s+", " ", text)
+        .replace("°F", " degrees Fahrenheit")
+        .replace("in precip/yr", " inches of precipitation per year")
+        .replace("ft elevation", " feet elevation")
+        .strip()
+    )
+    if len(clean) <= max_chars:
+        return clean
+    clipped = clean[:max_chars].rstrip()
+    sentence_break = clipped.rfind(". ")
+    if sentence_break > 120:
+        clipped = clipped[:sentence_break + 1]
+    return clipped.rstrip(" ,;:") + "."
+
+
+def _voice_cache_key(text: str) -> str:
+    return re.sub(r"\s+", " ", _voice_speech_text(text)).strip()
+
+
+def _voice_audio_is_cached(text: str) -> bool:
+    return _voice_cache_key(text) in _voice_tts_cache
+
+
+async def _synthesize_gemini_tts_cached(text: str) -> tuple[str, str]:
+    cache_key = _voice_cache_key(text)
+    cached = _voice_tts_cache.get(cache_key)
+    if cached:
+        return cached
+
+    task = _voice_tts_inflight.get(cache_key)
+    if task is None or task.done():
+        task = asyncio.create_task(asyncio.to_thread(_synthesize_gemini_tts, text))
+        _voice_tts_inflight[cache_key] = task
+
+    try:
+        return await asyncio.shield(task)
+    finally:
+        if task.done() and _voice_tts_inflight.get(cache_key) is task:
+            _voice_tts_inflight.pop(cache_key, None)
+
+
+def _build_voice_spoken_summary(tool_name: str, args: dict[str, Any], full_result: str) -> str:
+    stats = _dataset_stats()
+    threshold = PARALYMPIC_HOT_SPOT_THRESHOLD_PCT
+
+    if tool_name == "explain_map":
+        return (
+            "The map uses blue state shading for athlete density, large circles for hometown hubs, "
+            "red hub circles for Paralympic Hot Spots, and small red or blue dots for mapped athlete hometown points. "
+            "Alaska, Hawaii, and Puerto Rico appear as insets."
+        )
+
+    if tool_name == "focus_hometown":
+        focus = _resolve_focus_hometown_args(args)
+        requested = focus.get("query") or focus.get("hometown") or "that hometown"
+        if focus.get("ambiguous"):
+            return f"I found multiple mapped matches for {requested}. Add the state so I can focus the exact hometown."
+        if not focus.get("resolved"):
+            return f"No exact mapped athlete hometown match was found for {requested}. I can still zoom there for regional context."
+        hub = _state["hubs_by_id"].get(str(focus.get("hub_id") or ""))
+        hub_text = f" The assigned hub is {_voice_short_place(hub.display_name)}." if hub else ""
+        state_name = _state_name(str(focus.get("state") or ""))
+        return (
+            f"{focus['hometown']}, {state_name} has {focus['total_athletes']} mapped athletes in this dataset, "
+            f"including {int(focus.get('paralympic_count') or 0) + int(focus.get('both_count') or 0)} Paralympians."
+            f"{hub_text}"
+        )
+
+    if tool_name == "filter_to_paralympic":
+        hot_spots = sorted(
+            [h for h in _state["hubs"] if h.is_paralympic_hot_spot],
+            key=lambda h: -h.composition.paralympic_share,
+        )
+        if not hot_spots:
+            return "No hubs currently meet the Paralympic Hot Spot threshold."
+        top = hot_spots[0]
+        followers = ", ".join(_voice_short_place(h.display_name) for h in hot_spots[1:5])
+        tail = f", followed by {followers}" if followers else ""
+        return (
+            f"Showing all {len(hot_spots)} Paralympic Hot Spots. "
+            f"{_voice_short_place(top.display_name)} leads at {top.composition.paralympic_share * 100:.1f}%{tail}."
+        )
+
+    if tool_name in {"select_hub", "zoom_to_hub"}:
+        hub = _state["hubs_by_id"].get(str(args.get("hub_id") or ""))
+        if not hub:
+            return _voice_compact(full_result)
+        top_sport = _display_sport(hub.top_sports[0].sport) if hub.top_sports else "multiple sports"
+        para_pct = hub.composition.paralympic_share * 100
+        summary = (
+            f"{_voice_short_place(hub.display_name)} is selected: {hub.total_athletes} mapped athletes, "
+            f"led by {top_sport}, with {para_pct:.1f}% Paralympic share."
+        )
+        narrative = _state["narratives"].get(hub.hub_id)
+        if narrative and narrative.climate:
+            climate = narrative.climate
+            climate_bits = []
+            if climate.annual_avg_temp_f is not None:
+                climate_bits.append(f"{climate.annual_avg_temp_f} degrees Fahrenheit")
+            if climate.elevation_ft is not None:
+                climate_bits.append(f"{int(climate.elevation_ft):,} feet elevation")
+            if climate_bits:
+                summary += f" Climate: {', '.join(climate_bits)}."
+        return summary
+
+    if tool_name == "select_state":
+        code = str(args.get("state_code") or "").upper()
+        agg = next((s for s in _state["state_aggregates"] if s.state == code), None)
+        if not agg:
+            return f"{_state_name(code)} is selected. It has no mapped athletes in the current dataset."
+        return (
+            f"{_state_name(code)} is selected: {agg.total_athletes} mapped athletes, "
+            f"{_state_para_count(agg)} Paralympians, and {agg.paralympic_share * 100:.1f}% Paralympic share."
+        )
+
+    if tool_name == "reset_view":
+        return (
+            f"Map reset. The full view shows {sum(h.total_athletes for h in _state['hubs']):,} mapped athletes, "
+            f"{len(_state['hubs'])} hubs, and {stats['hot_spot_count']} Paralympic Hot Spots."
+        )
+
+    if tool_name == "query_data":
+        query_type = str(args.get("query_type") or "summary")
+        entity_type = str(args.get("entity_type") or "hub").lower()
+        metric = _normalize_metric(args.get("metric"), "total_athletes")
+        limit = min(int(args.get("limit", 5) or 5), 5)
+        sport = str(args.get("sport") or "").lower().strip()
+        min_athletes = args.get("min_athletes")
+        try:
+            min_athletes = int(min_athletes) if min_athletes is not None else None
+        except (TypeError, ValueError):
+            min_athletes = None
+
+        if query_type == "summary":
+            return (
+                f"The dataset maps {sum(h.total_athletes for h in _state['hubs']):,} athletes across "
+                f"{len(_state['hubs'])} hometown hubs, with {stats['hot_spot_count']} Paralympic Hot Spots "
+                f"at or above {threshold:.1f}%."
+            )
+        if query_type == "all_hot_spots":
+            return _build_voice_spoken_summary("filter_to_paralympic", {}, full_result)
+        if query_type == "rank_list":
+            if entity_type == "state":
+                ranked_states = _ranked_states(metric, min_athletes)[:limit]
+                top = ", ".join(f"{_state_name(s.state)} at {_format_metric_value(_state_metric_value(s, metric), metric)}" for s in ranked_states[:3])
+                return f"Top states by {_metric_label(metric)}: {top}."
+            ranked_hubs = _ranked_hubs(metric, sport, min_athletes)[:limit]
+            top = ", ".join(f"{_voice_short_place(h.display_name)} at {_format_metric_value(_hub_metric_value(h, metric, sport), metric)}" for h in ranked_hubs[:3])
+            return f"Top hubs by {_metric_label(metric)}: {top}."
+        if query_type == "entity_rank":
+            state_code = str(args.get("state_code") or "").upper().strip()
+            hub_id = str(args.get("hub_id") or "").strip()
+            if state_code:
+                rank, universe, agg = _state_rank(state_code, metric, min_athletes)
+                if agg and rank:
+                    return f"{_state_name(state_code)} ranks number {rank} of {universe} by {_metric_label(metric)}, with {_format_metric_value(_state_metric_value(agg, metric), metric)}."
+            if hub_id:
+                rank, universe, hub = _hub_rank(hub_id, metric, sport)
+                if hub and rank:
+                    return f"{_voice_short_place(hub.display_name)} ranks number {rank} of {universe} by {_metric_label(metric)}, with {_format_metric_value(_hub_metric_value(hub, metric, sport), metric)}."
+        if query_type == "hubs_by_sport":
+            matches: list[tuple[Hub, SportInHub]] = []
+            for hub in _state["hubs"]:
+                for item in hub.top_sports:
+                    if sport and sport in item.sport.lower():
+                        matches.append((hub, item))
+                        break
+            matches.sort(key=lambda pair: -pair[1].count)
+            top = ", ".join(f"{_voice_short_place(h.display_name)} with {sp.count}" for h, sp in matches[:3])
+            return f"Strongest hubs for {_display_sport(sport)}: {top}." if top else f"No top hubs found for {_display_sport(sport)}."
+        if query_type == "hubs_by_macro_region":
+            macro_region = str(args.get("macro_region") or "").strip()
+            matches = [h for h in _state["hubs"] if h.macro_region.lower() == macro_region.lower()]
+            matches.sort(key=lambda h: -h.total_athletes)
+            top = ", ".join(f"{_voice_short_place(h.display_name)} with {h.total_athletes}" for h in matches[:3])
+            return f"In {macro_region}, leading hubs are {top}." if top else f"No hubs found in {macro_region}."
+
+    return _voice_compact(full_result)
+
+
 def _voice_speech_text(text: str) -> str:
     clean = re.sub(r"\s+", " ", text).strip()
     if clean.startswith("Map zoomed/selected:"):
@@ -2276,6 +2482,11 @@ def _voice_speech_text(text: str) -> str:
 
 def _synthesize_gemini_tts(text: str) -> tuple[str, str]:
     speech_text = _voice_speech_text(text)
+    cache_key = re.sub(r"\s+", " ", speech_text).strip()
+    cached = _voice_tts_cache.get(cache_key)
+    if cached:
+        return cached
+
     client = genai.Client(
         vertexai=True,
         project="hometown-success-engine",
@@ -2308,8 +2519,53 @@ def _synthesize_gemini_tts(text: str) -> tuple[str, str]:
                 encoded = data
             else:
                 encoded = base64.b64encode(data).decode("ascii")
-            return encoded, part.inline_data.mime_type or "audio/L16;codec=pcm;rate=24000"
+            result = (encoded, part.inline_data.mime_type or "audio/L16;codec=pcm;rate=24000")
+            _voice_tts_cache[cache_key] = result
+            return result
     raise RuntimeError("Gemini TTS returned no inline audio")
+
+
+def _voice_prewarm_items() -> list[tuple[str, dict[str, Any]]]:
+    items: list[tuple[str, dict[str, Any]]] = [
+        ("select_hub", {"hub_id": "HUB_CO_VAIL"}),
+        ("filter_to_paralympic", {}),
+        ("select_hub", {"hub_id": "HUB_UT_SALT_LAKE_CITY"}),
+        ("explain_map", {"topic": "legend"}),
+        ("query_data", {"query_type": "summary"}),
+        ("reset_view", {}),
+        ("focus_hometown", {"hometown": "Boise", "state_code": "ID"}),
+        ("focus_hometown", {"hometown": "Park City", "state_code": "UT"}),
+    ]
+    return items
+
+
+async def _prewarm_voice_tts_cache() -> dict[str, int]:
+    global _voice_prewarm_lock
+    if not VOICE_PREWARM_ENABLED:
+        return {"attempted": 0, "warmed": 0, "cached": len(_voice_tts_cache)}
+    if _voice_prewarm_lock is None:
+        _voice_prewarm_lock = asyncio.Lock()
+
+    async with _voice_prewarm_lock:
+        items = _voice_prewarm_items()
+        warmed: list[str] = []
+        semaphore = asyncio.Semaphore(2)
+
+        async def warm(tool_name: str, args: dict[str, Any]) -> None:
+            async with semaphore:
+                try:
+                    full_result = _build_tool_result_context(tool_name, args)
+                    spoken_summary = _build_voice_spoken_summary(tool_name, args, full_result)
+                    if _voice_audio_is_cached(spoken_summary):
+                        return
+                    await _synthesize_gemini_tts_cached(spoken_summary)
+                    warmed.append(tool_name)
+                    logger.info(f"Prewarmed Gemini voice audio for {tool_name} {args}")
+                except Exception as exc:
+                    logger.warning(f"Gemini voice prewarm skipped for {tool_name} {args}: {exc}")
+
+        await asyncio.gather(*(warm(tool_name, args) for tool_name, args in items))
+        return {"attempted": len(items), "warmed": len(warmed), "cached": len(_voice_tts_cache)}
 
 
 async def _send_voice_audio(
@@ -2388,6 +2644,8 @@ async def voice_websocket(websocket: WebSocket) -> None:
     voice_tool_calls: list[dict[str, Any]] = []
     voice_tool_result_texts: list[str] = []
     voice_audio_sent = False
+    voice_fallback_audio_started = False
+    voice_tts_task: asyncio.Task | None = None
 
     async def send_voice_state(
         state: str,
@@ -2404,8 +2662,80 @@ async def voice_websocket(websocket: WebSocket) -> None:
             message["turn_id"] = voice_turn_id
         await websocket.send_json(message)
 
+    def cancel_voice_tts_task() -> None:
+        nonlocal voice_tts_task
+        if voice_tts_task and not voice_tts_task.done():
+            voice_tts_task.cancel()
+        voice_tts_task = None
+
+    async def start_voice_tts_fallback(
+        spoken_summary: str,
+        turn_id: int,
+        grace_seconds: float = VOICE_NATIVE_AUDIO_GRACE_SECONDS,
+    ) -> None:
+        nonlocal voice_audio_sent, voice_fallback_audio_started, voice_tts_task
+        try:
+            await asyncio.sleep(grace_seconds)
+            if (
+                not audio_enabled_for_turn
+                or voice_audio_sent
+                or voice_turn_id != turn_id
+                or not spoken_summary.strip()
+            ):
+                return
+            await send_voice_state(
+                "replying",
+                "Preparing Gemini audio",
+                "Native Live audio was quiet, so Gemini TTS is starting.",
+            )
+            tts_audio, tts_mime_type = await _synthesize_gemini_tts_cached(spoken_summary)
+            if voice_audio_sent or voice_turn_id != turn_id:
+                return
+            voice_fallback_audio_started = True
+            await _send_voice_audio(
+                websocket,
+                tts_audio,
+                tts_mime_type,
+                "gemini-tts-fallback",
+                turn_id=turn_id,
+            )
+            voice_audio_sent = True
+            await send_voice_state(
+                "replying",
+                "Gemini speaking",
+                "Using Gemini audio fallback because native Live audio was silent.",
+            )
+        except asyncio.CancelledError:
+            return
+        except Exception as tts_error:
+            logger.warning(f"Gemini voice fallback failed: {tts_error}")
+            if voice_turn_id != turn_id:
+                return
+            await websocket.send_json({
+                "type": "speech_fallback",
+                "text": spoken_summary,
+                "turn_id": turn_id,
+            })
+            await send_voice_state(
+                "replying",
+                "Gemini replying",
+                "Using browser audio fallback because Gemini audio fallback failed.",
+            )
+        finally:
+            if voice_tts_task is asyncio.current_task():
+                voice_tts_task = None
+
+    def schedule_voice_tts_fallback(spoken_summary: str, turn_id: int) -> None:
+        nonlocal voice_tts_task
+        cancel_voice_tts_task()
+        if not audio_enabled_for_turn or not spoken_summary.strip():
+            return
+        grace = VOICE_CACHED_AUDIO_GRACE_SECONDS if _voice_audio_is_cached(spoken_summary) else VOICE_NATIVE_AUDIO_GRACE_SECONDS
+        voice_tts_task = asyncio.create_task(start_voice_tts_fallback(spoken_summary, turn_id, grace))
+
     async def send_live_messages(session) -> None:
-        nonlocal voice_input_text, voice_output_text, voice_tool_calls, voice_tool_result_texts, voice_audio_sent
+        nonlocal voice_input_text, voice_output_text, voice_tool_calls, voice_tool_result_texts
+        nonlocal voice_audio_sent, voice_fallback_audio_started
         async for message in session.receive():
             if message.setup_complete:
                 await websocket.send_json({"type": "ready", "turn_id": voice_turn_id})
@@ -2441,6 +2771,9 @@ async def voice_websocket(websocket: WebSocket) -> None:
                         if part.inline_data and part.inline_data.data:
                             if not audio_enabled_for_turn:
                                 continue
+                            if voice_fallback_audio_started:
+                                continue
+                            cancel_voice_tts_task()
                             data = part.inline_data.data
                             if isinstance(data, bytes):
                                 data = base64.b64encode(data).decode("ascii")
@@ -2449,48 +2782,21 @@ async def voice_websocket(websocket: WebSocket) -> None:
                                 "type": "audio",
                                 "data": data,
                                 "mime_type": part.inline_data.mime_type or "audio/pcm;rate=24000",
+                                "source": "gemini-live",
                                 "turn_id": voice_turn_id,
                             })
                 if content.turn_complete:
                     remembered_text = voice_output_text or " ".join(voice_tool_result_texts)
-                    fallback_text = (" ".join(voice_tool_result_texts) or voice_output_text).strip()
                     _remember_session_turn(
                         voice_session_id,
                         voice_input_text,
                         remembered_text,
                         voice_tool_calls,
                     )
-                    if audio_enabled_for_turn and fallback_text and not voice_audio_sent:
-                        try:
-                            tts_audio, tts_mime_type = await asyncio.to_thread(
-                                _synthesize_gemini_tts,
-                                fallback_text,
-                            )
-                            await _send_voice_audio(
-                                websocket,
-                                tts_audio,
-                                tts_mime_type,
-                                "gemini-tts-fallback",
-                                turn_id=voice_turn_id,
-                            )
-                            voice_audio_sent = True
-                            await send_voice_state(
-                                "replying",
-                                "Gemini replying",
-                                "Using Gemini audio fallback because native Live audio was silent.",
-                            )
-                        except Exception as tts_error:
-                            logger.warning(f"Gemini voice fallback failed: {tts_error}")
-                            await websocket.send_json({
-                                "type": "speech_fallback",
-                                "text": fallback_text,
-                                "turn_id": voice_turn_id,
-                            })
-                            await send_voice_state(
-                                "replying",
-                                "Gemini replying",
-                                "Using browser audio fallback because Gemini audio fallback failed.",
-                            )
+                    pending_tts_task = voice_tts_task
+                    if pending_tts_task and not pending_tts_task.done():
+                        with suppress(asyncio.CancelledError):
+                            await pending_tts_task
                     await websocket.send_json({
                         "type": "turn_complete",
                         "turn_id": voice_turn_id,
@@ -2501,18 +2807,25 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 frontend_calls: list[dict[str, Any]] = []
                 function_responses = []
                 tool_result_texts: list[str] = []
+                spoken_result_texts: list[str] = []
                 for call in message.tool_call.function_calls:
                     args = dict(call.args) if call.args else {}
                     tool_name = call.name or ""
                     frontend_call = _prepare_tool_call_for_frontend(tool_name, args)
                     frontend_calls.append(frontend_call.model_dump())
                     result = _build_tool_result_context(frontend_call.name, frontend_call.args)
+                    spoken_summary = _build_voice_spoken_summary(
+                        frontend_call.name,
+                        frontend_call.args,
+                        result,
+                    )
                     tool_result_texts.append(result)
+                    spoken_result_texts.append(spoken_summary)
                     function_responses.append(
                         genai_types.FunctionResponse(
                             id=call.id,
                             name=tool_name,
-                            response={"result": result},
+                            response={"result": spoken_summary},
                         )
                     )
                 voice_tool_calls = frontend_calls
@@ -2537,7 +2850,13 @@ async def voice_websocket(websocket: WebSocket) -> None:
                     })
                 if function_responses:
                     await session.send_tool_response(function_responses=function_responses)
-                    await send_voice_state("replying", "Gemini replying", "Grounded map result received.")
+                    spoken_text = " ".join(spoken_result_texts).strip()
+                    schedule_voice_tts_fallback(spoken_text, voice_turn_id)
+                    await send_voice_state(
+                        "replying",
+                        "Gemini replying",
+                        "Grounded map result received. Waiting briefly for native Live audio.",
+                    )
 
     try:
         await send_voice_state("connecting", "Connecting to Gemini Live", "")
@@ -2599,6 +2918,8 @@ async def voice_websocket(websocket: WebSocket) -> None:
                             voice_tool_calls = []
                             voice_tool_result_texts = []
                             voice_audio_sent = False
+                            voice_fallback_audio_started = False
+                            cancel_voice_tts_task()
                             await websocket.send_json({
                                 "type": "turn_started",
                                 "turn_id": voice_turn_id,
@@ -2631,6 +2952,8 @@ async def voice_websocket(websocket: WebSocket) -> None:
                         voice_tool_calls = []
                         voice_tool_result_texts = []
                         voice_audio_sent = False
+                        voice_fallback_audio_started = False
+                        cancel_voice_tts_task()
                         await websocket.send_json({
                             "type": "turn_started",
                             "turn_id": voice_turn_id,
@@ -2674,6 +2997,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
             except WebSocketDisconnect:
                 pass
             finally:
+                cancel_voice_tts_task()
                 receiver.cancel()
                 with suppress(asyncio.CancelledError):
                     await receiver
