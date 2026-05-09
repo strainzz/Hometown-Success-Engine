@@ -591,6 +591,7 @@ Help users explore the map and understand the data. Call tools to move the map o
 
 # TOOL RULES
 - If the user asks for the top, highest, leading, best, or number-one Paralympic Hot Spot, select the top Hot Spot hub so the map moves to it.
+- If the user asks which state leads or has the most of a metric, select the leading state so the map moves to it.
 - If the user asks to show, highlight, filter, or view Paralympic Hot Spots, call filter_to_paralympic.
 - If the user asks to reset, clear, start over, or go back to the national view, call reset_view.
 - If the user asks what the dots, circles, colors, legend, state shading, territory insets, Alaska/Hawaii/Puerto Rico insets, or Hot Spots mean, call explain_map.
@@ -715,7 +716,13 @@ def _normalize_metric(metric: str | None, fallback: str = "total_athletes") -> s
 
 def _metric_from_text(message: str) -> str:
     msg = message.lower()
-    if "paralympic share" in msg or "para share" in msg or "percentage" in msg:
+    if (
+        "paralympic share" in msg
+        or "para share" in msg
+        or "percentage" in msg
+        or "representation" in msg
+        or "rate" in msg
+    ):
         return "paralympic_share"
     if "paralympic" in msg or "paralympian" in msg or " para " in f" {msg} ":
         return "paralympic_athletes"
@@ -1199,14 +1206,71 @@ def _top_ranked_hub_for_query(args: dict[str, Any]) -> Hub | None:
     return ranked[0] if ranked else None
 
 
+def _top_ranked_state_for_query(args: dict[str, Any]) -> StateAggregate | None:
+    query_type = str(args.get("query_type") or "").strip()
+    if query_type not in {"rank_list", "top_states_by_total", "top_states_by_paralympic", "top_states_by_paralympic_share"}:
+        return None
+
+    try:
+        limit = int(args.get("limit") or 5)
+    except (TypeError, ValueError):
+        limit = 5
+    if limit != 1:
+        return None
+
+    entity_type = str(args.get("entity_type") or "state").lower().strip()
+    if entity_type and entity_type != "state":
+        return None
+
+    metric = _normalize_metric(args.get("metric"), "total_athletes")
+    if query_type == "top_states_by_paralympic_share":
+        metric = "paralympic_share"
+    elif query_type == "top_states_by_paralympic":
+        metric = "paralympic_athletes"
+    elif query_type == "top_states_by_total":
+        metric = "total_athletes"
+
+    min_athletes = args.get("min_athletes")
+    try:
+        min_athletes = int(min_athletes) if min_athletes is not None else None
+    except (TypeError, ValueError):
+        min_athletes = None
+    ranked = _ranked_states(metric, min_athletes)
+    return ranked[0] if ranked else None
+
+
 def _prepare_tool_call_for_frontend(tool_name: str, args: dict[str, Any]) -> ChatToolCall:
     if tool_name == "focus_hometown":
         return ChatToolCall(name="focus_hometown", args=_resolve_focus_hometown_args(args))
     if tool_name == "query_data":
+        top_state = _top_ranked_state_for_query(args)
+        if top_state:
+            return ChatToolCall(name="select_state", args={"state_code": top_state.state})
         top_hub = _top_ranked_hub_for_query(args)
         if top_hub:
             return ChatToolCall(name="select_hub", args={"hub_id": top_hub.hub_id})
     return ChatToolCall(name=tool_name, args=args)
+
+
+def _normalize_tool_call_for_message(
+    tool_name: str,
+    args: dict[str, Any],
+    message: str,
+) -> tuple[str, dict[str, Any]]:
+    msg = (message or "").lower()
+    if tool_name == "query_data":
+        state_leader_terms = ["which state", "what state", "state has", "state leads", "leading state", "top state", "highest state"]
+        leader_terms = ["most", "top", "highest", "leads", "leading", "representation"]
+        if any(term in msg for term in state_leader_terms) and any(term in msg for term in leader_terms):
+            normalized = dict(args)
+            normalized.update({
+                "query_type": "rank_list",
+                "entity_type": "state",
+                "metric": _metric_from_text(message),
+                "limit": 1,
+            })
+            return tool_name, normalized
+    return tool_name, args
 
 
 def _hub_line(hub: Hub, metric: str, rank: int | None = None, sport: str | None = None) -> str:
@@ -1345,6 +1409,16 @@ def _direct_query_tool_call(message: str) -> ChatToolCall | None:
         top_hot_spot = _top_paralympic_hot_spot()
         if top_hot_spot:
             return ChatToolCall(name="select_hub", args={"hub_id": top_hot_spot.hub_id})
+
+    state_leader_terms = ["which state", "what state", "state has", "state leads", "leading state", "top state", "highest state"]
+    if any(term in msg for term in state_leader_terms) and any(term in msg for term in ["most", "top", "highest", "leads", "leading", "representation"]):
+        leader_args = {
+            "query_type": "rank_list",
+            "entity_type": "state",
+            "metric": metric,
+            "limit": 1,
+        }
+        return _prepare_tool_call_for_frontend("query_data", leader_args)
 
     if "how many" in msg or "summary" in msg or ("athlete" in msg and "hub" in msg):
         return ChatToolCall(name="query_data", args={"query_type": "summary"})
@@ -2195,7 +2269,12 @@ async def chat(req: ChatRequest) -> ChatResponse:
                     text_parts.append(part.text)
                 if hasattr(part, "function_call") and part.function_call:
                     fc = part.function_call
-                    tool_calls.append(_prepare_tool_call_for_frontend(fc.name, dict(fc.args) if fc.args else {}))
+                    tool_name, tool_args = _normalize_tool_call_for_message(
+                        fc.name,
+                        dict(fc.args) if fc.args else {},
+                        req.message,
+                    )
+                    tool_calls.append(_prepare_tool_call_for_frontend(tool_name, tool_args))
                     function_call_parts.append(part)
 
         reply_text = " ".join(text_parts).strip()
@@ -2721,6 +2800,11 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 for call in message.tool_call.function_calls:
                     args = dict(call.args) if call.args else {}
                     tool_name = call.name or ""
+                    tool_name, args = _normalize_tool_call_for_message(
+                        tool_name,
+                        args,
+                        voice_input_text,
+                    )
                     frontend_call = _prepare_tool_call_for_frontend(tool_name, args)
                     frontend_calls.append(frontend_call.model_dump())
                     result = _build_tool_result_context(frontend_call.name, frontend_call.args)
