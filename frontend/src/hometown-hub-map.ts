@@ -140,6 +140,9 @@ export class HometownHubMap extends HTMLElement {
   private voiceWorkletUrl: string | null = null;
   private voiceUserDraftIndex: number | null = null;
   private voiceModelDraftIndex: number | null = null;
+  private voiceTurnId: number = 0;
+  private activeVoiceTurnId: number = 0;
+  private voiceClosingAfterTurn: boolean = false;
   private audioEnabled: boolean = true;
   private audioContext: AudioContext | null = null;
   private audioPlayTime: number = 0;
@@ -396,7 +399,15 @@ export class HometownHubMap extends HTMLElement {
     const url = new URL(baseUrl);
     url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
     url.pathname = "/voice/ws";
+    const recentContext = this.chatHistory
+      .slice(-6)
+      .map(turn => `${turn.role === "user" ? "User" : "Gemini"}: ${turn.text}`)
+      .join("\n")
+      .slice(-1400);
     url.search = "";
+    if (recentContext) {
+      url.searchParams.set("context", recentContext);
+    }
     url.hash = "";
     return url.toString();
   }
@@ -525,8 +536,16 @@ export class HometownHubMap extends HTMLElement {
       };
 
       socket.onclose = () => {
+        const graceful = this.voiceClosingAfterTurn;
+        this.voiceClosingAfterTurn = false;
         if (this.voiceSocket === socket) this.voiceSocket = null;
-        this.setVoiceHud("idle", "Voice session closed", "Press the mic to reconnect.");
+        if (this.voiceListening) this.stopVoiceStreaming(false);
+        this.completeVoiceTurn();
+        this.setVoiceHud(
+          "idle",
+          graceful ? "Voice ready" : "Voice session closed",
+          graceful ? "Press the mic for another question." : "Press the mic to reconnect.",
+        );
       };
 
       socket.onmessage = (event) => {
@@ -541,6 +560,25 @@ export class HometownHubMap extends HTMLElement {
   }
 
   private handleVoiceMessage(message: any): void {
+    const incomingTurnId = Number(message.turn_id || 0);
+    if (incomingTurnId > 0 && this.activeVoiceTurnId > 0 && incomingTurnId < this.activeVoiceTurnId) {
+      return;
+    }
+    if (incomingTurnId > this.activeVoiceTurnId) {
+      this.activeVoiceTurnId = incomingTurnId;
+    }
+
+    if (message.type === "turn_started") {
+      this.activeVoiceTurnId = incomingTurnId || this.activeVoiceTurnId;
+      this.voiceUserDraftIndex = null;
+      this.voiceModelDraftIndex = null;
+      return;
+    }
+    if (message.type === "turn_complete") {
+      this.completeVoiceTurn();
+      this.closeVoiceSocketAfterTurn();
+      return;
+    }
     if (message.type === "voice_state") {
       this.setVoiceHud(
         message.state || "idle",
@@ -616,6 +654,29 @@ export class HometownHubMap extends HTMLElement {
     if (message.type === "error") {
       this.setVoiceHud("error", "Voice error", message.message || "unknown");
     }
+  }
+
+  private beginVoiceTurn(): number {
+    this.voiceTurnId += 1;
+    this.activeVoiceTurnId = this.voiceTurnId;
+    this.voiceUserDraftIndex = null;
+    this.voiceModelDraftIndex = null;
+    this.audioChunkBuffers.clear();
+    return this.activeVoiceTurnId;
+  }
+
+  private completeVoiceTurn(): void {
+    this.voiceUserDraftIndex = null;
+    this.voiceModelDraftIndex = null;
+  }
+
+  private closeVoiceSocketAfterTurn(): void {
+    if (!this.voiceSocket || this.voiceSocket.readyState !== WebSocket.OPEN) return;
+    this.voiceClosingAfterTurn = true;
+    try {
+      this.voiceSocket.send(JSON.stringify({ type: "close" }));
+    } catch {}
+    this.voiceSocket.close(1000, "turn complete");
   }
 
   private voiceToolLabel(calls: ChatToolCall[]): string {
@@ -694,10 +755,10 @@ export class HometownHubMap extends HTMLElement {
       this.voiceInputSource = this.voiceInputContext.createMediaStreamSource(stream);
       this.voiceInputBuffer = [];
       this.voiceBufferedSamples = 0;
-      this.voiceUserDraftIndex = null;
-      this.voiceModelDraftIndex = null;
+      const turnId = this.beginVoiceTurn();
       socket.send(JSON.stringify({
         type: "audio_start",
+        turn_id: turnId,
         audio_enabled: this.audioEnabled,
       }));
 
@@ -752,6 +813,7 @@ export class HometownHubMap extends HTMLElement {
     if (sendEnd && this.voiceSocket?.readyState === WebSocket.OPEN) {
       this.voiceSocket.send(JSON.stringify({
         type: "audio_end",
+        turn_id: this.activeVoiceTurnId,
         audio_enabled: this.audioEnabled,
       }));
       this.setVoiceHud("thinking", "Gemini Live is thinking", "Audio turn ended.");
@@ -803,6 +865,7 @@ export class HometownHubMap extends HTMLElement {
     const data = this.uint8ToBase64(new Uint8Array(pcm16.buffer));
     this.voiceSocket.send(JSON.stringify({
       type: "audio_chunk",
+      turn_id: this.activeVoiceTurnId,
       data,
       mime_type: "audio/pcm;rate=16000",
       audio_enabled: this.audioEnabled,
