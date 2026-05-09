@@ -58,7 +58,7 @@ Vertex AI Gemini 2.5 Flash
 
 ## Gemini Interaction Layer
 
-The chat panel is not a chatbot bolted onto a map. It is a data and navigation layer that uses Gemini Function Calling to connect plain-language questions to the live map model.
+The chat panel is not a chatbot bolted onto a map. It is a data and navigation layer that uses Gemini Function Calling to connect plain-language questions to the live map model. Voice mode streams microphone audio to Gemini Live through the Cloud Run backend, so spoken questions can move the map and Gemini replies with grounded native audio.
 
 Gemini receives:
 
@@ -89,11 +89,14 @@ The data tool supports:
 
 Tool results are generated from runtime data before Gemini explains them, so answers include grounded counts, ranks, percentages, top sports, Hot Spot status, climate, and geographic context. The system avoids individual athlete names and avoids any claim that geography guarantees outcomes, using conditional phrasing such as "could help find," "may foster," and "is associated with."
 
+Voice interaction uses Gemini Live native audio with the same tool schema. The frontend streams 16kHz PCM microphone chunks to `/voice/ws`, the backend handles Live API function calls, and the chat HUD shows listening, map-tool, replying, interrupted, and error states for judge demos.
+
 ## Tech Stack
 
 **AI and Cloud**
 
 - Vertex AI Gemini 2.5 Flash
+- Gemini Live native audio
 - Gemini Function Calling
 - Cloud Run
 - Firebase Hosting

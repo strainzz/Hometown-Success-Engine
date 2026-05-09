@@ -1830,23 +1830,42 @@ async def voice_websocket(websocket: WebSocket) -> None:
     )
     audio_enabled_for_turn = True
 
+    async def send_voice_state(
+        state: str,
+        label: str,
+        detail: str = "",
+    ) -> None:
+        await websocket.send_json({
+            "type": "voice_state",
+            "state": state,
+            "label": label,
+            "detail": detail,
+        })
+
     async def send_live_messages(session) -> None:
         async for message in session.receive():
             if message.setup_complete:
                 await websocket.send_json({"type": "ready"})
+                await send_voice_state("idle", "Voice ready", "Gemini Live native audio is connected.")
 
             if message.server_content:
                 content = message.server_content
+                if content.interrupted:
+                    await websocket.send_json({"type": "interrupted"})
+                    await send_voice_state("interrupted", "Interrupted", "Listening for your next question.")
                 if content.input_transcription and content.input_transcription.text:
                     await websocket.send_json({
                         "type": "input_transcript",
                         "text": content.input_transcription.text,
+                        "final": bool(getattr(content.input_transcription, "finished", False)),
                     })
                 if content.output_transcription and content.output_transcription.text:
                     await websocket.send_json({
                         "type": "output_transcript",
                         "text": content.output_transcription.text,
+                        "final": bool(getattr(content.output_transcription, "finished", False)),
                     })
+                    await send_voice_state("replying", "Gemini replying", content.output_transcription.text)
                 if content.model_turn and content.model_turn.parts:
                     for part in content.model_turn.parts:
                         if part.inline_data and part.inline_data.data:
@@ -1860,6 +1879,10 @@ async def voice_websocket(websocket: WebSocket) -> None:
                                 "data": data,
                                 "mime_type": part.inline_data.mime_type or "audio/pcm;rate=24000",
                             })
+                if content.generation_complete:
+                    await send_voice_state("idle", "Voice ready", "Gemini finished replying.")
+                if content.turn_complete:
+                    await send_voice_state("idle", "Voice ready", "Ask another question or press the mic.")
 
             if message.tool_call and message.tool_call.function_calls:
                 frontend_calls: list[dict[str, Any]] = []
@@ -1875,7 +1898,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
                         genai_types.FunctionResponse(
                             id=call.id,
                             name=tool_name,
-                            response={"output": result},
+                            response={"result": result},
                         )
                     )
                 await websocket.send_json({
@@ -1884,33 +1907,23 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 })
                 if tool_result_texts:
                     tool_result_text = " ".join(tool_result_texts)
-                    await websocket.send_json({
-                        "type": "tool_result_text",
-                        "text": tool_result_text,
-                        "speak_fallback": False,
-                    })
-                    if audio_enabled_for_turn:
-                        try:
-                            audio_data, mime_type = await asyncio.to_thread(
-                                _synthesize_gemini_tts,
-                                tool_result_text,
-                            )
-                            await _send_voice_audio(
-                                websocket,
-                                audio_data,
-                                mime_type,
-                                "gemini_tts",
-                            )
-                        except Exception as tts_error:
-                            logger.warning(f"Gemini TTS fallback failed: {tts_error}")
-                            await websocket.send_json({
-                                "type": "speech_fallback",
-                                "text": _voice_speech_text(tool_result_text),
-                            })
+                    await send_voice_state(
+                        "tool",
+                        "Moving map",
+                        "Gemini called the map/data tools and is preparing a grounded spoken answer.",
+                    )
+                    if not audio_enabled_for_turn:
+                        await websocket.send_json({
+                            "type": "tool_result_text",
+                            "text": tool_result_text,
+                            "speak_fallback": False,
+                        })
                 if function_responses:
                     await session.send_tool_response(function_responses=function_responses)
+                    await send_voice_state("replying", "Gemini replying", "Grounded map result received.")
 
     try:
+        await send_voice_state("connecting", "Connecting to Gemini Live", "")
         async with client.aio.live.connect(
             model=VOICE_MODEL_ID,
             config=genai_types.LiveConnectConfig(
@@ -1918,6 +1931,19 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 system_instruction=_build_chatbot_system_prompt(),
                 tools=[_build_chatbot_tools()],
                 temperature=0.4,
+                realtime_input_config=genai_types.RealtimeInputConfig(
+                    automatic_activity_detection=genai_types.AutomaticActivityDetection(
+                        disabled=False,
+                        start_of_speech_sensitivity=genai_types.StartSensitivity.START_SENSITIVITY_LOW,
+                        end_of_speech_sensitivity=genai_types.EndSensitivity.END_SENSITIVITY_LOW,
+                        prefix_padding_ms=20,
+                        silence_duration_ms=600,
+                    ),
+                    activity_handling=genai_types.ActivityHandling.START_OF_ACTIVITY_INTERRUPTS,
+                ),
+                context_window_compression=genai_types.ContextWindowCompressionConfig(
+                    sliding_window=genai_types.SlidingWindow(),
+                ),
                 speech_config=genai_types.SpeechConfig(
                     voice_config=genai_types.VoiceConfig(
                         prebuilt_voice_config=genai_types.PrebuiltVoiceConfig(
@@ -1933,6 +1959,8 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 "type": "connecting",
                 "model": VOICE_MODEL_ID,
             })
+            await websocket.send_json({"type": "ready"})
+            await send_voice_state("idle", "Gemini Live voice ready", "Press the mic to ask a spoken question.")
             receiver = asyncio.create_task(send_live_messages(session))
             try:
                 while True:
@@ -1943,11 +1971,39 @@ async def voice_websocket(websocket: WebSocket) -> None:
                             audio_enabled_for_turn = bool(payload.get("audio_enabled"))
                         text = str(payload.get("text") or "").strip()
                         if text:
+                            await send_voice_state("thinking", "Gemini Live is answering", text)
                             await websocket.send_json({
                                 "type": "input_transcript",
                                 "text": text,
+                                "final": True,
                             })
                             await session.send_realtime_input(text=text)
+                    elif message_type == "audio_start":
+                        if "audio_enabled" in payload:
+                            audio_enabled_for_turn = bool(payload.get("audio_enabled"))
+                        await send_voice_state("listening", "Listening", "Speak naturally. Gemini Live is streaming audio.")
+                    elif message_type == "audio_chunk":
+                        if "audio_enabled" in payload:
+                            audio_enabled_for_turn = bool(payload.get("audio_enabled"))
+                        data = str(payload.get("data") or "")
+                        if data:
+                            mime_type = str(payload.get("mime_type") or "audio/pcm;rate=16000")
+                            try:
+                                raw_audio = base64.b64decode(data)
+                            except Exception:
+                                await send_voice_state("error", "Audio chunk skipped", "Invalid microphone audio payload.")
+                                continue
+                            await session.send_realtime_input(
+                                audio=genai_types.Blob(
+                                    data=raw_audio,
+                                    mime_type=mime_type,
+                                )
+                            )
+                    elif message_type == "audio_end":
+                        if "audio_enabled" in payload:
+                            audio_enabled_for_turn = bool(payload.get("audio_enabled"))
+                        await session.send_realtime_input(audio_stream_end=True)
+                        await send_voice_state("thinking", "Gemini Live is thinking", "Audio turn ended.")
                     elif message_type == "close":
                         break
             except WebSocketDisconnect:
