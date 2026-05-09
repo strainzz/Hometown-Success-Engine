@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 # v2 build
 
 VOICE_MODEL_ID = os.getenv("GEMINI_LIVE_MODEL", "gemini-live-2.5-flash-native-audio")
-VOICE_TTS_MODEL_ID = os.getenv("GEMINI_TTS_MODEL", "gemini-2.5-flash-tts")
+VOICE_TTS_MODEL_ID = os.getenv("GEMINI_TTS_MODEL", "gemini-2.5-flash-preview-tts")
 VOICE_NAME = os.getenv("GEMINI_VOICE_NAME", "Kore")
 VOICE_LOCATION = os.getenv("GEMINI_LIVE_LOCATION", "us-central1")
 VOICE_TTS_MAX_CHARS = int(os.getenv("GEMINI_VOICE_TTS_MAX_CHARS", "900"))
@@ -2317,15 +2317,19 @@ async def _send_voice_audio(
     audio_data: str,
     mime_type: str,
     source: str,
+    turn_id: int | None = None,
 ) -> None:
     max_chunk_chars = 700_000
     if len(audio_data) <= max_chunk_chars:
-        await websocket.send_json({
+        message: dict[str, Any] = {
             "type": "audio",
             "data": audio_data,
             "mime_type": mime_type,
             "source": source,
-        })
+        }
+        if turn_id:
+            message["turn_id"] = turn_id
+        await websocket.send_json(message)
         return
 
     audio_id = f"{source}-{abs(hash(audio_data))}"
@@ -2334,7 +2338,7 @@ async def _send_voice_audio(
         for i in range(0, len(audio_data), max_chunk_chars)
     ]
     for index, chunk in enumerate(chunks):
-        await websocket.send_json({
+        message = {
             "type": "audio_chunk",
             "id": audio_id,
             "index": index,
@@ -2342,7 +2346,10 @@ async def _send_voice_audio(
             "data": chunk,
             "mime_type": mime_type,
             "source": source,
-        })
+        }
+        if turn_id:
+            message["turn_id"] = turn_id
+        await websocket.send_json(message)
 
 
 @app.websocket("/voice/ws")
@@ -2358,7 +2365,14 @@ async def voice_websocket(websocket: WebSocket) -> None:
     legacy_context = str(websocket.query_params.get("context") or "").strip()
     if legacy_context and not voice_context:
         voice_context = legacy_context[-1600:]
-    voice_system_instruction = _build_chatbot_system_prompt()
+    voice_system_instruction = (
+        f"{_build_chatbot_system_prompt()}\n\n"
+        "VOICE MODE RULES:\n"
+        "- You are speaking through Gemini Live native audio.\n"
+        "- After every tool/function response, speak a concise grounded answer out loud.\n"
+        "- Do not stop silently after a tool call.\n"
+        "- Keep spoken answers short enough for a live demo, but include the key counts and map action."
+    )
     if voice_context:
         voice_system_instruction = (
             f"{voice_system_instruction}\n\n"
@@ -2447,16 +2461,36 @@ async def voice_websocket(websocket: WebSocket) -> None:
                         voice_tool_calls,
                     )
                     if audio_enabled_for_turn and fallback_text and not voice_audio_sent:
-                        await websocket.send_json({
-                            "type": "speech_fallback",
-                            "text": fallback_text,
-                            "turn_id": voice_turn_id,
-                        })
-                        await send_voice_state(
-                            "replying",
-                            "Gemini replying",
-                            "Using browser audio fallback because native Live audio was silent.",
-                        )
+                        try:
+                            tts_audio, tts_mime_type = await asyncio.to_thread(
+                                _synthesize_gemini_tts,
+                                fallback_text,
+                            )
+                            await _send_voice_audio(
+                                websocket,
+                                tts_audio,
+                                tts_mime_type,
+                                "gemini-tts-fallback",
+                                turn_id=voice_turn_id,
+                            )
+                            voice_audio_sent = True
+                            await send_voice_state(
+                                "replying",
+                                "Gemini replying",
+                                "Using Gemini audio fallback because native Live audio was silent.",
+                            )
+                        except Exception as tts_error:
+                            logger.warning(f"Gemini voice fallback failed: {tts_error}")
+                            await websocket.send_json({
+                                "type": "speech_fallback",
+                                "text": fallback_text,
+                                "turn_id": voice_turn_id,
+                            })
+                            await send_voice_state(
+                                "replying",
+                                "Gemini replying",
+                                "Using browser audio fallback because Gemini audio fallback failed.",
+                            )
                     await websocket.send_json({
                         "type": "turn_complete",
                         "turn_id": voice_turn_id,
