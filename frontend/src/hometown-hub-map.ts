@@ -44,7 +44,7 @@ type AthleteGeoPoint = {
 };
 
 type ChatToolCall = {
-  name: "select_hub" | "filter_to_paralympic" | "zoom_to_hub" | "reset_view" | "select_state" | "query_data" | "explain_map" | "focus_hometown";
+  name: "select_hub" | "filter_to_paralympic" | "zoom_to_hub" | "reset_view" | "select_state" | "query_data" | "explain_map" | "explain_engine" | "focus_hometown" | "highlight_hubs";
   args: Record<string, any>;
 };
 
@@ -128,10 +128,12 @@ const GMAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const GMAPS_MAP_ID = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID;
 
 const SUGGESTED_PROMPTS = [
+  "Why does this matter for Team USA?",
   "What do the dots mean?",
-  "How many athletes are from Boise, Idaho?",
-  "Show Paralympic Hot Spots",
-  "Tell me about Vail",
+  "Show hubs above the national baseline",
+  "Which states are strongest for skiing?",
+  "Compare Vail and Salt Lake City",
+  "What changed with 2026 data?",
 ];
 
 export class HometownHubMap extends HTMLElement {
@@ -181,6 +183,7 @@ export class HometownHubMap extends HTMLElement {
   private selectedStateCode: string | null = null;
   private selectedStateName: string | null = null;
   private selectedHometown: HometownFocus | null = null;
+  private highlightedHubIds: Set<string> = new Set();
 
   constructor() {
     super();
@@ -299,6 +302,7 @@ export class HometownHubMap extends HTMLElement {
     }
   selectHub(hub_id: string): void {
     this.selectedHometown = null;
+    this.clearHubHighlights();
     this.renderHometownPanel();
     this.dispatch({ type: "SELECT_HUB", hub_id });
     if (this.mapInitialized && this.map) {
@@ -317,6 +321,7 @@ export class HometownHubMap extends HTMLElement {
   }
 
   filterToParalympic(macro_region?: FilterUpdate["macro_region"]): void {
+    this.clearHubHighlights();
     this.dispatch({
       type: "SET_FILTER",
       filter: { paralympic_focus: true, macro_region }
@@ -325,6 +330,7 @@ export class HometownHubMap extends HTMLElement {
 
   zoomToHub(hub_id: string): void {
     this.selectedHometown = null;
+    this.clearHubHighlights();
     this.renderHometownPanel();
     this.dispatch({ type: "SELECT_HUB", hub_id });
     void this.ensureNarrative(hub_id);
@@ -347,6 +353,7 @@ export class HometownHubMap extends HTMLElement {
     this.dispatch({ type: "CLEAR_SELECTION" });
     this.dispatch({ type: "CLEAR_FILTERS" });
     this.selectedHometown = null;
+    this.clearHubHighlights();
     this.renderHometownPanel();
     if (this.mapInitialized && this.map) {
       this.map.moveCamera({
@@ -357,6 +364,36 @@ export class HometownHubMap extends HTMLElement {
   }
 
   // ===== CHAT =====
+
+  private clearHubHighlights(): void {
+    if (this.highlightedHubIds.size === 0) return;
+    this.highlightedHubIds = new Set();
+    this.updateLayers();
+  }
+
+  private highlightedHubIdsKey(): string {
+    return Array.from(this.highlightedHubIds).sort().join("|");
+  }
+
+  private highlightHubs(args: Record<string, any>): void {
+    const ids = Array.isArray(args.hub_ids)
+      ? args.hub_ids.map((id: unknown) => String(id)).filter(Boolean)
+      : [];
+    this.selectedHometown = null;
+    this.selectedStateCode = null;
+    this.selectedStateName = null;
+    this.renderHometownPanel();
+    this.renderStatePanel();
+    this.dispatch({ type: "CLEAR_SELECTION" });
+    this.highlightedHubIds = new Set(ids);
+    this.updateLayers();
+
+    const hubs = this.store.getState().hubs.filter(h => this.highlightedHubIds.has(h.hub_id));
+    if (!this.map || hubs.length === 0) return;
+    const bounds = new google.maps.LatLngBounds();
+    hubs.forEach(h => bounds.extend({ lat: h.centroid_latitude, lng: h.centroid_longitude }));
+    this.map.fitBounds(bounds, 72);
+  }
 
   private async sendChatMessage(
     message: string,
@@ -428,6 +465,7 @@ export class HometownHubMap extends HTMLElement {
         break;
       case "select_state":
         this.selectedHometown = null;
+        this.clearHubHighlights();
         this.renderHometownPanel();
         if (call.args.state_code) {
           const code = (call.args.state_code as string).toUpperCase();
@@ -446,9 +484,13 @@ export class HometownHubMap extends HTMLElement {
         break;
       case "query_data":
       case "explain_map":
+      case "explain_engine":
         break;
       case "focus_hometown":
         void this.focusHometown(call.args as HometownFocus);
+        break;
+      case "highlight_hubs":
+        this.highlightHubs(call.args);
         break;
     }
   }
@@ -456,6 +498,7 @@ export class HometownHubMap extends HTMLElement {
   private async focusHometown(args: HometownFocus): Promise<void> {
     this.selectedStateCode = null;
     this.selectedStateName = null;
+    this.clearHubHighlights();
     this.dispatch({ type: "CLEAR_SELECTION" });
     const lat = Number(args.lat);
     const lon = Number(args.lon);
@@ -876,7 +919,9 @@ export class HometownHubMap extends HTMLElement {
     if (first === "filter_to_paralympic") return "Filtering Hot Spots";
     if (first === "select_state") return "Opening state";
     if (first === "focus_hometown") return "Opening hometown";
+    if (first === "highlight_hubs") return "Highlighting hubs";
     if (first === "explain_map") return "Explaining map";
+    if (first === "explain_engine") return "Explaining engine";
     if (first === "reset_view") return "Resetting map";
     return "Checking rankings";
   }
@@ -1628,8 +1673,12 @@ export class HometownHubMap extends HTMLElement {
       getPosition: (h: Hub) => [h.centroid_longitude, h.centroid_latitude],
       getRadius: (h: Hub) => {
         const base = Math.sqrt(h.total_athletes) * 8000;
+        const isHighlighted = this.highlightedHubIds.has(h.hub_id);
         if (h.hub_id === state.selectedHubId) {
           return base * (h.is_paralympic_hot_spot ? 1.5 : 1.3);
+        }
+        if (isHighlighted) {
+          return base * (h.is_paralympic_hot_spot ? 1.45 : 1.28);
         }
         if (h.hub_id === this.hoveredHubId) {
           return base * (h.is_paralympic_hot_spot ? 1.5 : 1.25);
@@ -1647,15 +1696,18 @@ export class HometownHubMap extends HTMLElement {
       },
       getLineColor: (h: Hub) => {
         const paraFilter = state.filters?.paralympic_focus === true;
+        const isHighlighted = this.highlightedHubIds.has(h.hub_id);
         if (h.hub_id === state.selectedHubId) {
           // Gold ring for selected distinct from hub fill colors
           return [255, 200, 50, 255];
         }
+        if (isHighlighted) return [255, 200, 50, 255];
         if (paraFilter && !h.is_paralympic_hot_spot) return [255, 255, 255, 80];
         return [255, 255, 255, 255];
       },
       getLineWidth: (h: Hub) => {
         if (h.hub_id === state.selectedHubId) return 6;
+        if (this.highlightedHubIds.has(h.hub_id)) return 5;
         if (h.hub_id === this.hoveredHubId) return 4;
         return h.is_paralympic_hot_spot ? 3 : 2;
       },
@@ -1680,10 +1732,10 @@ export class HometownHubMap extends HTMLElement {
         if (info.object) this.selectHub(info.object.hub_id);
       },
       updateTriggers: {
-        getRadius: [state.selectedHubId, this.hoveredHubId],
+        getRadius: [state.selectedHubId, this.hoveredHubId, this.highlightedHubIdsKey()],
         getFillColor: [state.selectedHubId, state.filters?.paralympic_focus],
-        getLineColor: [state.selectedHubId, state.filters?.paralympic_focus],
-        getLineWidth: [state.selectedHubId, this.hoveredHubId],
+        getLineColor: [state.selectedHubId, state.filters?.paralympic_focus, this.highlightedHubIdsKey()],
+        getLineWidth: [state.selectedHubId, this.hoveredHubId, this.highlightedHubIdsKey()],
       },
     }));
 

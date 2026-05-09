@@ -20,17 +20,19 @@ def voice_ws_url(base: str, session_id: str) -> str:
 
 async def run_case(base: str) -> bool:
     cases = [
-        ("Show Paralympic Hot Spots", "filter_to_paralympic"),
-        ("Tell me about Vail", "select_hub"),
-        ("what about its climate?", None),
+        ("Show the top Paralympic Hot Spot", ["select_hub"]),
+        ("What is the national baseline?", ["explain_engine"]),
+        ("Tell me about LA", ["select_hub"]),
+        ("Which hubs are strongest for winter sports?", ["query_data"]),
+        ("Reset the map and then show Arizona", ["reset_view", "select_state"]),
     ]
     case_results: list[bool] = []
     session_id = f"voice-smoke-{uuid.uuid4().hex}"
 
-    for turn_id, (prompt, expected_tool) in enumerate(cases, start=1):
+    for turn_id, (prompt, expected_tools) in enumerate(cases, start=1):
         saw_ready = False
         saw_error = False
-        saw_tool = expected_tool is None
+        saw_tool = not expected_tools
         saw_transcript = False
         saw_completion = False
         output_text: list[str] = []
@@ -73,7 +75,16 @@ async def run_case(base: str) -> bool:
 
                 if msg.get("type") == "tool_calls":
                     tool_calls.extend(msg.get("tool_calls") or [])
-                    saw_tool = expected_tool is None or any(call.get("name") == expected_tool for call in tool_calls)
+                    seen_tools = [call.get("name") for call in tool_calls]
+                    cursor = 0
+                    saw_tool = True
+                    for expected_tool in expected_tools:
+                        while cursor < len(seen_tools) and seen_tools[cursor] != expected_tool:
+                            cursor += 1
+                        if cursor >= len(seen_tools):
+                            saw_tool = False
+                            break
+                        cursor += 1
 
                 if msg.get("type") == "output_transcript" and msg.get("text"):
                     saw_transcript = True
@@ -97,7 +108,7 @@ async def run_case(base: str) -> bool:
                     break
 
             text = " ".join(output_text)
-            case_ok = (expected_tool is None or saw_tool) and not saw_error and (saw_transcript or saw_completion)
+            case_ok = (not expected_tools or saw_tool) and not saw_error and (saw_transcript or saw_completion)
             case_results.append(case_ok)
             print(f"Voice WS turn {turn_id}: {'OK' if case_ok else 'FAIL'}")
             print(f"  prompt: {prompt}")

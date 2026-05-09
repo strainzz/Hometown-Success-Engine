@@ -9,6 +9,41 @@ DEFAULT_BASE = "http://127.0.0.1:8080"
 
 CASES = [
     {
+        "prompt": "Why does this matter for Team USA?",
+        "tool": "explain_engine",
+        "contains": ["Team USA", "hometown geography", "without implying"],
+    },
+    {
+        "prompt": "How did you build the hubs?",
+        "tool": "explain_engine",
+        "contains": ["HDBSCAN", "40", "conditional"],
+    },
+    {
+        "prompt": "What data sources are used?",
+        "tool": "explain_engine",
+        "contains": ["public Team USA", "aggregate counts", "athlete names"],
+    },
+    {
+        "prompt": "What changed with 2026 data?",
+        "tool": "explain_engine",
+        "contains": ["Tokyo 2020", "Milan-Cortina 2026", "Salt Lake City"],
+    },
+    {
+        "prompt": "Is geography producing athletes?",
+        "tool": "explain_engine",
+        "contains": ["avoids saying", "guarantees", "conditional"],
+    },
+    {
+        "prompt": "What is the national baseline?",
+        "tool": "explain_engine",
+        "contains": ["4.7%", "national Paralympic baseline"],
+    },
+    {
+        "prompt": "What is the Hot Spot threshold?",
+        "tool": "explain_engine",
+        "contains": ["7.5%", "Hot Spot"],
+    },
+    {
         "prompt": "What do the dots mean?",
         "tool": "explain_map",
         "contains": ["Small constellation dots", "Large circles", "Alaska", "Puerto Rico"],
@@ -73,6 +108,17 @@ CASES = [
         "tool_args": {"state_code": "ND"},
     },
     {
+        "prompt": "Which hub has the fewest athletes?",
+        "tool": "select_hub",
+        "contains": ["Rochester Region, NY", "26 athletes total"],
+    },
+    {
+        "prompt": "What state has the highest amount of Paralympian share?",
+        "tool": "select_state",
+        "contains": ["Arizona", "12.2%", "Paralympic share"],
+        "tool_args": {"state_code": "AZ"},
+    },
+    {
         "prompt": "Tell me about Northern Mariana Islands",
         "tool": None,
         "contains": ["outside this demo's public map scope", "Puerto Rico"],
@@ -81,6 +127,22 @@ CASES = [
         "prompt": "Show Puerto Rico hubs",
         "tool": "query_data",
         "contains": ["San Juan Region, PR", "Puerto Rico"],
+    },
+    {
+        "prompt": "Rank California by Paralympic share",
+        "tool": "select_state",
+        "contains": ["California", "Paralympic share"],
+        "tool_args": {"state_code": "CA"},
+    },
+    {
+        "prompt": "Show Mountain West Hot Spots",
+        "tool": "filter_to_paralympic",
+        "contains": ["Mountain West", "no hubs there meet", "10 national Hot Spots"],
+    },
+    {
+        "prompt": "Show places above the national baseline",
+        "tool": "highlight_hubs",
+        "contains": ["above the 4.7% national Paralympic baseline", "highlighting"],
     },
     {
         "prompt": "Compare California and Colorado",
@@ -93,9 +155,37 @@ CASES = [
         "contains": ["ski", "Salt Lake City", "Vail"],
     },
     {
+        "prompt": "Which hubs are strongest for winter sports?",
+        "tool": "query_data",
+        "contains": ["winter sports", "Salt Lake City", "Vail"],
+    },
+    {
+        "prompt": "Which states are strongest for skiing?",
+        "tool": "query_data",
+        "contains": ["skiing", "Colorado", "Utah"],
+    },
+    {
         "prompt": "Show Mountain West hubs",
         "tool": "query_data",
         "contains": ["Mountain West", "Salt Lake City", "Vail"],
+    },
+    {
+        "prompt": "Tell me about LA",
+        "tool": "select_hub",
+        "contains": ["Los Angeles Metro Region"],
+        "tool_args": {"hub_id": "HUB_CA_BELL"},
+    },
+    {
+        "prompt": "Tell me about Louisiana",
+        "tool": "select_state",
+        "contains": ["Louisiana"],
+        "tool_args": {"state_code": "LA"},
+    },
+    {
+        "prompt": "Reset the map and then show Arizona",
+        "tools": ["reset_view", "select_state"],
+        "contains": ["Map reset", "Arizona"],
+        "tool_args": {"state_code": "AZ"},
     },
 ]
 
@@ -119,8 +209,18 @@ def check_case(base: str, case: dict) -> bool:
     tools = [call.get("name") for call in tool_calls]
     ok = True
 
+    expected_tools = case.get("tools")
     expected_tool = case.get("tool")
-    if expected_tool is None:
+    if expected_tools:
+        cursor = 0
+        for expected in expected_tools:
+            while cursor < len(tools) and tools[cursor] != expected:
+                cursor += 1
+            if cursor >= len(tools):
+                ok = False
+                break
+            cursor += 1
+    elif expected_tool is None:
         if tool_calls:
             ok = False
     elif expected_tool not in tools:
