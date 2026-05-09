@@ -1,5 +1,6 @@
 ﻿import asyncio
 import json
+import base64
 import logging
 import os
 import re
@@ -20,7 +21,10 @@ logger = logging.getLogger(__name__)
 # v2 build
 
 VOICE_MODEL_ID = os.getenv("GEMINI_LIVE_MODEL", "gemini-live-2.5-flash-native-audio")
+VOICE_TTS_MODEL_ID = os.getenv("GEMINI_TTS_MODEL", "gemini-2.5-flash-tts")
+VOICE_NAME = os.getenv("GEMINI_VOICE_NAME", "Kore")
 VOICE_LOCATION = os.getenv("GEMINI_LIVE_LOCATION", "us-central1")
+VOICE_TTS_MAX_CHARS = int(os.getenv("GEMINI_VOICE_TTS_MAX_CHARS", "900"))
 
 # Approximate bounding boxes for all 50 US states + DC + territories.
 # Format: (lat_min, lat_max, lon_min, lon_max, state_code)
@@ -1691,6 +1695,113 @@ async def chat(req: ChatRequest) -> ChatResponse:
         )
 
 
+def _voice_speech_text(text: str) -> str:
+    clean = re.sub(r"\s+", " ", text).strip()
+    if clean.startswith("Map zoomed/selected:"):
+        hub_name = clean.split(" (", 1)[0].replace("Map zoomed/selected: ", "").strip()
+        counts_match = re.search(
+            r"(\d[\d,]* athletes total, \d[\d,]* Olympians, \d[\d,]* Paralympians, [\d.]+% Paralympic share\.)",
+            clean,
+        )
+        top_sport_match = re.search(r"Top sport: ([^.]+)\.", clean)
+        climate_match = re.search(r"Climate: avg (.*? elevation)\.", clean)
+        parts = [f"{hub_name} is selected."]
+        if counts_match:
+            parts.append(counts_match.group(1))
+        if top_sport_match:
+            parts.append(f"Top sport: {top_sport_match.group(1)}.")
+        if climate_match:
+            climate_text = (
+                climate_match.group(1)
+                .replace("°F", " degrees Fahrenheit")
+                .replace("in precip/yr", " inches of precipitation per year")
+                .replace("ft elevation", " feet elevation")
+            )
+            parts.append(f"Climate context: {climate_text}.")
+        parts.append("See the chat panel for rankings and full grounded detail.")
+        return " ".join(parts)
+
+    if len(clean) <= VOICE_TTS_MAX_CHARS:
+        return clean
+
+    clipped = clean[:VOICE_TTS_MAX_CHARS].rstrip()
+    sentence_break = clipped.rfind(". ")
+    if sentence_break > 320:
+        clipped = clipped[:sentence_break + 1]
+    return f"{clipped} See the chat panel for the full grounded detail."
+
+
+def _synthesize_gemini_tts(text: str) -> tuple[str, str]:
+    speech_text = _voice_speech_text(text)
+    client = genai.Client(
+        vertexai=True,
+        project="hometown-success-engine",
+        location=VOICE_LOCATION,
+    )
+    response = client.models.generate_content(
+        model=VOICE_TTS_MODEL_ID,
+        contents=(
+            "Read this in a warm, natural analyst voice for a live product demo. "
+            f"Keep the delivery clear and confident: {speech_text}"
+        ),
+        config=genai_types.GenerateContentConfig(
+            response_modalities=[genai_types.Modality.AUDIO],
+            speech_config=genai_types.SpeechConfig(
+                voice_config=genai_types.VoiceConfig(
+                    prebuilt_voice_config=genai_types.PrebuiltVoiceConfig(
+                        voice_name=VOICE_NAME
+                    )
+                )
+            ),
+        ),
+    )
+
+    if not response.candidates or not response.candidates[0].content:
+        raise RuntimeError("Gemini TTS returned no audio candidate")
+    for part in response.candidates[0].content.parts or []:
+        if part.inline_data and part.inline_data.data:
+            data = part.inline_data.data
+            if isinstance(data, str):
+                encoded = data
+            else:
+                encoded = base64.b64encode(data).decode("ascii")
+            return encoded, part.inline_data.mime_type or "audio/L16;codec=pcm;rate=24000"
+    raise RuntimeError("Gemini TTS returned no inline audio")
+
+
+async def _send_voice_audio(
+    websocket: WebSocket,
+    audio_data: str,
+    mime_type: str,
+    source: str,
+) -> None:
+    max_chunk_chars = 700_000
+    if len(audio_data) <= max_chunk_chars:
+        await websocket.send_json({
+            "type": "audio",
+            "data": audio_data,
+            "mime_type": mime_type,
+            "source": source,
+        })
+        return
+
+    audio_id = f"{source}-{abs(hash(audio_data))}"
+    chunks = [
+        audio_data[i:i + max_chunk_chars]
+        for i in range(0, len(audio_data), max_chunk_chars)
+    ]
+    for index, chunk in enumerate(chunks):
+        await websocket.send_json({
+            "type": "audio_chunk",
+            "id": audio_id,
+            "index": index,
+            "total": len(chunks),
+            "data": chunk,
+            "mime_type": mime_type,
+            "source": source,
+        })
+
+
 @app.websocket("/voice/ws")
 async def voice_websocket(websocket: WebSocket) -> None:
     await websocket.accept()
@@ -1722,7 +1833,6 @@ async def voice_websocket(websocket: WebSocket) -> None:
                         if part.inline_data and part.inline_data.data:
                             data = part.inline_data.data
                             if isinstance(data, bytes):
-                                import base64
                                 data = base64.b64encode(data).decode("ascii")
                             await websocket.send_json({
                                 "type": "audio",
@@ -1752,10 +1862,29 @@ async def voice_websocket(websocket: WebSocket) -> None:
                     "tool_calls": frontend_calls,
                 })
                 if tool_result_texts:
+                    tool_result_text = " ".join(tool_result_texts)
                     await websocket.send_json({
                         "type": "tool_result_text",
-                        "text": " ".join(tool_result_texts),
+                        "text": tool_result_text,
+                        "speak_fallback": False,
                     })
+                    try:
+                        audio_data, mime_type = await asyncio.to_thread(
+                            _synthesize_gemini_tts,
+                            tool_result_text,
+                        )
+                        await _send_voice_audio(
+                            websocket,
+                            audio_data,
+                            mime_type,
+                            "gemini_tts",
+                        )
+                    except Exception as tts_error:
+                        logger.warning(f"Gemini TTS fallback failed: {tts_error}")
+                        await websocket.send_json({
+                            "type": "speech_fallback",
+                            "text": _voice_speech_text(tool_result_text),
+                        })
                 if function_responses:
                     await session.send_tool_response(function_responses=function_responses)
 
@@ -1767,6 +1896,13 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 system_instruction=_build_chatbot_system_prompt(),
                 tools=[_build_chatbot_tools()],
                 temperature=0.4,
+                speech_config=genai_types.SpeechConfig(
+                    voice_config=genai_types.VoiceConfig(
+                        prebuilt_voice_config=genai_types.PrebuiltVoiceConfig(
+                            voice_name=VOICE_NAME
+                        )
+                    )
+                ),
                 output_audio_transcription=genai_types.AudioTranscriptionConfig(),
                 input_audio_transcription=genai_types.AudioTranscriptionConfig(),
             ),

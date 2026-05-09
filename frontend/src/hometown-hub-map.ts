@@ -134,6 +134,7 @@ export class HometownHubMap extends HTMLElement {
   private recognition: any = null;
   private audioContext: AudioContext | null = null;
   private audioPlayTime: number = 0;
+  private audioChunkBuffers: Map<string, { mimeType: string; total: number; chunks: string[] }> = new Map();
   private hoveredHubId: string | null = null;
   private selectedStateCode: string | null = null;
   private selectedStateName: string | null = null;
@@ -464,12 +465,34 @@ export class HometownHubMap extends HTMLElement {
     }
     if (message.type === "tool_result_text" && message.text) {
       this.appendVoiceModelText(message.text);
+      if (message.speak_fallback) this.speakText(message.text);
+      this.setVoiceStatus("Gemini answered.");
+      return;
+    }
+    if (message.type === "speech_fallback" && message.text) {
       this.speakText(message.text);
       this.setVoiceStatus("Gemini answered.");
       return;
     }
     if (message.type === "audio" && message.data) {
       void this.playPcmAudio(message.data, message.mime_type || "audio/pcm;rate=24000");
+      return;
+    }
+    if (message.type === "audio_chunk" && message.data) {
+      const id = String(message.id || "voice-audio");
+      const total = Number(message.total || 1);
+      const index = Number(message.index || 0);
+      const buffer = this.audioChunkBuffers.get(id) || {
+        mimeType: message.mime_type || "audio/L16;codec=pcm;rate=24000",
+        total,
+        chunks: new Array(total).fill(""),
+      };
+      buffer.chunks[index] = message.data;
+      this.audioChunkBuffers.set(id, buffer);
+      if (buffer.chunks.every(Boolean)) {
+        this.audioChunkBuffers.delete(id);
+        void this.playPcmAudio(buffer.chunks.join(""), buffer.mimeType);
+      }
       return;
     }
     if (message.type === "tool_calls" && Array.isArray(message.tool_calls)) {
