@@ -1,6 +1,6 @@
 # Hometown Success Engine
 
-> An interactive map of America's hometown athletic hubs, built for the Google and Team USA Vibe Code for Gold Challenge 2.
+> An interactive map of Team USA hometown hubs, built for the Google and Team USA Vibe Code for Gold Challenge 2.
 
 **Live:** [hometown-success-engine-11a06.web.app](https://hometown-success-engine-11a06.web.app/)
 
@@ -10,9 +10,9 @@
 
 ## What It Is
 
-The Hometown Success Engine maps **5,119 Olympians and Paralympians** from Tokyo 2020 through Milan-Cortina 2026 across **40 hometown hubs** in the United States and territories. The project focuses on where Team USA athletes come from, using hometown-region counts rather than medal counts so the experience is inclusive of all mapped athletes.
+The Hometown Success Engine maps **5,119 Olympians and Paralympians** from Tokyo 2020 through Milan-Cortina 2026 across **40 Team USA hometown hubs** in the United States and territories. The project focuses on where mapped athletes are from, using hometown hub counts rather than medal counts so the experience is inclusive of all mapped athletes.
 
-Four hubs are flagged as **Paralympic Hot Spots**, meaning their Paralympic share runs more than 2x the current **4.7% national baseline**:
+Ten hubs are flagged as **Paralympic Hot Spots**, meaning their Paralympic share is **7.5% or higher**. The current national Paralympic baseline is **4.7%**:
 
 | Hub | Paralympic Share | Athletes |
 |---|---:|---:|
@@ -20,8 +20,14 @@ Four hubs are flagged as **Paralympic Hot Spots**, meaning their Paralympic shar
 | Phoenix Region, AZ | 11.7% | 60 |
 | Tampa Region, FL | 11.4% | 35 |
 | Lincoln Region, NE | 10.4% | 77 |
+| Stillwater Region, OK | 9.2% | 87 |
+| Merced Region, CA | 8.9% | 45 |
+| Cleveland Region, OH | 8.1% | 62 |
+| Charlotte Region, NC | 7.9% | 101 |
+| Portland Region, OR | 7.7% | 65 |
+| Allegan Region, MI | 7.7% | 39 |
 
-The map is interactive: users can click a hub, inspect regional narratives, view climate and geographic context, filter Paralympic Hot Spots, explore state summaries, and ask Gemini to drive the map directly.
+The map is interactive: users can select a hub, inspect hub profiles, view climate and geographic context, filter Paralympic Hot Spots, explore state summaries, and ask Gemini to drive the map directly.
 
 ## How It Works
 
@@ -29,7 +35,7 @@ The map is interactive: users can click a hub, inspect regional narratives, view
 Vite + TypeScript Web Component
   Google Maps vector map
   deck.gl state, hub, and athlete layers
-  Ask Gemini chat panel
+  Ask Gemini map and data panel
         |
         v
 FastAPI on Cloud Run
@@ -44,19 +50,19 @@ Vertex AI Gemini 2.5 Flash
   grounded tool-result narration
 ```
 
-**Data pipeline:** Ingest public roster facts, normalize hometown data, geocode places, group hometowns with HDBSCAN, compute hub composition, flag Paralympic Hot Spots, fetch climate context, and generate hub narratives.
+**Data pipeline:** Ingest public roster facts, normalize hometown data, geocode places, group hometowns into hubs, compute hub composition, flag Paralympic Hot Spots, fetch climate context, and generate hub profiles.
 
-**Backend:** Serves hub data, narratives, athlete geo points, state aggregates, and the Gemini interaction layer from FastAPI on Cloud Run.
+**Backend:** Serves hub data, profiles, athlete geo points, state aggregates, and the Gemini interaction layer from FastAPI on Cloud Run.
 
 **Frontend:** A vanilla TypeScript Web Component renders the Google Maps + deck.gl experience and dispatches Gemini tool calls into map actions.
 
 ## Gemini Interaction Layer
 
-The chat panel is not a chatbot bolted onto a map. It is an analyst and navigation layer that uses Gemini Function Calling to connect plain-language questions to the live data model.
+The chat panel is not a chatbot bolted onto a map. It is a data and navigation layer that uses Gemini Function Calling to connect plain-language questions to the live map model.
 
 Gemini receives:
 
-1. A system instruction with the current 5,119-athlete, 40-hub, 4-Hot-Spot dataset summary.
+1. A system instruction with the current 5,119-athlete, 40-hub, 10-Hot-Spot dataset summary.
 2. The current hub lookup table, Hot Spot list, state codes, ranking rules, and allowed tools.
 3. The conversation history and latest user message.
 
@@ -64,7 +70,7 @@ Gemini can call these tools:
 
 | Tool | Purpose |
 |---|---|
-| `select_hub(hub_id)` | Select a hub and open its narrative card |
+| `select_hub(hub_id)` | Select a hub and open its profile |
 | `zoom_to_hub(hub_id)` | Move the map camera to a hub |
 | `filter_to_paralympic(macro_region?)` | Highlight Paralympic Hot Spots |
 | `select_state(state_code)` | Open the state summary panel |
@@ -81,7 +87,7 @@ The data tool supports:
 - Sport questions: "Which hubs are strongest for skiing?"
 - Regional questions: "Show Mountain West hubs."
 
-Tool results are generated from runtime data before Gemini narrates them, so answers include grounded counts, ranks, percentages, top sports, hot spot status, climate, and geographic context. The system avoids individual athlete names and avoids any claim that geography guarantees outcomes, using conditional phrasing such as "could help find," "may foster," and "is associated with."
+Tool results are generated from runtime data before Gemini explains them, so answers include grounded counts, ranks, percentages, top sports, Hot Spot status, climate, and geographic context. The system avoids individual athlete names and avoids any claim that geography guarantees outcomes, using conditional phrasing such as "could help find," "may foster," and "is associated with."
 
 ## Tech Stack
 
@@ -105,7 +111,7 @@ Tool results are generated from runtime data before Gemini narrates them, so ans
 - Python 3.12
 - FastAPI and Pydantic
 - google-genai SDK
-- HDBSCAN-based hometown grouping
+- HDBSCAN-based hometown hub grouping
 - Open-Meteo climate normals
 
 ## Run Locally
@@ -140,8 +146,8 @@ npm run build
 Expected public values:
 
 - 5,119 mapped Olympians and Paralympians
-- 40 hometown hubs
-- 4 Paralympic Hot Spots
+- 40 Team USA hometown hubs
+- 10 Paralympic Hot Spots
 - 4.7% national Paralympic share
 
 ## Deploy
@@ -164,7 +170,7 @@ firebase deploy --only hosting
 ## Compliance
 
 - No athlete names, images, or likenesses appear in the public UI.
-- Public responses use aggregate hometown-region data.
+- Public responses use aggregate hometown hub data.
 - Olympic and Paralympic athletes are both represented throughout the product.
 - Geography is framed conditionally. The tool identifies places that could help find or may foster Team USA talent; it does not claim that geography produces athletes.
 - Raw athlete-level data is excluded from git for NIL safety.

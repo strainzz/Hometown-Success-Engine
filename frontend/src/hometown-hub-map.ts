@@ -777,7 +777,7 @@ export class HometownHubMap extends HTMLElement {
         ${suggestionPills}
         <div style="padding: 16px; color: #484645;">
           <div style="font-size: 13px; line-height: 1.55;">
-            Hi! I'm <strong>Gemini</strong>, your guide through the Hometown Success Engine. Ask me about a region, a hub, or America's Paralympians, and I'll filter and zoom the map for you.
+            Hi! I'm <strong>Gemini</strong>, your guide to the Hometown Success Engine. Ask about a hub, state, sport, ranking, or Paralympic Hot Spot, and I can answer with grounded data or move the map for you.
           </div>
         </div>
       `;
@@ -1305,12 +1305,12 @@ export class HometownHubMap extends HTMLElement {
     </div>
             <div class="hsm-header-tag" style="font-size: 13px; color: #b9bfd2;
                   text-transform: uppercase; letter-spacing: 1px;">
-              Team USA Athletic Hub Map
+              Team USA Hometown Hub Map
             </div>
           </div>
           <div class="hsm-header-sub" style="font-size: 14px; color: #b9bfd2;
                 margin-top: 6px; font-weight: 400; letter-spacing: 0.3px;">
-            Mapping 5,119 Olympians and Paralympians across 40 hometown regions, now including Milan-Cortina 2026 athletes.
+            Mapping 5,119 Olympians and Paralympians across 40 Team USA hometown hubs from Tokyo 2020 through Milan-Cortina 2026.
           </div>
         </header>
 
@@ -1466,7 +1466,7 @@ export class HometownHubMap extends HTMLElement {
                 </div>
                 <div style="font-size: 11px; color: #b9bfd2;
                       margin-top: 1px;">
-                  AI guide to the map
+                  Data guide for the map
                 </div>
               </div>
               <button id="hubmap-chat-close"
@@ -1497,7 +1497,7 @@ export class HometownHubMap extends HTMLElement {
                      border-top: 1px solid #b9bfd2; background: #ffffff;">
               <input id="hubmap-chat-input"
                      type="text"
-                     placeholder="Ask Gemini about a region or hub..."
+                     placeholder="Ask about hubs, states, rankings, or sports..."
                      autocomplete="off"
                      style="flex: 1; padding: 8px 12px;
                         border: 1px solid #b9bfd2; border-radius: 16px;
@@ -1581,7 +1581,7 @@ export class HometownHubMap extends HTMLElement {
           <div style="font-size: 11px; color: #484645;
                 text-transform: uppercase; letter-spacing: 1.5px;
                 font-weight: 600; margin-bottom: 14px;">
-            Roster intelligence
+            Hometown hub intelligence
           </div>
           <div class="hsm-stats-grid"></div>
         </section>
@@ -1593,7 +1593,7 @@ export class HometownHubMap extends HTMLElement {
                  border-top: 1px solid #b9bfd2;">
           <div style="color: #b9bfd2; font-size: 14px;
                 font-style: italic;">
-            Click a hub on the map to see its narrative.
+            Select a hub on the map to see its profile.
           </div>
         </section>
 
@@ -1631,10 +1631,10 @@ export class HometownHubMap extends HTMLElement {
     `;
 
     grid.innerHTML = `
-      ${card("Paralympic Hot Spots", hotSpots, "regions w/ Paralympic share &gt;2x national rate", true)}
-      ${card("Athletes Mapped", fmtNumber(totalAthletes), "Olympians and Paralympians, Tokyo 2020 through Milan-Cortina 2026")}
-      ${card("Hometown Hubs", hubsDiscovered, "regions discovered via HDBSCAN clustering, including new winter hubs for 2026")}
-      ${card("Paralympic Share", overallParaPct.toFixed(1) + "%", "of mapped athletes are Paralympians")}
+      ${card("Paralympic Hot Spots", hotSpots, "hubs with 7.5%+ Paralympic share", true)}
+      ${card("Athletes Mapped", fmtNumber(totalAthletes), "mapped Olympians and Paralympians, Tokyo 2020 through Milan-Cortina 2026")}
+      ${card("Hometown Hubs", hubsDiscovered, "Team USA hometown hubs grouped from public roster geography")}
+      ${card("Paralympic Share", overallParaPct.toFixed(1) + "%", "of mapped athletes")}
     `;
   }
 
@@ -1646,7 +1646,7 @@ export class HometownHubMap extends HTMLElement {
       card.innerHTML = `
         <div style="color: #b9bfd2; font-size: 14px;
               font-style: italic;">
-          Click a hub on the map to see its narrative.
+          Select a hub on the map to see its profile.
         </div>
        `;
       return;
@@ -1680,7 +1680,7 @@ export class HometownHubMap extends HTMLElement {
       </p>`
       : `<p style="margin: 12px 0 0 0; color: #b9bfd2;
              font-size: 13px; font-style: italic;">
-       Loading narrative...
+       Loading hub profile...
       </p>`;
 
     const headline = narrative
@@ -1773,7 +1773,7 @@ export class HometownHubMap extends HTMLElement {
     return `
       <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #b9bfd2;">
         <div style="font-size: 11px; color: #484645; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 12px;">
-          Why this region
+          Why this hub
         </div>
         ${climateRow}
         ${contextBlock}

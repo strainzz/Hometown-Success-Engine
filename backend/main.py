@@ -312,7 +312,7 @@ def _build_chatbot_tools() -> genai_types.Tool:
         function_declarations=[
             genai_types.FunctionDeclaration(
                 name="select_hub",
-                description="Select a specific hometown hub and open its narrative card. Use when the user names a hub, city, or region and wants to inspect it on the map.",
+                description="Select a specific hometown hub and open its profile. Use when the user names a hub, city, or regional label and wants to inspect it on the map.",
                 parameters=genai_types.Schema(
                     type="OBJECT",
                     properties={
@@ -440,27 +440,28 @@ def _build_chatbot_tools() -> genai_types.Tool:
     )
 
 
-CHATBOT_SYSTEM_PROMPT_TEMPLATE = """You are Gemini, the AI guide for the Hometown Success Engine, an interactive map of where America's elite athletes come from. The current map shows {athlete_count:,} mapped Olympians and Paralympians grouped into {hub_count} hometown hubs from Tokyo 2020 through Milan-Cortina 2026.
+CHATBOT_SYSTEM_PROMPT_TEMPLATE = """You are Gemini, the data guide for the Hometown Success Engine, an interactive map of where Team USA athletes are from. The current map shows {athlete_count:,} mapped Olympians and Paralympians across {hub_count} hometown hubs from Tokyo 2020 through Milan-Cortina 2026.
 
 Current national Paralympic baseline: {baseline_pct:.1f}%.
+Paralympic Hot Spot threshold: {hot_spot_threshold_pct:.1f}% Paralympic share or higher.
 Current Paralympic Hot Spots: {hot_spot_count}.
 
 # YOUR JOB
-Help users explore the map and understand the data. Call tools to drive the map or answer analyst questions, then narrate what happened using specific numbers from the tool result.
+Help users explore the map and understand the data. Call tools to move the map or answer analyst questions, then explain the result with specific numbers from the tool output.
 
 # TOOL RULES
 - If the user asks to show, highlight, filter, or view Paralympic Hot Spots, call filter_to_paralympic.
 - If the user asks to reset, clear, start over, or go back to the national view, call reset_view.
 - If the user names a state and is not asking for rank or comparison, call select_state.
-- If the user names a city, hub, or region and is not asking for rank or comparison, call select_hub or zoom_to_hub.
-- If the user asks for rankings, totals, comparisons, profiles, sports, regions, or aggregate questions, call query_data.
+- If the user names a city, hub, or regional label and is not asking for rank or comparison, call select_hub or zoom_to_hub.
+- If the user asks for rankings, totals, comparisons, profiles, sports, macro regions, or aggregate questions, call query_data.
 - For "what rank is X" questions, call query_data with query_type entity_rank, entity_type hub or state, and the requested metric.
 - For "rank/list/top" questions, call query_data with query_type rank_list, entity_type hub or state, metric, and limit.
 - Always cite exact numbers from the tool result.
-- Keep replies to 2-3 sentences.
+- Keep replies concise: usually 2-3 sentences unless the user asks for a list.
 - Use conditional phrasing such as "could help find", "may foster", "may explain", or "is associated with". Never say a place produces athletes.
 - Do not name individual athletes.
-- Focus on mapped hometown-region athlete counts, not medal counts.
+- Focus on mapped hometown hub athlete counts, not medal counts.
 
 # CURRENT PARALYMPIC HOT SPOTS
 {hot_spot_lines}
@@ -476,6 +477,8 @@ _state: dict[str, Any] = {
     "athletes_geo_points": [],
     "state_aggregates": [],
 }
+
+PARALYMPIC_HOT_SPOT_THRESHOLD_PCT = 7.5
 
 
 def _dataset_stats() -> dict[str, Any]:
@@ -516,6 +519,7 @@ def _build_chatbot_system_prompt() -> str:
         athlete_count=stats["athlete_count"],
         hub_count=stats["hub_count"],
         hot_spot_count=stats["hot_spot_count"],
+        hot_spot_threshold_pct=PARALYMPIC_HOT_SPOT_THRESHOLD_PCT,
         baseline_pct=stats["baseline_pct"],
         hot_spot_lines=hot_spot_lines,
         hub_lookup_lines=hub_lookup_lines,
@@ -591,6 +595,19 @@ def _sport_query(value: str | None) -> str:
         "track and field": "athletics",
     }
     return aliases.get(sport, sport)
+
+
+def _display_sport(value: str | None) -> str:
+    sport = (value or "").strip()
+    labels = {
+        "Winter Sport": "winter sports",
+        "association football": "soccer",
+        "cycle sport": "cycling",
+        "competitive swimming": "swimming",
+        "amateur wrestling": "wrestling",
+        "shooting sports": "shooting",
+    }
+    return labels.get(sport, sport)
 
 
 def _hub_sport_count(hub: Hub, sport: str | None) -> int:
@@ -730,7 +747,7 @@ def _hub_line(hub: Hub, metric: str, rank: int | None = None, sport: str | None 
     para = _hub_para_count(hub)
     hot = " Hot Spot" if hub.is_paralympic_hot_spot else ""
     prefix = f"{rank}. " if rank else ""
-    sport_text = f" for {sport}" if metric == "sport_count" and sport else ""
+    sport_text = f" for {_display_sport(sport)}" if metric == "sport_count" and sport else ""
     return (
         f"{prefix}{hub.display_name}{hot} - {value} {_metric_label(metric)}{sport_text}; "
         f"{hub.total_athletes} total athletes, {para} Paralympians, "
@@ -1095,7 +1112,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Hometown Success Engine API",
-    description="Team USA hometown hubs with regional context and chatbot tools",
+    description="Team USA hometown hub data with regional context and Gemini map tools",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -1180,6 +1197,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
     stats = _dataset_stats()
     baseline = stats["baseline_pct"]
     baseline_text = f"{baseline:.1f}%"
+    hot_spot_threshold_text = f"{PARALYMPIC_HOT_SPOT_THRESHOLD_PCT:.1f}%"
     hot_spot_count = stats["hot_spot_count"]
 
     if tool_name == "filter_to_paralympic":
@@ -1190,7 +1208,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
             if not filtered:
                 return (
                     f"The Paralympic filter was applied for the {macro_region} region, "
-                    f"but no Paralympic Hot Spots are present there. The {hot_spot_count} national Hot Spots "
+                    f"but no hubs there meet the {hot_spot_threshold_text} Hot Spot threshold. The {hot_spot_count} national Hot Spots "
                     f"are in: " + ", ".join(f"{h.display_name}" for h in hot_spots) + "."
                 )
             top = max(filtered, key=lambda h: h.composition.paralympic_share)
@@ -1198,14 +1216,14 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
                 f"Filter applied: highlighting Paralympic Hot Spots in {macro_region}. "
                 f"Hubs visible: {', '.join(h.display_name for h in filtered)}. "
                 f"Leading: {top.display_name} at {top.composition.paralympic_share*100:.1f}% Paralympic, "
-                f"{top.total_athletes} athletes total. National Paralympic baseline: {baseline_text}."
+                f"{top.total_athletes} athletes total. Hot Spot threshold: {hot_spot_threshold_text}; national Paralympic baseline: {baseline_text}."
             )
         else:
             sorted_hot = sorted(hot_spots, key=lambda h: -h.composition.paralympic_share)
             top = sorted_hot[0]
             return (
-                f"Filter applied: highlighting all {len(sorted_hot)} Paralympic Hot Spots, regions where "
-                f"Paralympic athletes are more than 2x the {baseline_text} national baseline. "
+                f"Filter applied: highlighting all {len(sorted_hot)} Paralympic Hot Spots, hubs where "
+                f"Paralympic share is at or above the {hot_spot_threshold_text} Hot Spot threshold. "
                 f"Top spot: {top.display_name} at {top.composition.paralympic_share*100:.1f}% Paralympic "
                 f"({top.total_athletes} athletes). All {len(sorted_hot)}: " +
                 ", ".join(
@@ -1221,8 +1239,8 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
             return f"Action {tool_name} attempted but hub {hub_id} not found."
         narrative = _state["narratives"].get(hub_id)
         para_pct = hub.composition.paralympic_share * 100
-        top_sport = hub.top_sports[0].sport if hub.top_sports else "various sports"
-        top_sports = ", ".join(f"{sp.sport} ({sp.count})" for sp in hub.top_sports[:3]) or "various sports"
+        top_sport = _display_sport(hub.top_sports[0].sport) if hub.top_sports else "various sports"
+        top_sports = ", ".join(f"{_display_sport(sp.sport)} ({sp.count})" for sp in hub.top_sports[:3]) or "various sports"
         result = (
             f"Map zoomed/selected: {hub.display_name} ({hub.region_name}, {hub.macro_region}). "
             f"{hub.total_athletes} athletes total, {hub.composition.olympic_count} Olympians, "
@@ -1344,7 +1362,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
                 return " ".join(lines)
 
             ranked_hubs = _ranked_hubs(metric, sport, min_athletes)[:limit]
-            sport_text = f" for {sport}" if metric == "sport_count" and sport else ""
+            sport_text = f" for {_display_sport(sport)}" if metric == "sport_count" and sport else ""
             lines = [f"Top {len(ranked_hubs)} hubs by {_metric_label(metric)}{sport_text}:"]
             for i, hub in enumerate(ranked_hubs, 1):
                 lines.append(_hub_line(hub, metric, i, sport))
@@ -1435,7 +1453,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
                     parts.append(_hub_line(hub, "total_athletes"))
                     parts.append(_hub_rank_bundle(hub))
                     if hub.top_sports:
-                        parts.append("Top sports: " + ", ".join(f"{sp.sport} ({sp.count})" for sp in hub.top_sports[:3]) + ".")
+                        parts.append("Top sports: " + ", ".join(f"{_display_sport(sp.sport)} ({sp.count})" for sp in hub.top_sports[:3]) + ".")
             return " ".join(parts)
 
         if query_type == "top_states_by_total":
@@ -1484,9 +1502,9 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
 
         if query_type == "all_hot_spots":
             hot_spots = sorted([h for h in hubs if h.is_paralympic_hot_spot], key=lambda h: -h.composition.paralympic_share)
-            lines = [f"All {len(hot_spots)} Paralympic Hot Spots (regions where Paralympic share runs 2x+ the {baseline_text} national baseline):"]
+            lines = [f"All {len(hot_spots)} Paralympic Hot Spots (hubs at or above the {hot_spot_threshold_text} Paralympic-share threshold; national baseline {baseline_text}):"]
             for i, h in enumerate(hot_spots, 1):
-                top_sport = h.top_sports[0].sport if h.top_sports else "various sports"
+                top_sport = _display_sport(h.top_sports[0].sport) if h.top_sports else "various sports"
                 lines.append(f"{i}. {h.display_name} - {h.composition.paralympic_share*100:.1f}% Paralympic, {h.total_athletes} athletes, top sport: {top_sport}")
             return " ".join(lines)
 
@@ -1505,7 +1523,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
                 return f"No hubs found with '{sport}' as a top sport across our {len(hubs)} hubs."
             lines = [f"Top {len(matches)} hubs where '{sport}' appears among top sports:"]
             for i, (h, sp) in enumerate(matches, 1):
-                lines.append(f"{i}. {h.display_name} - {sp.count} {sp.sport} athletes ({sp.paralympic_count} Paralympic), hub total {h.total_athletes}")
+                lines.append(f"{i}. {h.display_name} - {sp.count} {_display_sport(sp.sport)} athletes ({sp.paralympic_count} Paralympic), hub total {h.total_athletes}")
             return " ".join(lines)
 
         if query_type == "hubs_by_macro_region":
@@ -1532,7 +1550,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
             return (
                 f"Dataset summary: {total_athletes:,} Olympians and Paralympians from the 2020 to 2026 cycle, "
                 f"mapped across {len(hubs)} hometown hubs and {states_count} US states and territories. "
-                f"{hot_spots} regions qualify as Paralympic Hot Spots (Paralympic share 2x+ above the {baseline_text} national baseline). "
+                f"{hot_spots} hubs qualify as Paralympic Hot Spots at or above the {hot_spot_threshold_text} Paralympic-share threshold. "
                 f"Overall Paralympic share across the dataset: {overall_para_pct:.1f}%."
             )
 
