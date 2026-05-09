@@ -122,6 +122,9 @@ STATE_CODE_TO_NAME = {
     "AS": "American Samoa", "GU": "Guam",
     "MP": "Northern Mariana Islands", "VI": "U.S. Virgin Islands",
 }
+PUBLIC_STATE_CODES = set(STATE_CODE_TO_NAME) - {"AS", "GU", "MP", "VI"}
+OUT_OF_SCOPE_STATE_CODES = set(STATE_CODE_TO_NAME) - PUBLIC_STATE_CODES
+PUBLIC_STATE_SCOPE_LABEL = "the continental U.S., Alaska, Hawaii, Washington, D.C., and Puerto Rico"
 STATE_NAME_TO_CODE = {
     _name.lower(): _code for _code, _name in STATE_CODE_TO_NAME.items()
 }
@@ -344,7 +347,7 @@ class FilterMapRequest(BaseModel):
     macro_region: Optional[Literal[
         "Northeast", "Mid-Atlantic", "South", "Midwest",
         "Southwest", "Mountain West", "Pacific", "Alaska",
-        "Hawaii", "Territories"
+        "Hawaii", "Puerto Rico"
     ]] = None
     region_name: Optional[str] = None
     paralympic_focus: Optional[bool] = None
@@ -408,7 +411,7 @@ ENTITY_TYPES = ["hub", "state"]
 MACRO_REGIONS = [
     "Northeast", "Mid-Atlantic", "South", "Midwest",
     "Southwest", "Mountain West", "Pacific", "Alaska",
-    "Hawaii", "Territories",
+    "Hawaii", "Puerto Rico",
 ]
 
 
@@ -464,14 +467,14 @@ def _build_chatbot_tools() -> genai_types.Tool:
             ),
             genai_types.FunctionDeclaration(
                 name="select_state",
-                description="Open the state info panel for a US state, territory, or DC. Use when the user asks about a specific state and is not asking for a ranking or comparison.",
+                description="Open the state info panel for one of the in-scope map regions: a US state, DC, or Puerto Rico. Use when the user asks about a specific in-scope state/region and is not asking for a comparison.",
                 parameters=genai_types.Schema(
                     type="OBJECT",
                     properties={
                         "state_code": genai_types.Schema(
                             type="STRING",
                             enum=state_codes,
-                            description="2-letter US state or territory code from the current dataset.",
+                            description="2-letter code from the current public map scope: 50 states, DC, or Puerto Rico.",
                         ),
                     },
                     required=["state_code"],
@@ -490,7 +493,7 @@ def _build_chatbot_tools() -> genai_types.Tool:
                     properties={
                         "topic": genai_types.Schema(
                             type="STRING",
-                            description="Optional focus such as dots, circles, colors, red, blue, territories, Hot Spots, or legend.",
+                            description="Optional focus such as dots, circles, colors, red, blue, Alaska/Hawaii/Puerto Rico insets, Hot Spots, or legend.",
                         ),
                     },
                 ),
@@ -508,7 +511,7 @@ def _build_chatbot_tools() -> genai_types.Tool:
                         "state_code": genai_types.Schema(
                             type="STRING",
                             enum=state_codes,
-                            description="Optional state or territory code when the user provides one.",
+                            description="Optional state/DC/Puerto Rico code when the user provides one.",
                         ),
                     },
                     required=["hometown"],
@@ -538,12 +541,12 @@ def _build_chatbot_tools() -> genai_types.Tool:
                         "state_code": genai_types.Schema(
                             type="STRING",
                             enum=state_codes,
-                            description="Single state or territory code for state_profile or entity_rank.",
+                            description="Single in-scope state/DC/Puerto Rico code for state_profile or entity_rank.",
                         ),
                         "state_codes": genai_types.Schema(
                             type="ARRAY",
                             items=genai_types.Schema(type="STRING", enum=state_codes),
-                            description="State or territory codes for compare_states.",
+                            description="In-scope state/DC/Puerto Rico codes for compare_states.",
                         ),
                         "hub_id": genai_types.Schema(
                             type="STRING",
@@ -599,7 +602,7 @@ Help users explore the map and understand the data. Call tools to move the map o
 - If the user asks which state leads, has the most, or has the least/fewest/lowest of a metric, select that state so the map moves to it.
 - If the user asks to show, highlight, filter, or view Paralympic Hot Spots, call filter_to_paralympic.
 - If the user asks to reset, clear, start over, or go back to the national view, call reset_view.
-- If the user asks what the dots, circles, colors, legend, state shading, territory insets, Alaska/Hawaii/Puerto Rico insets, or Hot Spots mean, call explain_map.
+- If the user asks what the dots, circles, colors, legend, state shading, Alaska/Hawaii/Puerto Rico insets, or Hot Spots mean, call explain_map.
 - If the user asks how many athletes are from a hometown, asks about "my hometown", or gives a city that is not one of the 40 hub names, call focus_hometown with the city and state code if provided.
 - If the user names a state and is not asking for rank or comparison, call select_state.
 - If the user names a city, hub, or regional label and is not asking for rank or comparison, call select_hub or zoom_to_hub.
@@ -825,6 +828,20 @@ def _state_name(code: str) -> str:
     return STATE_CODE_TO_NAME.get(code, code)
 
 
+def _is_public_state_code(code: str | None) -> bool:
+    return str(code or "").upper() in PUBLIC_STATE_CODES
+
+
+def _state_scope_decline_text(code: str) -> str:
+    normalized = str(code or "").upper()
+    name = _state_name(normalized)
+    return (
+        f"{name} ({normalized}) is outside this demo's public map scope. "
+        f"The Hometown Success Engine currently supports {PUBLIC_STATE_SCOPE_LABEL}. "
+        "I can answer or zoom within that scope, but I won't rank or zoom to out-of-scope territories."
+    )
+
+
 def _ranked_hubs(
     metric: str,
     sport: str | None = None,
@@ -904,7 +921,7 @@ def _state_rank_bundle(state: StateAggregate) -> str:
     share_rank, share_n, _ = _state_rank(state.state, "paralympic_share")
     share_text = f"#{share_rank} of {share_n}" if share_rank else f"not ranked in the {share_n}-state 25+ athlete reliability set"
     return (
-        f"Ranks among states/territories: total athletes #{total_rank} of {total_n}, "
+        f"Ranks among in-scope state regions: total athletes #{total_rank} of {total_n}, "
         f"Paralympic athletes #{para_rank} of {para_n}, "
         f"Paralympic share {share_text}."
     )
@@ -1258,7 +1275,22 @@ def _top_ranked_state_for_query(args: dict[str, Any]) -> StateAggregate | None:
 def _prepare_tool_call_for_frontend(tool_name: str, args: dict[str, Any]) -> ChatToolCall:
     if tool_name == "focus_hometown":
         return ChatToolCall(name="focus_hometown", args=_resolve_focus_hometown_args(args))
+    if tool_name == "select_state":
+        code = str(args.get("state_code") or "").upper()
+        if not _is_public_state_code(code):
+            return ChatToolCall(name="query_data", args={"query_type": "summary"})
+        return ChatToolCall(name="select_state", args={"state_code": code})
     if tool_name == "query_data":
+        query_type = str(args.get("query_type") or "").lower()
+        entity_type = str(args.get("entity_type") or "").lower()
+        state_code = str(args.get("state_code") or "").upper()
+        if (
+            state_code
+            and _is_public_state_code(state_code)
+            and (entity_type == "state" or query_type == "state_profile")
+            and query_type in {"entity_rank", "state_profile"}
+        ):
+            return ChatToolCall(name="select_state", args={"state_code": state_code})
         top_state = _top_ranked_state_for_query(args)
         if top_state:
             return ChatToolCall(name="select_state", args={"state_code": top_state.state})
@@ -1326,15 +1358,15 @@ def _state_line(state: StateAggregate, metric: str, rank: int | None = None) -> 
 
 def _resolve_state_codes_from_text(message: str) -> list[str]:
     normalized = f" {_normal_search_text(message)} "
+    raw_code_tokens = set(re.findall(r"\b[A-Z]{2}\b", message or ""))
     found: list[str] = []
     for name, code in STATE_NAME_TO_CODE.items():
         if f" {_normal_search_text(name)} " in normalized and code not in found:
             found.append(code)
-    words = set(normalized.split())
     for code in STATE_CODE_TO_NAME:
-        if code.lower() in words and code not in found:
+        if code in raw_code_tokens and code not in found:
             found.append(code)
-    return found
+    return [code for code in found if _is_public_state_code(code)]
 
 
 def _extract_limit(message: str, default: int = 5) -> int:
@@ -1388,7 +1420,7 @@ def _is_map_explain_request(message: str) -> bool:
         "red dots", "blue dots", "red circles", "blue circles",
         "what are the dots", "what are the circles", "legend",
         "how do i read", "read the map", "what does red mean",
-        "what does blue mean", "territories", "insets",
+        "what does blue mean", "insets",
         "alaska inset", "hawaii inset", "puerto rico inset",
         "state shading", "colors mean",
         "what are hot spots", "what is a hot spot", "what do hot spots mean",
@@ -1418,7 +1450,7 @@ def _direct_query_tool_call(message: str) -> ChatToolCall | None:
 
     if _is_map_explain_request(message):
         topic = ""
-        for candidate in ["dots", "circles", "red", "blue", "territories", "legend", "hot spots", "state shading"]:
+        for candidate in ["dots", "circles", "red", "blue", "insets", "legend", "hot spots", "state shading"]:
             if candidate.replace(" ", "") in msg.replace(" ", ""):
                 topic = candidate
                 break
@@ -1512,9 +1544,9 @@ def _direct_query_tool_call(message: str) -> ChatToolCall | None:
                 },
             )
         if state_codes:
-            return ChatToolCall(
-                name="query_data",
-                args={
+            return _prepare_tool_call_for_frontend(
+                "query_data",
+                {
                     "query_type": "entity_rank",
                     "entity_type": "state",
                     "state_code": state_codes[0],
@@ -1541,6 +1573,16 @@ def _direct_query_tool_call(message: str) -> ChatToolCall | None:
 
 def _normal_search_text(value: str) -> str:
     return _ascii_search_text(value)
+
+
+def _out_of_scope_state_code_from_text(message: str) -> str | None:
+    normalized = f" {_normal_search_text(message)} "
+    raw_code_tokens = set(re.findall(r"\b[A-Z]{2}\b", message or ""))
+    for code in sorted(OUT_OF_SCOPE_STATE_CODES):
+        name = STATE_CODE_TO_NAME.get(code, code)
+        if f" {_normal_search_text(name)} " in normalized or code in raw_code_tokens:
+            return code
+    return None
 
 
 def _resolve_hub_from_message(message: str) -> Hub | None:
@@ -1572,6 +1614,15 @@ def _resolve_hub_from_message(message: str) -> Hub | None:
 def _direct_chat_response(req: ChatRequest) -> ChatResponse | None:
     msg = req.message.lower()
     tool_call: ChatToolCall | None = None
+    out_of_scope_code = _out_of_scope_state_code_from_text(req.message)
+
+    if out_of_scope_code:
+        reply_text = _state_scope_decline_text(out_of_scope_code)
+        new_history = list(req.history)
+        new_history.append({"role": "user", "text": req.message})
+        new_history.append({"role": "model", "text": reply_text})
+        _remember_session_turn(req.session_id, req.message, reply_text, [])
+        return ChatResponse(text=reply_text, tool_calls=[], history=new_history)
 
     if any(term in msg for term in ["reset", "clear view", "start over", "national view"]):
         tool_call = ChatToolCall(name="reset_view", args={})
@@ -1580,7 +1631,10 @@ def _direct_chat_response(req: ChatRequest) -> ChatResponse | None:
     elif "hot spot" in msg or "hotspot" in msg:
         tool_call = ChatToolCall(name="filter_to_paralympic", args={})
     elif not _is_analyst_request(req.message):
-        hub = _resolve_hub_from_message(req.message)
+        state_codes = _resolve_state_codes_from_text(req.message)
+        if len(state_codes) == 1:
+            tool_call = ChatToolCall(name="select_state", args={"state_code": state_codes[0]})
+        hub = None if tool_call else _resolve_hub_from_message(req.message)
         if hub:
             tool_call = ChatToolCall(name="select_hub", args={"hub_id": hub.hub_id})
 
@@ -1636,6 +1690,12 @@ def _load_data() -> None:
 
     with hubs_path.open("r", encoding="utf-8") as f:
         raw_hubs = json.load(f)
+    for hub in raw_hubs:
+        public_states = [s for s in (hub.get("states") or []) if _is_public_state_code(s)]
+        if public_states:
+            hub["states"] = public_states
+        if hub.get("macro_region") == "Territories" and "PR" in public_states:
+            hub["macro_region"] = "Puerto Rico"
     hubs = [Hub.model_validate(h) for h in raw_hubs]
 
     with narratives_path.open("r", encoding="utf-8") as f:
@@ -1677,6 +1737,8 @@ def _load_data() -> None:
 
     state_aggregates = []
     for st, counts in state_counts.items():
+        if not _is_public_state_code(st):
+            continue
         oly = counts["olympic"]
         para = counts["paralympic"]
         both = counts["both"]
@@ -1813,7 +1875,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
     if tool_name == "explain_map":
         topic = _normal_search_text(str(args.get("topic") or "legend"))
         base = (
-            f"Map guide: the blue state shading shows mapped athlete density by state or territory, "
+            f"Map guide: the blue state shading shows mapped athlete density by in-scope state region, "
             f"with darker blue meaning more mapped athletes. Large circles are the 40 hometown hubs; "
             f"blue circles are standard hubs and red circles are Paralympic Hot Spots at or above the "
             f"{hot_spot_threshold_text} Paralympic-share threshold. Small constellation dots are individual "
@@ -1825,7 +1887,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
             return base + f" In short: red means Paralympic focus, either a small Paralympian dot or a larger Hot Spot hub."
         if "blue" in topic:
             return base + " In short: blue means general Olympic/hub density context, either state shading, standard hubs, or Olympian dots."
-        if "territor" in topic or "inset" in topic:
+        if "inset" in topic:
             return base + " The inset row keeps non-contiguous Team USA geographies visible without distorting the main map."
         return base
 
@@ -1940,6 +2002,8 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
 
     if tool_name == "select_state":
             code = args.get("state_code", "").upper()
+            if not _is_public_state_code(code):
+                return _state_scope_decline_text(code)
             name = STATE_CODE_TO_NAME.get(code, code)
             agg = next((s for s in _state["state_aggregates"] if s.state == code), None)
             hubs_in_state = [h for h in _state["hubs"] if code in h.states]
@@ -1948,7 +2012,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
                 base = (
                     f"State panel opened: {name} ({code}). "
                     f"This state has 0 athletes mapped in our 2020 to 2026 dataset, "
-                    f"so it ranks last across our 52 mappable regions. "
+                    f"so it ranks last across our in-scope public map regions. "
                     f"The {hot_spot_count} Paralympic Hot Spots are all elsewhere."
                 )
                 if top_hub:
@@ -1987,11 +2051,13 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
         entity_type = (args.get("entity_type") or "").lower().strip()
         metric = _normalize_metric(args.get("metric"), "total_athletes")
         state_code = (args.get("state_code") or "").upper().strip()
+        if state_code and not _is_public_state_code(state_code):
+            return _state_scope_decline_text(state_code)
         hub_id = (args.get("hub_id") or "").strip()
         state_codes = [
             str(code).upper()
             for code in (args.get("state_codes") or [])
-            if str(code).upper() in STATE_CODE_TO_NAME
+            if _is_public_state_code(str(code).upper())
         ]
         hub_ids = [
             str(hid)
@@ -2032,9 +2098,9 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
                 ranked_states = ranked_states[:limit]
                 qualifier = ""
                 if metric == "paralympic_share":
-                    qualifier = " among states/territories with at least 25 mapped athletes"
+                    qualifier = " among in-scope state regions with at least 25 mapped athletes"
                 label = "Lowest" if ascending else "Top"
-                lines = [f"{label} {len(ranked_states)} states/territories by {_metric_label(metric)}{qualifier}:"]
+                lines = [f"{label} {len(ranked_states)} in-scope state regions by {_metric_label(metric)}{qualifier}:"]
                 for i, state in enumerate(ranked_states, 1):
                     lines.append(_state_line(state, metric, i))
                 return " ".join(lines)
@@ -2061,7 +2127,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
                 if rank is None:
                     return (
                         f"{_state_name(state_code)} ({state_code}) is outside the current {_metric_label(metric)} ranking universe "
-                        f"of {universe} states/territories because it does not meet the minimum-athlete threshold. "
+                        f"of {universe} in-scope state regions because it does not meet the minimum-athlete threshold. "
                         f"It has {agg.total_athletes} mapped athletes and {agg.paralympic_share * 100:.1f}% Paralympic share."
                     )
                 baseline_note = ""
@@ -2069,7 +2135,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
                     relation = "above" if agg.paralympic_share * 100 > baseline else "below"
                     baseline_note = f" This is {relation} the {baseline_text} national baseline."
                 return (
-                    f"{_state_name(state_code)} ({state_code}) ranks #{rank} of {universe} states/territories by "
+                    f"{_state_name(state_code)} ({state_code}) ranks #{rank} of {universe} in-scope state regions by "
                     f"{_metric_label(metric)} with {value}.{baseline_note} "
                     f"{_state_line(agg, metric)}"
                 )
@@ -2231,7 +2297,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
             overall_para_pct = (total_para / total_athletes * 100) if total_athletes else 0
             return (
                 f"Dataset summary: {total_athletes:,} Olympians and Paralympians from the 2020 to 2026 cycle, "
-                f"mapped across {len(hubs)} hometown hubs and {states_count} US states and territories. "
+                f"mapped across {len(hubs)} hometown hubs and {states_count} in-scope state regions. "
                 f"{hot_spots} hubs qualify as Paralympic Hot Spots at or above the {hot_spot_threshold_text} Paralympic-share threshold. "
                 f"Overall Paralympic share across the dataset: {overall_para_pct:.1f}%."
             )
@@ -2502,6 +2568,8 @@ def _build_voice_spoken_summary(tool_name: str, args: dict[str, Any], full_resul
 
     if tool_name == "select_state":
         code = str(args.get("state_code") or "").upper()
+        if not _is_public_state_code(code):
+            return _state_scope_decline_text(code)
         agg = next((s for s in _state["state_aggregates"] if s.state == code), None)
         if not agg:
             return f"{_state_name(code)} is selected. It has no mapped athletes in the current dataset."

@@ -62,8 +62,25 @@ CASES = [
     },
     {
         "prompt": "What rank is Utah by total athletes?",
-        "tool": "query_data",
+        "tool": "select_state",
         "contains": ["Utah", "#27", "52"],
+        "tool_args": {"state_code": "UT"},
+    },
+    {
+        "prompt": "What state has the least amount of athletes?",
+        "tool": "select_state",
+        "contains": ["North Dakota", "#52", "7 athletes"],
+        "tool_args": {"state_code": "ND"},
+    },
+    {
+        "prompt": "Tell me about Northern Mariana Islands",
+        "tool": None,
+        "contains": ["outside this demo's public map scope", "Puerto Rico"],
+    },
+    {
+        "prompt": "Show Puerto Rico hubs",
+        "tool": "query_data",
+        "contains": ["San Juan Region, PR", "Puerto Rico"],
     },
     {
         "prompt": "Compare California and Colorado",
@@ -102,7 +119,11 @@ def check_case(base: str, case: dict) -> bool:
     tools = [call.get("name") for call in tool_calls]
     ok = True
 
-    if case["tool"] not in tools:
+    expected_tool = case.get("tool")
+    if expected_tool is None:
+        if tool_calls:
+            ok = False
+    elif expected_tool not in tools:
         ok = False
 
     expected_args = case.get("tool_args") or {}

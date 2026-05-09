@@ -2553,12 +2553,12 @@ export class HometownHubMap extends HTMLElement {
         <div>
           <div style="font-size: 10px; color: #484645; text-transform: uppercase; letter-spacing: 0.8px;">Total Athletes</div>
           <div style="color: #152969; font-size: 20px; font-weight: 700; line-height: 1.1;">${totalAthletes}</div>
-          <div style="font-size: 11px; color: #484645; margin-top: 2px;">Rank <strong style="color: #152969;">#${totalRank}</strong> of ${rankUniverseCount} states/territories</div>
+          <div style="font-size: 11px; color: #484645; margin-top: 2px;">Rank <strong style="color: #152969;">#${totalRank}</strong> of ${rankUniverseCount} in-scope regions</div>
           </div>
         <div>
           <div style="font-size: 10px; color: #d31118; text-transform: uppercase; letter-spacing: 0.8px;">Paralympic</div>
           <div style="color: #d31118; font-size: 20px; font-weight: 700; line-height: 1.1;">${paraTotal}</div>
-          <div style="font-size: 11px; color: #484645; margin-top: 2px;">Rank <strong style="color: #d31118;">#${paraRank}</strong> of ${rankUniverseCount} states/territories</div>
+          <div style="font-size: 11px; color: #484645; margin-top: 2px;">Rank <strong style="color: #d31118;">#${paraRank}</strong> of ${rankUniverseCount} in-scope regions</div>
         </div>
         <div style="grid-column: span 2;">
           <div style="font-size: 10px; color: #484645; text-transform: uppercase; letter-spacing: 0.8px;">Paralympic Share</div>
