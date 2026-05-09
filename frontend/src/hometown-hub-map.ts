@@ -72,7 +72,7 @@ type HometownFocus = {
 };
 
 type ChatTurn = {
-  role: "user" | "model";
+  role: "user" | "model" | "data_readout";
   text: string;
 };
 
@@ -128,12 +128,11 @@ const GMAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const GMAPS_MAP_ID = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID;
 
 const SUGGESTED_PROMPTS = [
-  "Why does this matter for Team USA?",
   "What do the dots mean?",
-  "Show hubs above the national baseline",
-  "Which states are strongest for skiing?",
-  "Compare Vail and Salt Lake City",
-  "What changed with 2026 data?",
+  "Show the top Hot Spot",
+  "How did you build the hubs?",
+  "Is geography producing athletes?",
+  "Tell me about Vail",
 ];
 
 export class HometownHubMap extends HTMLElement {
@@ -172,6 +171,7 @@ export class HometownHubMap extends HTMLElement {
   private voiceReadyTimer: number | null = null;
   private voiceResponseTimer: number | null = null;
   private voiceLastInputText: string = "";
+  private voiceTurnHadReadout: boolean = false;
   private audioEnabled: boolean = true;
   private audioContext: AudioContext | null = null;
   private audioPlayTime: number = 0;
@@ -417,7 +417,8 @@ export class HometownHubMap extends HTMLElement {
         signal: controller.signal,
         body: JSON.stringify({
           message,
-          history: this.chatHistory.slice(0, -1),
+          history: (recordUser ? this.chatHistory.slice(0, -1) : this.chatHistory)
+            .filter(turn => turn.role !== "data_readout"),
           session_id: this.chatSessionId,
         }),
       });
@@ -789,6 +790,7 @@ export class HometownHubMap extends HTMLElement {
       this.activeVoiceTurnId = incomingTurnId || this.activeVoiceTurnId;
       this.voiceUserDraftIndex = null;
       this.voiceModelDraftIndex = null;
+      this.voiceTurnHadReadout = false;
       return;
     }
     if (message.type === "turn_complete") {
@@ -821,18 +823,22 @@ export class HometownHubMap extends HTMLElement {
     if (message.type === "output_transcript" && message.text) {
       if (this.voiceResponseTimer !== null) window.clearTimeout(this.voiceResponseTimer);
       this.voiceResponseTimer = null;
+      if (this.voiceTurnHadReadout && this.isGenericVoiceFiller(message.text)) {
+        return;
+      }
       this.appendVoiceModelText(message.text, Boolean(message.final));
-      this.setVoiceHud("replying", "Gemini replying", message.text);
+      this.setVoiceHud("replying", "Gemini speaking", message.text);
       return;
     }
     if (message.type === "tool_result_text" && message.text) {
       if (this.voiceResponseTimer !== null) window.clearTimeout(this.voiceResponseTimer);
       this.voiceResponseTimer = null;
-      this.appendVoiceModelText(message.text, true);
+      this.voiceTurnHadReadout = true;
+      this.appendVoiceReadoutText(message.text);
       this.setVoiceHud(
-        "replying",
-        this.audioEnabled ? "Gemini replying" : "Audio off",
-        this.audioEnabled ? "Waiting for native Gemini Live audio." : "Showing the grounded response without playback.",
+        "tool",
+        "Reading map result",
+        this.audioEnabled ? "Gemini is preparing a short spoken answer." : "Showing the map readout without playback.",
       );
       return;
     }
@@ -843,7 +849,7 @@ export class HometownHubMap extends HTMLElement {
         message.data,
         message.mime_type || "audio/pcm;rate=24000",
       );
-      this.setVoiceHud("replying", "Gemini replying", "Native Gemini Live audio is playing.");
+      this.setVoiceHud("replying", "Gemini speaking", "Native Gemini Live audio is playing.");
       return;
     }
     if (message.type === "audio_chunk" && message.data) {
@@ -867,7 +873,7 @@ export class HometownHubMap extends HTMLElement {
           buffer.mimeType,
         );
       }
-      this.setVoiceHud("replying", "Gemini replying", "Native Gemini Live audio is streaming.");
+      this.setVoiceHud("replying", "Gemini speaking", "Native Gemini Live audio is streaming.");
       return;
     }
     if (message.type === "tool_calls" && Array.isArray(message.tool_calls)) {
@@ -894,6 +900,7 @@ export class HometownHubMap extends HTMLElement {
     this.voiceModelDraftIndex = null;
     this.audioChunkBuffers.clear();
     this.voiceLastInputText = "";
+    this.voiceTurnHadReadout = false;
     if (this.voiceResponseTimer !== null) window.clearTimeout(this.voiceResponseTimer);
     this.voiceResponseTimer = null;
     return this.activeVoiceTurnId;
@@ -902,6 +909,19 @@ export class HometownHubMap extends HTMLElement {
   private completeVoiceTurn(): void {
     this.voiceUserDraftIndex = null;
     this.voiceModelDraftIndex = null;
+  }
+
+  private isGenericVoiceFiller(text: string): boolean {
+    const clean = String(text || "").trim().toLowerCase().replace(/[.!?]+$/g, "");
+    if (!clean) return false;
+    return [
+      "understood",
+      "understood ready when you are",
+      "ready when you are",
+      "i will adhere to those guidelines",
+      "understood i will adhere to those guidelines",
+      "understood i will adhere to those guidelines ready when you are",
+    ].some(phrase => clean === phrase || clean.startsWith(`${phrase}.`));
   }
 
   private closeVoiceSocketAfterTurn(): void {
@@ -955,6 +975,15 @@ export class HometownHubMap extends HTMLElement {
       this.voiceModelDraftIndex = this.chatHistory.length - 1;
     }
     if (final) this.voiceModelDraftIndex = null;
+    this.renderChatBody();
+  }
+
+  private appendVoiceReadoutText(text: string): void {
+    const clean = String(text || "").trim();
+    if (!clean) return;
+    const last = this.chatHistory[this.chatHistory.length - 1];
+    if (last?.role === "data_readout" && last.text === clean) return;
+    this.chatHistory.push({ role: "data_readout", text: clean });
     this.renderChatBody();
   }
 
@@ -1381,6 +1410,27 @@ export class HometownHubMap extends HTMLElement {
     } else {
       const turns = this.chatHistory.map(turn => {
         const isUser = turn.role === "user";
+        const isReadout = turn.role === "data_readout";
+        if (isReadout) {
+          return `
+            <div style="display: flex; justify-content: flex-start; margin-bottom: 8px;">
+              <div style="max-width: 88%;
+                    background: #edf4ff;
+                    color: #152969;
+                    border: 1px solid #7b8fd0;
+                    border-left: 4px solid #171fbe;
+                    padding: 8px 10px; border-radius: 8px;
+                    font-size: 12px; line-height: 1.45;">
+                <div style="font-size: 10px; font-weight: 800;
+                      text-transform: uppercase; letter-spacing: 0.8px;
+                      color: #171fbe; margin-bottom: 3px;">
+                  Map readout
+                </div>
+                ${this.escapeHtml(turn.text)}
+              </div>
+            </div>
+          `;
+        }
         return `
           <div style="display: flex;
                 justify-content: ${isUser ? "flex-end" : "flex-start"};

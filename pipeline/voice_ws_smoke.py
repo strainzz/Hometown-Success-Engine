@@ -9,6 +9,11 @@ import websockets
 
 
 DEFAULT_BASE = "http://127.0.0.1:8080"
+FILLER_PHRASES = (
+    "understood",
+    "ready when you are",
+    "adhere to those guidelines",
+)
 
 
 def voice_ws_url(base: str, session_id: str) -> str:
@@ -20,22 +25,61 @@ def voice_ws_url(base: str, session_id: str) -> str:
 
 async def run_case(base: str) -> bool:
     cases = [
-        ("Show the top Paralympic Hot Spot", ["select_hub"]),
-        ("What is the national baseline?", ["explain_engine"]),
-        ("Tell me about LA", ["select_hub"]),
-        ("Which hubs are strongest for winter sports?", ["query_data"]),
-        ("Reset the map and then show Arizona", ["reset_view", "select_state"]),
+        {
+            "prompt": "Show the top Paralympic Hot Spot",
+            "expected_tools": ["select_hub"],
+            "contains": ["Anchorage", "13.3%"],
+        },
+        {
+            "prompt": "What is the national baseline?",
+            "expected_tools": ["explain_engine"],
+            "contains": ["4.7%"],
+        },
+        {
+            "prompt": "Tell me about LA",
+            "expected_tools": ["select_hub"],
+            "contains": ["Los Angeles"],
+        },
+        {
+            "prompt": "Which hubs are strongest for winter sports?",
+            "expected_tools": ["query_data"],
+            "contains": ["winter"],
+        },
+        {
+            "prompt": "Reset the map and then show Arizona",
+            "expected_tools": ["reset_view", "select_state"],
+            "contains": ["Arizona"],
+        },
+        {
+            "prompt": "Is geography producing athletes?",
+            "expected_tools": ["explain_engine"],
+            "contains": ["does not produce athletes"],
+        },
+        {
+            "prompt": "How did you build the hubs?",
+            "expected_tools": ["explain_engine"],
+            "contains": ["40 hometown hubs"],
+        },
+        {
+            "prompt": "Tell me about Vail",
+            "expected_tools": ["select_hub"],
+            "contains": ["Vail", "55 mapped athletes"],
+        },
     ]
     case_results: list[bool] = []
     session_id = f"voice-smoke-{uuid.uuid4().hex}"
 
-    for turn_id, (prompt, expected_tools) in enumerate(cases, start=1):
+    for turn_id, case in enumerate(cases, start=1):
+        prompt = str(case["prompt"])
+        expected_tools = list(case.get("expected_tools") or [])
+        expected_contains = [str(value).lower() for value in case.get("contains", [])]
         saw_ready = False
         saw_error = False
         saw_tool = not expected_tools
         saw_transcript = False
         saw_completion = False
         output_text: list[str] = []
+        readout_texts: list[str] = []
         tool_calls: list[dict] = []
         url = voice_ws_url(base, session_id)
 
@@ -92,7 +136,9 @@ async def run_case(base: str) -> bool:
 
                 if msg.get("type") == "tool_result_text" and msg.get("text"):
                     saw_transcript = True
-                    output_text.append(str(msg["text"]))
+                    readout = str(msg["text"])
+                    output_text.append(readout)
+                    readout_texts.append(readout)
 
                 if msg.get("type") == "turn_complete":
                     saw_completion = True
@@ -108,12 +154,25 @@ async def run_case(base: str) -> bool:
                     break
 
             text = " ".join(output_text)
-            case_ok = (not expected_tools or saw_tool) and not saw_error and (saw_transcript or saw_completion)
+            lower_text = text.lower()
+            has_expected_text = all(value in lower_text for value in expected_contains)
+            has_no_filler = not any(phrase in lower_text for phrase in FILLER_PHRASES)
+            has_compact_readouts = all(len(readout) <= 520 for readout in readout_texts)
+            case_ok = (
+                (not expected_tools or saw_tool)
+                and not saw_error
+                and (saw_transcript or saw_completion)
+                and has_expected_text
+                and has_no_filler
+                and has_compact_readouts
+            )
             case_results.append(case_ok)
             print(f"Voice WS turn {turn_id}: {'OK' if case_ok else 'FAIL'}")
             print(f"  prompt: {prompt}")
             print(f"  tools: {tool_calls}")
             print(f"  completed: {saw_completion}")
+            print(f"  compact readouts: {all(len(readout) <= 520 for readout in readout_texts)}")
+            print(f"  no filler: {has_no_filler}")
             print(f"  transcript: {text[:500]}")
             await ws.send(json.dumps({"type": "close"}))
 

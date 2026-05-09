@@ -2977,6 +2977,22 @@ def _voice_compact(text: str, max_chars: int = 340) -> str:
     return clipped.rstrip(" ,;:") + "."
 
 
+def _is_voice_filler_text(text: str) -> bool:
+    clean = re.sub(r"\s+", " ", text or "").strip().lower()
+    clean = clean.strip(" .!?")
+    if not clean:
+        return False
+    fillers = [
+        "understood",
+        "ready when you are",
+        "understood ready when you are",
+        "understood i will adhere to those guidelines",
+        "i will adhere to those guidelines",
+        "understood i will adhere to those guidelines ready when you are",
+    ]
+    return any(clean == filler or clean.startswith(f"{filler}.") for filler in fillers)
+
+
 def _build_voice_spoken_summary(tool_name: str, args: dict[str, Any], full_result: str) -> str:
     stats = _dataset_stats()
     threshold = PARALYMPIC_HOT_SPOT_THRESHOLD_PCT
@@ -2988,7 +3004,9 @@ def _build_voice_spoken_summary(tool_name: str, args: dict[str, Any], full_resul
         if topic == "hot_spot_threshold":
             return f"A Paralympic Hot Spot is any hub at or above {threshold:.1f}% Paralympic share. There are {stats['hot_spot_count']} right now."
         if topic == "methodology":
-            return f"The engine maps hometowns, groups them into {stats['hub_count']} regional hubs, and compares aggregate sport and Paralympic patterns without implying causation."
+            return f"I map athlete hometowns, then group nearby points into {stats['hub_count']} hometown hubs so analysts can explore regional patterns."
+        if topic == "conditional_language":
+            return "No. Geography does not produce athletes. This map shows hometown associations that could help guide better questions."
         return _voice_compact(full_result)
 
     if tool_name == "highlight_hubs":
@@ -3045,7 +3063,7 @@ def _build_voice_spoken_summary(tool_name: str, args: dict[str, Any], full_resul
         top_sport = _display_sport(hub.top_sports[0].sport) if hub.top_sports else "multiple sports"
         para_pct = hub.composition.paralympic_share * 100
         summary = (
-            f"{_voice_short_place(hub.display_name)} is selected: {hub.total_athletes} mapped athletes, "
+            f"I'm moving the map to {_voice_short_place(hub.display_name)}. It has {hub.total_athletes} mapped athletes, "
             f"led by {top_sport}, with {para_pct:.1f}% Paralympic share."
         )
         narrative = _state["narratives"].get(hub.hub_id)
@@ -3070,7 +3088,7 @@ def _build_voice_spoken_summary(tool_name: str, args: dict[str, Any], full_resul
         if not agg:
             return f"{_state_name(code)} is selected. It has no mapped athletes in the current dataset."
         return (
-            f"{_state_name(code)} is selected: {agg.total_athletes} mapped athletes, "
+            f"I'm opening {_state_name(code)}. It has {agg.total_athletes} mapped athletes, "
             f"{_state_para_count(agg)} Paralympians, and {agg.paralympic_share * 100:.1f}% Paralympic share."
         )
 
@@ -3218,10 +3236,11 @@ async def _stream_native_voice_summary(
                 response_modalities=[genai_types.Modality.AUDIO],
                 system_instruction=(
                     "You are the Hometown Success Engine voice narrator. "
-                    "Speak the provided map result naturally in one or two concise sentences. "
+                    "Speak the provided final answer directly and naturally in one or two concise sentences. "
                     "Preserve climate wording precisely: say 'average annual temperature', "
                     "'annual precipitation', or 'elevation'; never say a temperature is 'the climate'. "
-                    "Do not add facts, do not call tools, and do not mention that this is a retry."
+                    "Do not add facts, do not call tools, and do not mention that this is a retry. "
+                    "Never say 'understood', never acknowledge instructions, and never add a readiness phrase like 'ready when you are'."
                 ),
                 temperature=0.2,
                 speech_config=genai_types.SpeechConfig(
@@ -3245,6 +3264,8 @@ async def _stream_native_voice_summary(
                 if message.server_content:
                     content = message.server_content
                     if content.output_transcription and content.output_transcription.text:
+                        if _is_voice_filler_text(content.output_transcription.text):
+                            continue
                         await websocket.send_json({
                             "type": "output_transcript",
                             "text": content.output_transcription.text,
@@ -3348,6 +3369,8 @@ async def voice_websocket(websocket: WebSocket) -> None:
                         "turn_id": voice_turn_id,
                     })
                 if content.output_transcription and content.output_transcription.text:
+                    if _is_voice_filler_text(content.output_transcription.text):
+                        continue
                     voice_output_text = (
                         f"{voice_output_text} {content.output_transcription.text}".strip()
                         if voice_output_text else content.output_transcription.text.strip()
@@ -3358,7 +3381,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
                         "final": bool(getattr(content.output_transcription, "finished", False)),
                         "turn_id": voice_turn_id,
                     })
-                    await send_voice_state("replying", "Gemini replying", content.output_transcription.text)
+                    await send_voice_state("replying", "Gemini speaking", content.output_transcription.text)
                 if content.model_turn and content.model_turn.parts:
                     for part in content.model_turn.parts:
                         if part.inline_data and part.inline_data.data:
@@ -3379,8 +3402,8 @@ async def voice_websocket(websocket: WebSocket) -> None:
                     if audio_enabled_for_turn and not voice_audio_sent and voice_spoken_result_text:
                         await send_voice_state(
                             "replying",
-                            "Gemini replying",
-                            "Native tool response was silent; starting Gemini Live voice summary.",
+                            "Gemini speaking",
+                            "Preparing Gemini voice.",
                         )
                         try:
                             voice_audio_sent = await _stream_native_voice_summary(
@@ -3490,11 +3513,11 @@ async def voice_websocket(websocket: WebSocket) -> None:
                     await send_voice_state(
                         "tool",
                         "Moving map",
-                        "Gemini called the map/data tools and is preparing a grounded spoken answer.",
+                        "Map and data tools are running.",
                     )
                     await websocket.send_json({
                         "type": "tool_result_text",
-                        "text": tool_result_text,
+                        "text": voice_spoken_result_text or _voice_compact(tool_result_text),
                         "speak_fallback": False,
                         "turn_id": voice_turn_id,
                     })
@@ -3502,8 +3525,8 @@ async def voice_websocket(websocket: WebSocket) -> None:
                     await session.send_tool_response(function_responses=function_responses)
                     await send_voice_state(
                         "replying",
-                        "Gemini replying",
-                        "Grounded map result received. Waiting for native Gemini Live audio.",
+                        "Gemini speaking",
+                        "Reading the map result.",
                     )
 
     try:
@@ -3601,19 +3624,19 @@ async def voice_websocket(websocket: WebSocket) -> None:
                                 await send_voice_state(
                                     "tool",
                                     "Moving map",
-                                    "Deterministic map/data tools are running.",
+                                    "Map and data tools are running.",
                                 )
                                 await websocket.send_json({
                                     "type": "tool_result_text",
-                                    "text": " ".join(tool_result_texts),
+                                    "text": voice_spoken_result_text,
                                     "speak_fallback": False,
                                     "turn_id": voice_turn_id,
                                 })
                                 if audio_enabled_for_turn and voice_spoken_result_text:
                                     await send_voice_state(
                                         "replying",
-                                        "Gemini replying",
-                                        "Preparing native Gemini Live voice summary.",
+                                        "Gemini speaking",
+                                        "Reading the map result.",
                                     )
                                     try:
                                         voice_audio_sent = await _stream_native_voice_summary(
