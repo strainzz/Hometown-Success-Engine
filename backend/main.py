@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Literal, Optional
 
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 from google import genai
@@ -731,7 +731,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
             if not agg:
                 base = (
                     f"State panel opened: {name} ({code}). "
-                    f"This state has 0 athletes mapped in our 2020 to 2024 dataset, "
+                    f"This state has 0 athletes mapped in our 2020 to 2026 dataset, "
                     f"so it ranks last across our 52 mappable regions. "
                     f"The 5 Paralympic Hot Spots are all elsewhere."
                 )
@@ -863,7 +863,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
             states_count = len(aggregates)
             overall_para_pct = (total_para / total_athletes * 100) if total_athletes else 0
             return (
-                f"Dataset summary: {total_athletes} Olympians and Paralympians from the 2020 to 2024 cycle, "
+                f"Dataset summary: {total_athletes} Olympians and Paralympians from the 2020 to 2026 cycle, "
                 f"clustered into {len(hubs)} hometown hubs across {states_count} US states and territories. "
                 f"{hot_spots} regions qualify as Paralympic Hot Spots (Paralympic share 2x+ above the 4.6% national baseline). "
                 f"Overall Paralympic share across the dataset: {overall_para_pct:.1f}%."
@@ -1022,155 +1022,3 @@ async def chat(req: ChatRequest) -> ChatResponse:
             tool_calls=[],
             history=req.history,
         )
-    # ===== GEMINI LIVE VOICE AGENT =====
-
-VOICE_SYSTEM_PROMPT = """You are Gemini, the voice agent for the Hometown Success Engine — an interactive map of where America's elite athletes come from. The map shows 5,012 Olympians and Paralympians clustered into 37 regional hubs.
-
-Speak in 1-2 sentences max. Be conversational and warm, never robotic. Always cite specific numbers from tool results (12.7%, 55 athletes, etc.).
-
-You have access to these tools to drive the map:
-- select_hub(hub_id): highlight a hub
-- zoom_to_hub(hub_id): zoom to a hub
-- select_state(state_code): open the state info panel for any US state, DC, or territory
-- filter_to_paralympic(macro_region?): highlight Paralympic Hot Spots
-- query_data(query_type, ...): look up rankings, top-N, comparisons, aggregate data
-- reset_view(): reset the map
-
-When the user asks for navigation + data ("zoom to the top state", "show me the leading hub"), call BOTH query_data AND the appropriate select tool in the same turn.
-
-The 5 Paralympic Hot Spots: Phoenix Region AZ (12.7%), Anchorage Region AK (12.5%), Lincoln Region NE (10.8%), Stillwater Region OK (9.3%), Merced Region CA (9.3%). National Paralympic baseline 4.6%. Hot Spots = >2x national rate.
-
-Never claim geography "produces" athletes. Use conditional phrasing like "could help foster" or "may explain"."""
-
-
-@app.websocket("/voice/live")
-async def voice_live(websocket: WebSocket):
-    """Bidirectional WebSocket relay between browser and Vertex AI Gemini Live API.
-
-    Client sends audio chunks (base64-encoded PCM 16kHz mono) and receives:
-      - Audio chunks (Gemini's voice, 24kHz PCM)
-      - Tool calls (forwarded to map for execution)
-      - Transcript text (for display in chat panel)
-    """
-    await websocket.accept()
-
-    try:
-        client = genai.Client(
-            vertexai=True,
-            project="hometown-success-engine",
-            location="us-central1",
-        )
-
-        config = {
-            "response_modalities": ["AUDIO"],
-            "speech_config": {
-                "voice_config": {
-                    "prebuilt_voice_config": {"voice_name": "Aoede"}
-                }
-            },
-            "system_instruction": {
-                "parts": [{"text": VOICE_SYSTEM_PROMPT}]
-            },
-            "tools": [{"function_declarations": [
-                fd.to_json_dict() if hasattr(fd, "to_json_dict") else fd
-                for fd in CHATBOT_TOOLS.function_declarations
-            ]}],
-            "output_audio_transcription": {},
-            "input_audio_transcription": {},
-        }
-
-        async with client.aio.live.connect(
-            model="gemini-live-2.5-flash-native-audio",
-            config=config,
-        ) as session:
-            logger.info("Voice session opened")
-
-            async def relay_to_gemini():
-                """Forward audio/text from browser to Gemini Live."""
-                try:
-                    while True:
-                        msg = await websocket.receive_json()
-                        msg_type = msg.get("type")
-                        if msg_type == "audio":
-                            # Browser sends base64 PCM 16kHz mono
-                            await session.send_realtime_input(
-                                audio=genai_types.Blob(
-                                    data=msg["data"],
-                                    mime_type="audio/pcm;rate=16000",
-                                )
-                            )
-                        elif msg_type == "text":
-                            await session.send_realtime_input(text=msg["data"])
-                        elif msg_type == "end_turn":
-                            await session.send_realtime_input(audio_stream_end=True)
-                except WebSocketDisconnect:
-                    logger.info("Browser disconnected from voice session")
-                except Exception as e:
-                    logger.warning(f"relay_to_gemini error: {e}")
-
-            async def relay_to_browser():
-                """Forward audio/tool calls/transcripts from Gemini to browser."""
-                try:
-                    async for response in session.receive():
-                        # Audio out
-                        if response.data:
-                            import base64
-                            await websocket.send_json({
-                                "type": "audio",
-                                "data": base64.b64encode(response.data).decode("ascii"),
-                            })
-
-                        # Tool calls
-                        if response.tool_call:
-                            for fc in response.tool_call.function_calls:
-                                args = dict(fc.args) if fc.args else {}
-                                # Build the rich result string AND forward to client
-                                tool_result = _build_tool_result_context(fc.name, args)
-                                await websocket.send_json({
-                                    "type": "tool_call",
-                                    "name": fc.name,
-                                    "args": args,
-                                })
-                                # Send tool response back to Gemini so it can narrate
-                                await session.send_tool_response(
-                                    function_responses=[
-                                        genai_types.FunctionResponse(
-                                            id=fc.id,
-                                            name=fc.name,
-                                            response={"result": tool_result},
-                                        )
-                                    ]
-                                )
-
-                        # Transcripts (for display)
-                        if response.server_content:
-                            sc = response.server_content
-                            if sc.input_transcription and sc.input_transcription.text:
-                                await websocket.send_json({
-                                    "type": "user_transcript",
-                                    "text": sc.input_transcription.text,
-                                })
-                            if sc.output_transcription and sc.output_transcription.text:
-                                await websocket.send_json({
-                                    "type": "model_transcript",
-                                    "text": sc.output_transcription.text,
-                                })
-                except Exception as e:
-                    logger.warning(f"relay_to_browser error: {e}")
-
-            await asyncio.gather(relay_to_gemini(), relay_to_browser())
-
-    except WebSocketDisconnect:
-        pass
-    except Exception as e:
-        import traceback
-        logger.error(f"Voice session fatal error: {e}\n{traceback.format_exc()}")
-        try:
-            await websocket.send_json({"type": "error", "message": str(e)[:200]})
-        except Exception:
-            pass
-    finally:
-        try:
-            await websocket.close()
-        except Exception:
-            pass

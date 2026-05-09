@@ -16,6 +16,13 @@ type StateAggregate = {
   paralympic_share: number;
 };
 
+type Climate = {
+  annual_avg_temp_f?: number | null;
+  annual_precipitation_in?: number | null;
+  annual_sunshine_hours?: number | null;
+  elevation_ft?: number | null;
+};
+
 type Narrative = {
   hub_id: string;
   display_name: string;
@@ -24,6 +31,8 @@ type Narrative = {
   paralympic_callout: string | null;
   top_sport_phrase: string;
   confidence_qualifier: string;
+  climate?: Climate | null;
+  geographic_context?: string | null;
 };
 
 type AthleteGeoPoint = {
@@ -720,7 +729,7 @@ export class HometownHubMap extends HTMLElement {
       getLineColor: (h: Hub) => {
         const paraFilter = state.filters?.paralympic_focus === true;
         if (h.hub_id === state.selectedHubId) {
-          // Gold ring for selected — distinct from hub fill colors
+          // Gold ring for selected distinct from hub fill colors
           return [255, 200, 50, 255];
         }
         if (paraFilter && !h.is_paralympic_hot_spot) return [255, 255, 255, 80];
@@ -767,15 +776,15 @@ export class HometownHubMap extends HTMLElement {
           const hub = object as Hub;
           const paraPct = (hub.composition.paralympic_share * 100).toFixed(1);
           const hotSpotTag = hub.is_paralympic_hot_spot
-            ? `<div style="color: #d31118; font-weight: 700; font-size: 10px; letter-spacing: 1px; margin-top: 4px;">★ PARALYMPIC HOT SPOT</div>`
-            : "";
+  ? `<div style="color: #d31118; font-weight: 700; font-size: 10px; letter-spacing: 1px; margin-top: 4px;">PARALYMPIC HOT SPOT</div>`
+  : "";
           return {
             html: `
               <div style="font-family: system-ui, sans-serif;">
                 <div style="font-weight: 700; font-size: 14px; color: #152969;">${hub.display_name}</div>
                 <div style="font-size: 12px; color: #171fbe; margin-top: 2px;">${hub.region_name}</div>
                 <div style="font-size: 11px; color: #484645; margin-top: 4px;">
-                  ${hub.total_athletes} athletes · ${paraPct}% Paralympic
+                  ${hub.total_athletes} athletes ${paraPct}% Paralympic
                 </div>
                 ${hotSpotTag}
               </div>
@@ -1241,7 +1250,7 @@ export class HometownHubMap extends HTMLElement {
 
     grid.innerHTML = `
       ${card("Paralympic Hot Spots", hotSpots, "regions w/ Paralympic share &gt;2x national rate", true)}
-      ${card("Athletes Mapped", fmtNumber(totalAthletes), "Olympians and Paralympians, 2020–2024")}
+      ${card("Athletes Mapped", fmtNumber(totalAthletes), "Olympians and Paralympians, 2020-2026")}
       ${card("Hometown Hubs", hubsDiscovered, "regions discovered via HDBSCAN clustering")}
       ${card("Paralympic Share", overallParaPct.toFixed(1) + "%", "of mapped athletes are Paralympians")}
     `;
@@ -1269,7 +1278,7 @@ export class HometownHubMap extends HTMLElement {
       ? `<span style="color: #d31118; font-weight: 700;
              margin-left: 8px;
              font-size: 12px; letter-spacing: 1px;">
-       ★ HOT SPOT
+       HOT SPOT
       </span>`
       : "";
 
@@ -1310,7 +1319,7 @@ export class HometownHubMap extends HTMLElement {
        </div>
        <div style="color: #171fbe; font-size: 15px;
              margin-top: 4px;">
-        ${hub.region_name} · <span style="color: #484645;
+        ${hub.region_name} <span style="color: #484645;
                        font-size: 13px;
                        text-transform: uppercase;
                        letter-spacing: 1px;">
@@ -1346,8 +1355,48 @@ export class HometownHubMap extends HTMLElement {
         </div>
        </div>
        ${callout}
+       ${this.renderGeographicBlock(narrative)}
       </div>
      `;
+  }
+
+  private renderGeographicBlock(narrative: Narrative | undefined): string {
+    if (!narrative) return "";
+    const climate = narrative.climate;
+    const context = narrative.geographic_context;
+    if (!climate && !context) return "";
+
+    const stat = (label: string, value: string) => `
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <div style="font-size: 10px; color: #484645; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600;">${label}</div>
+        <div style="color: #152969; font-size: 16px; font-weight: 700;">${value}</div>
+      </div>
+    `;
+
+    const climateRow = climate ? `
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 12px; background: #efeae6; border-radius: 6px; margin-bottom: 12px;">
+        ${climate.annual_avg_temp_f != null ? stat("Avg Temp", `${climate.annual_avg_temp_f}°F`) : ""}
+        ${climate.annual_precipitation_in != null ? stat("Precip", `${climate.annual_precipitation_in}″`) : ""}
+        ${climate.annual_sunshine_hours != null ? stat("Sunshine", `${Math.round((climate.annual_sunshine_hours / 4380) * 100)}% of yr`) : ""}
+        ${climate.elevation_ft != null ? stat("Elevation", `${Math.round(climate.elevation_ft).toLocaleString()}ft`) : ""}
+      </div>
+    ` : "";
+
+    const contextBlock = context ? `
+      <p style="margin: 0; line-height: 1.6; color: #484645; font-size: 13px;">
+        ${context}
+      </p>
+    ` : "";
+
+    return `
+      <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #b9bfd2;">
+        <div style="font-size: 11px; color: #484645; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 12px;">
+          Why this region
+        </div>
+        ${climateRow}
+        ${contextBlock}
+      </div>
+    `;
   }
 
   private renderStatePanel(): void {
@@ -1368,8 +1417,8 @@ export class HometownHubMap extends HTMLElement {
       : null;
 
     const totalStatesCount = 52;
-    let totalRank: string | number = "—";
-    let paraRank: string | number = "—";
+    let totalRank: string | number = "-";
+let paraRank: string | number = "-";
     if (agg) {
       const sortedByTotal = [...this.stateAggregates].sort((a, b) => b.total_athletes - a.total_athletes);
       totalRank = sortedByTotal.findIndex(s => s.state === this.selectedStateCode) + 1;
@@ -1421,7 +1470,7 @@ export class HometownHubMap extends HTMLElement {
           <div style="font-size: 10px; color: #484645; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px;">Top Hub</div>
           <button class="hubmap-state-hub-link" type="button" data-hub-id="${topHub.hub_id}"
             style="background: transparent; border: none; padding: 0; color: #171fbe; font-size: 13px; font-weight: 600; cursor: pointer; text-align: left; font-family: inherit;">
-            ${topHub.display_name} →
+            ${topHub.display_name}
           </button>
         </div>
       ` : ''}
