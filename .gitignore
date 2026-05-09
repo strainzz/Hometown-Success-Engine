@@ -54,6 +54,7 @@ backend/pipeline_data/
 
 # Local backups/artifacts
 frontend/src/hometown-hub-map.ts.broken
+frontend/vite-*.log
 .playwright-cli/
 
 # Frontend env

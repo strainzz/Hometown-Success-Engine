@@ -968,7 +968,7 @@ export class HometownHubMap extends HTMLElement {
           </div>
           <div class="hsm-header-sub" style="font-size: 14px; color: #b9bfd2;
                 margin-top: 6px; font-weight: 400; letter-spacing: 0.3px;">
-            Mapping 5,119 Olympians and Paralympians across 40 hometown regions, including the Milan-Cortina 2026 cohort.
+            Mapping 5,119 Olympians and Paralympians across 40 hometown regions, now including Milan-Cortina 2026 athletes.
           </div>
         </header>
 
@@ -1113,10 +1113,6 @@ export class HometownHubMap extends HTMLElement {
                   display: flex; align-items: center; gap: 8px;
                   font-size: 11px; font-weight: 600;
                   letter-spacing: 0.8px; text-transform: uppercase;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="#ffffff" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z"/>
-                <path d="M19 16L19.6 18.4L22 19L19.6 19.6L19 22L18.4 19.6L16 19L18.4 18.4L19 16Z" opacity="0.7"/>
-              </svg>
               Powered by Google Gemini
             </div>
             <div style="background: #152969; color: #ffffff;
