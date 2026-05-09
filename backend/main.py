@@ -2481,13 +2481,12 @@ async def voice_websocket(websocket: WebSocket) -> None:
                         "Moving map",
                         "Gemini called the map/data tools and is preparing a grounded spoken answer.",
                     )
-                    if not audio_enabled_for_turn:
-                        await websocket.send_json({
-                            "type": "tool_result_text",
-                            "text": tool_result_text,
-                            "speak_fallback": False,
-                            "turn_id": voice_turn_id,
-                        })
+                    await websocket.send_json({
+                        "type": "tool_result_text",
+                        "text": tool_result_text,
+                        "speak_fallback": False,
+                        "turn_id": voice_turn_id,
+                    })
                 if function_responses:
                     await session.send_tool_response(function_responses=function_responses)
                     await send_voice_state("replying", "Gemini replying", "Grounded map result received.")
