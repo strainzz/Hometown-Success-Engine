@@ -128,6 +128,12 @@ export class HometownHubMap extends HTMLElement {
   private chatOpen: boolean = false;
   private chatHistory: ChatTurn[] = [];
   private chatLoading: boolean = false;
+  private voiceSocket: WebSocket | null = null;
+  private voiceListening: boolean = false;
+  private voiceAwaitingResponse: boolean = false;
+  private recognition: any = null;
+  private audioContext: AudioContext | null = null;
+  private audioPlayTime: number = 0;
   private hoveredHubId: string | null = null;
   private selectedStateCode: string | null = null;
   private selectedStateName: string | null = null;
@@ -291,10 +297,16 @@ export class HometownHubMap extends HTMLElement {
 
   // ===== CHAT =====
 
-  private async sendChatMessage(message: string): Promise<void> {
-    if (!message.trim() || this.chatLoading) return;
+  private async sendChatMessage(
+    message: string,
+    options: { recordUser?: boolean; speak?: boolean } = {},
+  ): Promise<string | null> {
+    if (!message.trim() || this.chatLoading) return null;
+    const recordUser = options.recordUser !== false;
     this.chatLoading = true;
-    this.chatHistory.push({ role: "user", text: message });
+    if (recordUser) {
+      this.chatHistory.push({ role: "user", text: message });
+    }
     this.renderChatBody();
 
     const baseUrl = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_URL;
@@ -311,15 +323,20 @@ export class HometownHubMap extends HTMLElement {
       const data: ChatResponse = await res.json();
 
       this.chatHistory.push({ role: "model", text: data.text });
+      if (options.speak) this.speakText(data.text);
 
       for (const call of data.tool_calls) {
         this.dispatchToolCall(call);
       }
+      return data.text;
     } catch (err) {
+      const fallbackText = "Sorry, I had trouble connecting. Try again in a moment.";
       this.chatHistory.push({
         role: "model",
-        text: "Sorry, I had trouble connecting. Try again in a moment.",
+        text: fallbackText,
       });
+      if (options.speak) this.speakText(fallbackText);
+      return null;
     } finally {
       this.chatLoading = false;
       this.renderChatBody();
@@ -358,6 +375,229 @@ export class HometownHubMap extends HTMLElement {
     }
   }
 
+  private getVoiceWsUrl(): string {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_URL;
+    const url = new URL(baseUrl);
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+    url.pathname = "/voice/ws";
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  }
+
+  private setVoiceStatus(text: string): void {
+    const status = this.querySelector("#hubmap-voice-status") as HTMLElement;
+    if (status) status.textContent = text;
+  }
+
+  private setVoiceButton(active: boolean): void {
+    const btn = this.querySelector("#hubmap-voice-btn") as HTMLButtonElement;
+    if (!btn) return;
+    const iconColor = active ? "#ffffff" : "#152969";
+    btn.setAttribute("aria-label", active ? "Stop listening" : "Speak to Gemini");
+    btn.setAttribute("title", active ? "Stop listening" : "Speak to Gemini");
+    btn.style.background = active ? "#d31118" : "#ffffff";
+    btn.style.borderColor = active ? "#d31118" : "#152969";
+    btn.style.boxShadow = active ? "0 0 0 3px rgba(211, 17, 24, 0.16)" : "none";
+    btn.innerHTML = `
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+           stroke="${iconColor}" stroke-width="2.4"
+           stroke-linecap="round" stroke-linejoin="round"
+           aria-hidden="true">
+        <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+        <path d="M12 19v3" />
+      </svg>
+    `;
+  }
+
+  private ensureVoiceSocket(): Promise<WebSocket> {
+    if (this.voiceSocket && this.voiceSocket.readyState === WebSocket.OPEN) {
+      return Promise.resolve(this.voiceSocket);
+    }
+
+    return new Promise((resolve, reject) => {
+      const socket = new WebSocket(this.getVoiceWsUrl());
+      this.voiceSocket = socket;
+      this.setVoiceStatus("Connecting to Gemini Live...");
+
+      socket.onopen = () => {
+        this.setVoiceStatus("Gemini Live voice ready.");
+        resolve(socket);
+      };
+
+      socket.onerror = () => {
+        this.setVoiceStatus("Voice connection failed. Falling back to text voice.");
+        reject(new Error("Voice WebSocket failed"));
+      };
+
+      socket.onclose = () => {
+        if (this.voiceSocket === socket) this.voiceSocket = null;
+        this.voiceAwaitingResponse = false;
+        this.setVoiceStatus("Voice session closed.");
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          this.handleVoiceMessage(message);
+        } catch (err) {
+          this.setVoiceStatus("Voice message parse error.");
+        }
+      };
+    });
+  }
+
+  private handleVoiceMessage(message: any): void {
+    if (message.type === "ready") {
+      this.setVoiceStatus("Gemini Live voice ready.");
+      return;
+    }
+    if (message.type === "input_transcript") {
+      this.setVoiceStatus(`Heard: ${message.text}`);
+      return;
+    }
+    if (message.type === "output_transcript" && message.text) {
+      this.appendVoiceModelText(message.text);
+      this.setVoiceStatus("Gemini answered.");
+      return;
+    }
+    if (message.type === "tool_result_text" && message.text) {
+      this.appendVoiceModelText(message.text);
+      this.speakText(message.text);
+      this.setVoiceStatus("Gemini answered.");
+      return;
+    }
+    if (message.type === "audio" && message.data) {
+      void this.playPcmAudio(message.data, message.mime_type || "audio/pcm;rate=24000");
+      return;
+    }
+    if (message.type === "tool_calls" && Array.isArray(message.tool_calls)) {
+      for (const call of message.tool_calls as ChatToolCall[]) {
+        this.dispatchToolCall(call);
+      }
+      return;
+    }
+    if (message.type === "error") {
+      this.setVoiceStatus(`Voice error: ${message.message || "unknown"}`);
+    }
+  }
+
+  private appendVoiceModelText(text: string): void {
+    const clean = String(text || "").trim();
+    if (!clean) return;
+    const last = this.chatHistory[this.chatHistory.length - 1];
+    if (this.voiceAwaitingResponse && last?.role === "model") {
+      last.text = `${last.text}${clean.startsWith(" ") ? "" : " "}${clean}`.trim();
+    } else {
+      this.chatHistory.push({ role: "model", text: clean });
+    }
+    this.voiceAwaitingResponse = true;
+    this.renderChatBody();
+  }
+
+  private async sendVoiceCommand(text: string): Promise<void> {
+    const transcript = text.trim();
+    if (!transcript) return;
+    this.chatHistory.push({ role: "user", text: transcript });
+    this.voiceAwaitingResponse = false;
+    this.renderChatBody();
+
+    try {
+      const socket = await this.ensureVoiceSocket();
+      socket.send(JSON.stringify({ type: "text", text: transcript }));
+      this.setVoiceStatus("Gemini Live is answering...");
+    } catch (err) {
+      this.setVoiceStatus("Using fallback voice through Gemini chat.");
+      await this.sendChatMessage(transcript, { recordUser: false, speak: true });
+    }
+  }
+
+  private toggleVoiceInput(): void {
+    const SpeechRecognitionCtor =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognitionCtor) {
+      this.setVoiceStatus("Voice input needs Chrome speech recognition. Using typed chat fallback.");
+      return;
+    }
+
+    if (this.voiceListening && this.recognition) {
+      this.recognition.stop();
+      return;
+    }
+
+    const recognition = new SpeechRecognitionCtor();
+    this.recognition = recognition;
+    recognition.lang = "en-US";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+      this.voiceListening = true;
+      this.setVoiceButton(true);
+      this.setVoiceStatus("Listening...");
+    };
+    recognition.onresult = (event: any) => {
+      const transcript = event.results?.[0]?.[0]?.transcript || "";
+      void this.sendVoiceCommand(transcript);
+    };
+    recognition.onerror = (event: any) => {
+      this.setVoiceStatus(`Voice input error: ${event.error || "unknown"}`);
+    };
+    recognition.onend = () => {
+      this.voiceListening = false;
+      this.setVoiceButton(false);
+      if (!this.voiceAwaitingResponse) {
+        this.setVoiceStatus("Voice ready.");
+      }
+    };
+
+    recognition.start();
+  }
+
+  private speakText(text: string): void {
+    if (!("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text.replace(/\s+/g, " ").trim());
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  private async playPcmAudio(base64: string, mimeType: string): Promise<void> {
+    const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextCtor) return;
+    if (!this.audioContext) {
+      this.audioContext = new AudioContextCtor();
+    }
+    if (this.audioContext.state === "suspended") {
+      await this.audioContext.resume();
+    }
+
+    const rateMatch = /rate=(\d+)/.exec(mimeType);
+    const sampleRate = rateMatch ? Number(rateMatch[1]) : 24000;
+    const binary = atob(base64);
+    const sampleCount = Math.floor(binary.length / 2);
+    const buffer = this.audioContext.createBuffer(1, sampleCount, sampleRate);
+    const channel = buffer.getChannelData(0);
+
+    for (let i = 0; i < sampleCount; i += 1) {
+      const lo = binary.charCodeAt(i * 2);
+      const hi = binary.charCodeAt(i * 2 + 1);
+      const sample = (hi << 8) | lo;
+      const signed = sample >= 0x8000 ? sample - 0x10000 : sample;
+      channel[i] = signed / 0x8000;
+    }
+
+    const source = this.audioContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(this.audioContext.destination);
+    const startAt = Math.max(this.audioContext.currentTime, this.audioPlayTime);
+    source.start(startAt);
+    this.audioPlayTime = startAt + buffer.duration;
+  }
+
   private toggleChat(): void {
     this.chatOpen = !this.chatOpen;
     const panel = this.querySelector("#hubmap-chat-panel") as HTMLElement;
@@ -392,6 +632,11 @@ export class HometownHubMap extends HTMLElement {
     const closeBtn = this.querySelector("#hubmap-chat-close");
     if (closeBtn) {
       closeBtn.addEventListener("click", () => this.toggleChat());
+    }
+
+    const voiceBtn = this.querySelector("#hubmap-voice-btn");
+    if (voiceBtn) {
+      voiceBtn.addEventListener("click", () => this.toggleVoiceInput());
     }
 
     const form = this.querySelector("#hubmap-chat-form") as HTMLFormElement;
@@ -1146,6 +1391,12 @@ export class HometownHubMap extends HTMLElement {
             <div id="hubmap-chat-body"
                 style="flex: 1; overflow-y: auto; background: #ffffff;">
             </div>
+            <div id="hubmap-voice-status"
+                style="padding: 7px 12px; border-top: 1px solid #efeae6;
+                   background: #f8f7f5; color: #484645;
+                   font-size: 11px; line-height: 1.35;">
+              Voice ready.
+            </div>
             <form id="hubmap-chat-form"
                   style="display: flex; gap: 8px; padding: 12px;
                      border-top: 1px solid #b9bfd2; background: #ffffff;">
@@ -1158,6 +1409,25 @@ export class HometownHubMap extends HTMLElement {
                         font-size: 13px; color: #484645;
                         font-family: system-ui, -apple-system, sans-serif;
                         outline: none;" />
+              <button id="hubmap-voice-btn"
+                      type="button"
+                      aria-label="Speak to Gemini"
+                      title="Speak to Gemini"
+                      style="background: #ffffff; color: #152969;
+                         border: 1.5px solid #152969; border-radius: 50%;
+                         width: 36px; min-width: 36px; height: 36px;
+                         padding: 0; cursor: pointer;
+                         display: flex; align-items: center; justify-content: center;
+                         transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                     stroke="#152969" stroke-width="2.4"
+                     stroke-linecap="round" stroke-linejoin="round"
+                     aria-hidden="true">
+                  <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <path d="M12 19v3" />
+                </svg>
+              </button>
               <button type="submit"
                       aria-label="Send"
                       style="background: #152969; color: #ffffff;

@@ -4,11 +4,11 @@ import logging
 import os
 import re
 from collections import defaultdict
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from typing import Any, Literal, Optional
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 from google import genai
@@ -18,6 +18,9 @@ logging.basicConfig(level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 # v2 build
+
+VOICE_MODEL_ID = os.getenv("GEMINI_LIVE_MODEL", "gemini-live-2.5-flash-native-audio")
+VOICE_LOCATION = os.getenv("GEMINI_LIVE_LOCATION", "us-central1")
 
 # Approximate bounding boxes for all 50 US states + DC + territories.
 # Format: (lat_min, lat_max, lon_min, lon_max, state_code)
@@ -1686,3 +1689,120 @@ async def chat(req: ChatRequest) -> ChatResponse:
             tool_calls=[],
             history=req.history,
         )
+
+
+@app.websocket("/voice/ws")
+async def voice_websocket(websocket: WebSocket) -> None:
+    await websocket.accept()
+    client = genai.Client(
+        vertexai=True,
+        project="hometown-success-engine",
+        location=VOICE_LOCATION,
+    )
+
+    async def send_live_messages(session) -> None:
+        async for message in session.receive():
+            if message.setup_complete:
+                await websocket.send_json({"type": "ready"})
+
+            if message.server_content:
+                content = message.server_content
+                if content.input_transcription and content.input_transcription.text:
+                    await websocket.send_json({
+                        "type": "input_transcript",
+                        "text": content.input_transcription.text,
+                    })
+                if content.output_transcription and content.output_transcription.text:
+                    await websocket.send_json({
+                        "type": "output_transcript",
+                        "text": content.output_transcription.text,
+                    })
+                if content.model_turn and content.model_turn.parts:
+                    for part in content.model_turn.parts:
+                        if part.inline_data and part.inline_data.data:
+                            data = part.inline_data.data
+                            if isinstance(data, bytes):
+                                import base64
+                                data = base64.b64encode(data).decode("ascii")
+                            await websocket.send_json({
+                                "type": "audio",
+                                "data": data,
+                                "mime_type": part.inline_data.mime_type or "audio/pcm;rate=24000",
+                            })
+
+            if message.tool_call and message.tool_call.function_calls:
+                frontend_calls: list[dict[str, Any]] = []
+                function_responses = []
+                tool_result_texts: list[str] = []
+                for call in message.tool_call.function_calls:
+                    args = dict(call.args) if call.args else {}
+                    tool_name = call.name or ""
+                    frontend_calls.append({"name": tool_name, "args": args})
+                    result = _build_tool_result_context(tool_name, args)
+                    tool_result_texts.append(result)
+                    function_responses.append(
+                        genai_types.FunctionResponse(
+                            id=call.id,
+                            name=tool_name,
+                            response={"output": result},
+                        )
+                    )
+                await websocket.send_json({
+                    "type": "tool_calls",
+                    "tool_calls": frontend_calls,
+                })
+                if tool_result_texts:
+                    await websocket.send_json({
+                        "type": "tool_result_text",
+                        "text": " ".join(tool_result_texts),
+                    })
+                if function_responses:
+                    await session.send_tool_response(function_responses=function_responses)
+
+    try:
+        async with client.aio.live.connect(
+            model=VOICE_MODEL_ID,
+            config=genai_types.LiveConnectConfig(
+                response_modalities=[genai_types.Modality.AUDIO],
+                system_instruction=_build_chatbot_system_prompt(),
+                tools=[_build_chatbot_tools()],
+                temperature=0.4,
+                output_audio_transcription=genai_types.AudioTranscriptionConfig(),
+                input_audio_transcription=genai_types.AudioTranscriptionConfig(),
+            ),
+        ) as session:
+            await websocket.send_json({
+                "type": "connecting",
+                "model": VOICE_MODEL_ID,
+            })
+            receiver = asyncio.create_task(send_live_messages(session))
+            try:
+                while True:
+                    payload = await websocket.receive_json()
+                    message_type = payload.get("type")
+                    if message_type == "text":
+                        text = str(payload.get("text") or "").strip()
+                        if text:
+                            await websocket.send_json({
+                                "type": "input_transcript",
+                                "text": text,
+                            })
+                            await session.send_realtime_input(text=text)
+                    elif message_type == "close":
+                        break
+            except WebSocketDisconnect:
+                pass
+            finally:
+                receiver.cancel()
+                with suppress(asyncio.CancelledError):
+                    await receiver
+                await session.close()
+    except Exception as e:
+        logger.error(f"Voice WebSocket error: {e}")
+        try:
+            await websocket.send_json({
+                "type": "error",
+                "message": str(e)[:200],
+            })
+        except Exception:
+            pass
