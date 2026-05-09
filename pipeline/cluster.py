@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 EARTH_RADIUS_KM = 6371.0
 EPSILON_RADIANS = 50.0 / EARTH_RADIUS_KM
+PARALYMPIC_HOT_SPOT_THRESHOLD = 0.075
 
 CITY_TO_STATE = {
     # Northeast
@@ -798,7 +799,7 @@ def main() -> None:
             composition_label=comp_label
         )
 
-        is_hot_spot = para_share >= 0.092
+        is_hot_spot = para_share >= PARALYMPIC_HOT_SPOT_THRESHOLD
 
         sport_counter: Counter[str] = Counter()
         sport_para_counter: Counter[str] = Counter()

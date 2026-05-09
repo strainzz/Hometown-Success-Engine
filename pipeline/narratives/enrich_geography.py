@@ -63,7 +63,7 @@ def build_user_prompt(hub: dict, climate: dict, baseline_pct: float) -> str:
     ) or "various sports"
     para_pct = round(hub["composition"]["paralympic_share"] * 100, 1)
     hot_spot_note = (
-        "This is a Paralympic Hot Spot (Para share runs more than 2x national rate)."
+        "This is a Paralympic Hot Spot (Paralympic share is 7.5% or higher)."
         if hub.get("is_paralympic_hot_spot")
         else ""
     )

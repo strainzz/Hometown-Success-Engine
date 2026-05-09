@@ -569,7 +569,7 @@
       "paralympic_share": 0.07920792079207921,
       "composition_label": "balanced"
     },
-    "is_paralympic_hot_spot": false,
+    "is_paralympic_hot_spot": true,
     "top_sports": [
       {
         "sport": "athletics",
@@ -592,6 +592,7 @@
     ],
     "sport_diversity_index": 0.8067308602519239,
     "tags": [
+      "para-hot-spot",
       "summer-strong",
       "south",
       "athletics"
@@ -679,7 +680,7 @@
       "paralympic_share": 0.09195402298850575,
       "composition_label": "balanced"
     },
-    "is_paralympic_hot_spot": false,
+    "is_paralympic_hot_spot": true,
     "top_sports": [
       {
         "sport": "athletics",
@@ -702,6 +703,7 @@
     ],
     "sport_diversity_index": 0.8667509648212157,
     "tags": [
+      "para-hot-spot",
       "summer-strong",
       "midwest",
       "athletics"
@@ -1009,7 +1011,7 @@
       "paralympic_share": 0.07692307692307693,
       "composition_label": "balanced"
     },
-    "is_paralympic_hot_spot": false,
+    "is_paralympic_hot_spot": true,
     "top_sports": [
       {
         "sport": "athletics",
@@ -1032,6 +1034,7 @@
     ],
     "sport_diversity_index": 0.897077197057365,
     "tags": [
+      "para-hot-spot",
       "summer-strong",
       "pacific",
       "athletics"
@@ -1174,7 +1177,7 @@
       "paralympic_share": 0.08064516129032258,
       "composition_label": "balanced"
     },
-    "is_paralympic_hot_spot": false,
+    "is_paralympic_hot_spot": true,
     "top_sports": [
       {
         "sport": "athletics",
@@ -1197,6 +1200,7 @@
     ],
     "sport_diversity_index": 0.9027929405138196,
     "tags": [
+      "para-hot-spot",
       "summer-strong",
       "midwest",
       "athletics"
@@ -1666,7 +1670,7 @@
       "paralympic_share": 0.08888888888888889,
       "composition_label": "balanced"
     },
-    "is_paralympic_hot_spot": false,
+    "is_paralympic_hot_spot": true,
     "top_sports": [
       {
         "sport": "athletics",
@@ -1689,6 +1693,7 @@
     ],
     "sport_diversity_index": 0.9361167210860025,
     "tags": [
+      "para-hot-spot",
       "summer-strong",
       "pacific",
       "athletics"
@@ -1883,7 +1888,7 @@
       "paralympic_share": 0.07692307692307693,
       "composition_label": "balanced"
     },
-    "is_paralympic_hot_spot": false,
+    "is_paralympic_hot_spot": true,
     "top_sports": [
       {
         "sport": "athletics",
@@ -1906,6 +1911,7 @@
     ],
     "sport_diversity_index": 0.9177219581771627,
     "tags": [
+      "para-hot-spot",
       "summer-strong",
       "midwest",
       "athletics"

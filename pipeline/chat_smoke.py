@@ -11,7 +11,7 @@ CASES = [
     {
         "prompt": "Show Paralympic Hot Spots",
         "tool": "filter_to_paralympic",
-        "contains": ["4 Paralympic Hot Spots", "4.7%"],
+        "contains": ["10 Paralympic Hot Spots", "7.5%"],
     },
     {
         "prompt": "Tell me about Vail",
