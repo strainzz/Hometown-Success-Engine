@@ -14,25 +14,25 @@
       "MA",
       "NY"
     ],
-    "total_athletes": 1438,
+    "total_athletes": 1439,
     "composition": {
-      "olympic_count": 1387,
-      "paralympic_count": 51,
+      "olympic_count": 1386,
+      "paralympic_count": 53,
       "both_count": 0,
-      "paralympic_share": 0.03546592489568846,
+      "paralympic_share": 0.03683113273106324,
       "composition_label": "olympic_dominant"
     },
     "is_paralympic_hot_spot": false,
     "top_sports": [
       {
         "sport": "athletics",
-        "count": 231,
+        "count": 228,
         "paralympic_count": 7,
         "track_type": "both"
       },
       {
         "sport": "rowing",
-        "count": 148,
+        "count": 147,
         "paralympic_count": 1,
         "track_type": "both"
       },
@@ -43,7 +43,7 @@
         "track_type": "both"
       }
     ],
-    "sport_diversity_index": 0.7730993904806615,
+    "sport_diversity_index": 0.7721520551618997,
     "tags": [
       "winter-strong",
       "northeast",
@@ -60,7 +60,7 @@
     "centroid_latitude": 33.978333333,
     "centroid_longitude": -118.18277777700001,
     "medoid_hometown": "Bell",
-    "radius_km": 179.6163182331378,
+    "radius_km": 178.36644640924686,
     "region": "pacific",
     "region_name": "Greater Los Angeles",
     "macro_region": "Pacific",
@@ -68,12 +68,12 @@
       "CA",
       "NV"
     ],
-    "total_athletes": 490,
+    "total_athletes": 494,
     "composition": {
-      "olympic_count": 470,
+      "olympic_count": 474,
       "paralympic_count": 19,
       "both_count": 1,
-      "paralympic_share": 0.04081632653061224,
+      "paralympic_share": 0.04048582995951417,
       "composition_label": "olympic_dominant"
     },
     "is_paralympic_hot_spot": false,
@@ -97,7 +97,7 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.7879291053932196,
+    "sport_diversity_index": 0.7879359551964995,
     "tags": [
       "summer-strong",
       "pacific",
@@ -114,7 +114,7 @@
     "centroid_latitude": 41.881944444,
     "centroid_longitude": -87.62777777700002,
     "medoid_hometown": "Chicago",
-    "radius_km": 324.9828597736613,
+    "radius_km": 324.15797009733393,
     "region": "midwest",
     "region_name": "Chicagoland",
     "macro_region": "Midwest",
@@ -123,12 +123,12 @@
       "WI",
       "IA"
     ],
-    "total_athletes": 357,
+    "total_athletes": 359,
     "composition": {
-      "olympic_count": 341,
-      "paralympic_count": 16,
+      "olympic_count": 342,
+      "paralympic_count": 17,
       "both_count": 0,
-      "paralympic_share": 0.04481792717086835,
+      "paralympic_share": 0.04735376044568245,
       "composition_label": "olympic_dominant"
     },
     "is_paralympic_hot_spot": false,
@@ -152,7 +152,7 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.8287640149699783,
+    "sport_diversity_index": 0.8305662156471768,
     "tags": [
       "winter-strong",
       "midwest",
@@ -164,24 +164,81 @@
     ]
   },
   {
+    "hub_id": "HUB_MN_MINNEAPOLIS",
+    "display_name": "Minneapolis Region, MN",
+    "centroid_latitude": 44.981944444,
+    "centroid_longitude": -93.269166666,
+    "medoid_hometown": "Minneapolis",
+    "radius_km": 463.01492072287795,
+    "region": "midwest",
+    "region_name": "Cornbelt / Heartland Plains",
+    "macro_region": "Midwest",
+    "states": [
+      "MN",
+      "IA",
+      "ND"
+    ],
+    "total_athletes": 249,
+    "composition": {
+      "olympic_count": 239,
+      "paralympic_count": 10,
+      "both_count": 0,
+      "paralympic_share": 0.040160642570281124,
+      "composition_label": "olympic_dominant"
+    },
+    "is_paralympic_hot_spot": false,
+    "top_sports": [
+      {
+        "sport": "ice hockey",
+        "count": 75,
+        "paralympic_count": 0,
+        "track_type": "olympic"
+      },
+      {
+        "sport": "athletics",
+        "count": 20,
+        "paralympic_count": 0,
+        "track_type": "olympic"
+      },
+      {
+        "sport": "Winter Sport",
+        "count": 16,
+        "paralympic_count": 3,
+        "track_type": "both"
+      }
+    ],
+    "sport_diversity_index": 0.7679524793002677,
+    "tags": [
+      "winter-strong",
+      "midwest",
+      "ice-hockey"
+    ],
+    "search_aliases": [
+      "Minneapolis",
+      "Twin Cities",
+      "MSP",
+      "MN"
+    ]
+  },
+  {
     "hub_id": "HUB_CA_OAKLAND",
     "display_name": "Bay Area Region",
     "centroid_latitude": 37.8,
     "centroid_longitude": -122.25,
     "medoid_hometown": "Oakland",
-    "radius_km": 135.42641786159402,
+    "radius_km": 135.37503390209113,
     "region": "pacific",
     "region_name": "Bay Area",
     "macro_region": "Pacific",
     "states": [
       "CA"
     ],
-    "total_athletes": 241,
+    "total_athletes": 244,
     "composition": {
-      "olympic_count": 231,
+      "olympic_count": 234,
       "paralympic_count": 10,
       "both_count": 0,
-      "paralympic_share": 0.04149377593360996,
+      "paralympic_share": 0.040983606557377046,
       "composition_label": "olympic_dominant"
     },
     "is_paralympic_hot_spot": false,
@@ -205,7 +262,7 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.8186003899982901,
+    "sport_diversity_index": 0.8201612042632376,
     "tags": [
       "summer-strong",
       "pacific",
@@ -214,63 +271,6 @@
     "search_aliases": [
       "Oakland",
       "CA"
-    ]
-  },
-  {
-    "hub_id": "HUB_MN_MINNEAPOLIS",
-    "display_name": "Minneapolis Region, MN",
-    "centroid_latitude": 44.981944444,
-    "centroid_longitude": -93.269166666,
-    "medoid_hometown": "Minneapolis",
-    "radius_km": 448.10172947448143,
-    "region": "midwest",
-    "region_name": "Cornbelt / Heartland Plains",
-    "macro_region": "Midwest",
-    "states": [
-      "MN",
-      "IA",
-      "ND"
-    ],
-    "total_athletes": 234,
-    "composition": {
-      "olympic_count": 227,
-      "paralympic_count": 7,
-      "both_count": 0,
-      "paralympic_share": 0.029914529914529916,
-      "composition_label": "olympic_dominant"
-    },
-    "is_paralympic_hot_spot": false,
-    "top_sports": [
-      {
-        "sport": "ice hockey",
-        "count": 75,
-        "paralympic_count": 0,
-        "track_type": "olympic"
-      },
-      {
-        "sport": "athletics",
-        "count": 20,
-        "paralympic_count": 0,
-        "track_type": "olympic"
-      },
-      {
-        "sport": "curling",
-        "count": 15,
-        "paralympic_count": 0,
-        "track_type": "olympic"
-      }
-    ],
-    "sport_diversity_index": 0.7567472703176715,
-    "tags": [
-      "winter-strong",
-      "midwest",
-      "ice-hockey"
-    ],
-    "search_aliases": [
-      "Minneapolis",
-      "Twin Cities",
-      "MSP",
-      "MN"
     ]
   },
   {
@@ -299,13 +299,13 @@
     "top_sports": [
       {
         "sport": "athletics",
-        "count": 19,
+        "count": 18,
         "paralympic_count": 0,
         "track_type": "olympic"
       },
       {
         "sport": "ice hockey",
-        "count": 19,
+        "count": 17,
         "paralympic_count": 0,
         "track_type": "olympic"
       },
@@ -316,7 +316,7 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.8498601433583813,
+    "sport_diversity_index": 0.8577407841748186,
     "tags": [
       "winter-strong",
       "midwest",
@@ -387,7 +387,7 @@
     "centroid_latitude": 47.605,
     "centroid_longitude": -122.33,
     "medoid_hometown": "Seattle",
-    "radius_km": 631.5272265844546,
+    "radius_km": 633.1425834208925,
     "region": "pacific",
     "region_name": "Greater Seattle / Puget Sound",
     "macro_region": "Pacific",
@@ -396,12 +396,12 @@
       "MT",
       "ID"
     ],
-    "total_athletes": 122,
+    "total_athletes": 125,
     "composition": {
-      "olympic_count": 115,
+      "olympic_count": 118,
       "paralympic_count": 7,
       "both_count": 0,
-      "paralympic_share": 0.05737704918032787,
+      "paralympic_share": 0.056,
       "composition_label": "balanced"
     },
     "is_paralympic_hot_spot": false,
@@ -425,7 +425,7 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.8281026487730585,
+    "sport_diversity_index": 0.8344315679471395,
     "tags": [
       "winter-strong",
       "pacific",
@@ -442,7 +442,7 @@
     "centroid_latitude": 38.626388888,
     "centroid_longitude": -90.199444444,
     "medoid_hometown": "St. Louis",
-    "radius_km": 199.9371344632901,
+    "radius_km": 198.30470704491515,
     "region": "midwest",
     "region_name": "Cornbelt / Heartland Plains",
     "macro_region": "Midwest",
@@ -451,12 +451,12 @@
       "XX",
       "TN"
     ],
-    "total_athletes": 114,
+    "total_athletes": 115,
     "composition": {
-      "olympic_count": 111,
+      "olympic_count": 112,
       "paralympic_count": 3,
       "both_count": 0,
-      "paralympic_share": 0.02631578947368421,
+      "paralympic_share": 0.02608695652173913,
       "composition_label": "olympic_dominant"
     },
     "is_paralympic_hot_spot": false,
@@ -480,7 +480,7 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.8703986103454486,
+    "sport_diversity_index": 0.8723142791760997,
     "tags": [
       "summer-strong",
       "midwest",
@@ -547,61 +547,6 @@
     ]
   },
   {
-    "hub_id": "HUB_CO_DENVER",
-    "display_name": "Denver Region, CO",
-    "centroid_latitude": 39.739166666,
-    "centroid_longitude": -104.984722222,
-    "medoid_hometown": "Denver",
-    "radius_km": 538.0489451283723,
-    "region": "mountain",
-    "region_name": "Front Range Colorado",
-    "macro_region": "Mountain West",
-    "states": [
-      "CO",
-      "NM",
-      "TX"
-    ],
-    "total_athletes": 109,
-    "composition": {
-      "olympic_count": 104,
-      "paralympic_count": 5,
-      "both_count": 0,
-      "paralympic_share": 0.045871559633027525,
-      "composition_label": "olympic_dominant"
-    },
-    "is_paralympic_hot_spot": false,
-    "top_sports": [
-      {
-        "sport": "alpine skiing",
-        "count": 13,
-        "paralympic_count": 1,
-        "track_type": "both"
-      },
-      {
-        "sport": "freestyle skiing",
-        "count": 11,
-        "paralympic_count": 0,
-        "track_type": "olympic"
-      },
-      {
-        "sport": "ski jumping",
-        "count": 11,
-        "paralympic_count": 0,
-        "track_type": "olympic"
-      }
-    ],
-    "sport_diversity_index": 0.8903171046546824,
-    "tags": [
-      "winter-strong",
-      "mountain",
-      "alpine-skiing"
-    ],
-    "search_aliases": [
-      "Denver",
-      "CO"
-    ]
-  },
-  {
     "hub_id": "HUB_NC_CHARLOTTE",
     "display_name": "Charlotte Region, NC",
     "centroid_latitude": 35.226944444,
@@ -662,7 +607,7 @@
     "centroid_latitude": 40.75,
     "centroid_longitude": -111.883333333,
     "medoid_hometown": "Salt Lake City",
-    "radius_km": 690.7252558108111,
+    "radius_km": 664.5110383325434,
     "region": "mountain",
     "region_name": "Wasatch Front",
     "macro_region": "Mountain West",
@@ -671,12 +616,12 @@
       "UT",
       "XX"
     ],
-    "total_athletes": 88,
+    "total_athletes": 97,
     "composition": {
-      "olympic_count": 83,
-      "paralympic_count": 5,
+      "olympic_count": 91,
+      "paralympic_count": 6,
       "both_count": 0,
-      "paralympic_share": 0.056818181818181816,
+      "paralympic_share": 0.061855670103092786,
       "composition_label": "balanced"
     },
     "is_paralympic_hot_spot": false,
@@ -700,7 +645,7 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.8797510757366002,
+    "sport_diversity_index": 0.8960242472650722,
     "tags": [
       "winter-strong",
       "mountain",
@@ -726,25 +671,25 @@
       "KS",
       "AR"
     ],
-    "total_athletes": 86,
+    "total_athletes": 87,
     "composition": {
-      "olympic_count": 78,
+      "olympic_count": 79,
       "paralympic_count": 8,
       "both_count": 0,
-      "paralympic_share": 0.09302325581395349,
+      "paralympic_share": 0.09195402298850575,
       "composition_label": "balanced"
     },
-    "is_paralympic_hot_spot": true,
+    "is_paralympic_hot_spot": false,
     "top_sports": [
       {
         "sport": "athletics",
-        "count": 19,
+        "count": 18,
         "paralympic_count": 1,
         "track_type": "both"
       },
       {
         "sport": "basketball",
-        "count": 9,
+        "count": 10,
         "paralympic_count": 0,
         "track_type": "olympic"
       },
@@ -755,9 +700,8 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.8640642956281828,
+    "sport_diversity_index": 0.8667509648212157,
     "tags": [
-      "para-hot-spot",
       "summer-strong",
       "midwest",
       "athletics"
@@ -768,57 +712,59 @@
     ]
   },
   {
-    "hub_id": "HUB_FL_TAMPA",
-    "display_name": "Tampa Region, FL",
-    "centroid_latitude": 27.9475,
-    "centroid_longitude": -82.458611111,
-    "medoid_hometown": "Tampa",
-    "radius_km": 328.603103555618,
-    "region": "south",
-    "region_name": "Tampa Bay / Suncoast",
-    "macro_region": "South",
+    "hub_id": "HUB_NE_LINCOLN",
+    "display_name": "Lincoln Region, NE",
+    "centroid_latitude": 40.809166666,
+    "centroid_longitude": -96.678055555,
+    "medoid_hometown": "Lincoln",
+    "radius_km": 296.73047763682115,
+    "region": "midwest",
+    "region_name": "Cornbelt / Heartland Plains",
+    "macro_region": "Midwest",
     "states": [
-      "FL",
-      "GA"
+      "NE",
+      "IA",
+      "KS"
     ],
-    "total_athletes": 82,
+    "total_athletes": 77,
     "composition": {
-      "olympic_count": 77,
-      "paralympic_count": 5,
-      "both_count": 0,
-      "paralympic_share": 0.06097560975609756,
+      "olympic_count": 69,
+      "paralympic_count": 7,
+      "both_count": 1,
+      "paralympic_share": 0.1038961038961039,
       "composition_label": "balanced"
     },
-    "is_paralympic_hot_spot": false,
+    "is_paralympic_hot_spot": true,
     "top_sports": [
       {
         "sport": "athletics",
         "count": 16,
-        "paralympic_count": 0,
-        "track_type": "olympic"
-      },
-      {
-        "sport": "competitive swimming",
-        "count": 10,
-        "paralympic_count": 1,
+        "paralympic_count": 2,
         "track_type": "both"
       },
       {
         "sport": "basketball",
-        "count": 7,
+        "count": 6,
+        "paralympic_count": 2,
+        "track_type": "both"
+      },
+      {
+        "sport": "shooting sports",
+        "count": 6,
         "paralympic_count": 0,
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.8687190059152928,
+    "sport_diversity_index": 0.8883978077005408,
     "tags": [
+      "para-hot-spot",
       "summer-strong",
-      "south",
+      "midwest",
       "athletics"
     ],
     "search_aliases": [
-      "Tampa",
-      "FL"
+      "Lincoln",
+      "NE"
     ]
   },
   {
@@ -827,7 +773,7 @@
     "centroid_latitude": 39.1,
     "centroid_longitude": -84.51250000000002,
     "medoid_hometown": "Cincinnati",
-    "radius_km": 182.11848286845526,
+    "radius_km": 182.09382518481013,
     "region": "midwest",
     "region_name": "Cincinnati / Southwest Ohio + N. KY",
     "macro_region": "Midwest",
@@ -836,12 +782,12 @@
       "IN",
       "XX"
     ],
-    "total_athletes": 75,
+    "total_athletes": 76,
     "composition": {
-      "olympic_count": 72,
+      "olympic_count": 73,
       "paralympic_count": 3,
       "both_count": 0,
-      "paralympic_share": 0.04,
+      "paralympic_share": 0.039473684210526314,
       "composition_label": "olympic_dominant"
     },
     "is_paralympic_hot_spot": false,
@@ -865,7 +811,7 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.8455443519759592,
+    "sport_diversity_index": 0.8481885263961477,
     "tags": [
       "summer-strong",
       "midwest",
@@ -874,62 +820,6 @@
     "search_aliases": [
       "Cincinnati",
       "OH"
-    ]
-  },
-  {
-    "hub_id": "HUB_NE_LINCOLN",
-    "display_name": "Lincoln Region, NE",
-    "centroid_latitude": 40.809166666,
-    "centroid_longitude": -96.678055555,
-    "medoid_hometown": "Lincoln",
-    "radius_km": 298.160988635812,
-    "region": "midwest",
-    "region_name": "Cornbelt / Heartland Plains",
-    "macro_region": "Midwest",
-    "states": [
-      "NE",
-      "IA",
-      "KS"
-    ],
-    "total_athletes": 74,
-    "composition": {
-      "olympic_count": 66,
-      "paralympic_count": 7,
-      "both_count": 1,
-      "paralympic_share": 0.10810810810810811,
-      "composition_label": "balanced"
-    },
-    "is_paralympic_hot_spot": true,
-    "top_sports": [
-      {
-        "sport": "athletics",
-        "count": 15,
-        "paralympic_count": 2,
-        "track_type": "both"
-      },
-      {
-        "sport": "basketball",
-        "count": 7,
-        "paralympic_count": 2,
-        "track_type": "both"
-      },
-      {
-        "sport": "shooting sports",
-        "count": 6,
-        "paralympic_count": 0,
-        "track_type": "olympic"
-      }
-    ],
-    "sport_diversity_index": 0.8889339183947559,
-    "tags": [
-      "para-hot-spot",
-      "summer-strong",
-      "midwest",
-      "athletics"
-    ],
-    "search_aliases": [
-      "Lincoln",
-      "NE"
     ]
   },
   {
@@ -976,7 +866,7 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.8229653151184486,
+    "sport_diversity_index": 0.8289519587845104,
     "tags": [
       "summer-strong",
       "south",
@@ -984,60 +874,6 @@
     ],
     "search_aliases": [
       "Dallas",
-      "TX"
-    ]
-  },
-  {
-    "hub_id": "HUB_TX_HOUSTON",
-    "display_name": "Houston Region, TX",
-    "centroid_latitude": 29.762777777,
-    "centroid_longitude": -95.383055555,
-    "medoid_hometown": "Houston",
-    "radius_km": 136.9413054755824,
-    "region": "south",
-    "region_name": "Texas Triangle",
-    "macro_region": "Southwest",
-    "states": [
-      "TX",
-      "LA"
-    ],
-    "total_athletes": 69,
-    "composition": {
-      "olympic_count": 67,
-      "paralympic_count": 2,
-      "both_count": 0,
-      "paralympic_share": 0.028985507246376812,
-      "composition_label": "olympic_dominant"
-    },
-    "is_paralympic_hot_spot": false,
-    "top_sports": [
-      {
-        "sport": "athletics",
-        "count": 13,
-        "paralympic_count": 1,
-        "track_type": "both"
-      },
-      {
-        "sport": "basketball",
-        "count": 10,
-        "paralympic_count": 0,
-        "track_type": "olympic"
-      },
-      {
-        "sport": "competitive swimming",
-        "count": 5,
-        "paralympic_count": 0,
-        "track_type": "olympic"
-      }
-    ],
-    "sport_diversity_index": 0.8915021519224835,
-    "tags": [
-      "summer-strong",
-      "south",
-      "athletics"
-    ],
-    "search_aliases": [
-      "Houston",
       "TX"
     ]
   },
@@ -1056,12 +892,12 @@
       "WV",
       "VA"
     ],
-    "total_athletes": 68,
+    "total_athletes": 69,
     "composition": {
-      "olympic_count": 66,
+      "olympic_count": 67,
       "paralympic_count": 2,
       "both_count": 0,
-      "paralympic_share": 0.029411764705882353,
+      "paralympic_share": 0.028985507246376812,
       "composition_label": "olympic_dominant"
     },
     "is_paralympic_hot_spot": false,
@@ -1074,7 +910,7 @@
       },
       {
         "sport": "competitive swimming",
-        "count": 11,
+        "count": 10,
         "paralympic_count": 0,
         "track_type": "olympic"
       },
@@ -1085,7 +921,7 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.8394076260515494,
+    "sport_diversity_index": 0.8493648676017708,
     "tags": [
       "summer-strong",
       "northeast",
@@ -1097,12 +933,66 @@
     ]
   },
   {
+    "hub_id": "HUB_TX_HOUSTON",
+    "display_name": "Houston Region, TX",
+    "centroid_latitude": 29.762777777,
+    "centroid_longitude": -95.383055555,
+    "medoid_hometown": "Houston",
+    "radius_km": 138.03943321189286,
+    "region": "south",
+    "region_name": "Texas Triangle",
+    "macro_region": "Southwest",
+    "states": [
+      "TX",
+      "LA"
+    ],
+    "total_athletes": 66,
+    "composition": {
+      "olympic_count": 64,
+      "paralympic_count": 2,
+      "both_count": 0,
+      "paralympic_share": 0.030303030303030304,
+      "composition_label": "olympic_dominant"
+    },
+    "is_paralympic_hot_spot": false,
+    "top_sports": [
+      {
+        "sport": "athletics",
+        "count": 10,
+        "paralympic_count": 1,
+        "track_type": "both"
+      },
+      {
+        "sport": "basketball",
+        "count": 10,
+        "paralympic_count": 0,
+        "track_type": "olympic"
+      },
+      {
+        "sport": "competitive swimming",
+        "count": 5,
+        "paralympic_count": 0,
+        "track_type": "olympic"
+      }
+    ],
+    "sport_diversity_index": 0.9051155124335205,
+    "tags": [
+      "summer-strong",
+      "south",
+      "athletics"
+    ],
+    "search_aliases": [
+      "Houston",
+      "TX"
+    ]
+  },
+  {
     "hub_id": "HUB_OR_PORTLAND",
     "display_name": "Portland Region, OR",
     "centroid_latitude": 45.515,
     "centroid_longitude": -122.679166666,
     "medoid_hometown": "Portland",
-    "radius_km": 356.5534698624871,
+    "radius_km": 355.93068937165594,
     "region": "pacific",
     "region_name": "Greater Portland / Willamette Valley",
     "macro_region": "Pacific",
@@ -1111,12 +1001,12 @@
       "WA",
       "ID"
     ],
-    "total_athletes": 64,
+    "total_athletes": 65,
     "composition": {
-      "olympic_count": 59,
+      "olympic_count": 60,
       "paralympic_count": 5,
       "both_count": 0,
-      "paralympic_share": 0.078125,
+      "paralympic_share": 0.07692307692307693,
       "composition_label": "balanced"
     },
     "is_paralympic_hot_spot": false,
@@ -1140,7 +1030,7 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.8949162121544095,
+    "sport_diversity_index": 0.897077197057365,
     "tags": [
       "summer-strong",
       "pacific",
@@ -1157,7 +1047,7 @@
     "centroid_latitude": 34.8903,
     "centroid_longitude": -91.1917,
     "medoid_hometown": "Brinkley",
-    "radius_km": 444.39573613395055,
+    "radius_km": 446.1143490101485,
     "region": "south",
     "region_name": "Mississippi Heartland",
     "macro_region": "South",
@@ -1166,12 +1056,12 @@
       "MS",
       "TN"
     ],
-    "total_athletes": 63,
+    "total_athletes": 64,
     "composition": {
-      "olympic_count": 61,
+      "olympic_count": 62,
       "paralympic_count": 2,
       "both_count": 0,
-      "paralympic_share": 0.031746031746031744,
+      "paralympic_share": 0.03125,
       "composition_label": "olympic_dominant"
     },
     "is_paralympic_hot_spot": false,
@@ -1195,7 +1085,7 @@
         "track_type": "both"
       }
     ],
-    "sport_diversity_index": 0.7798232110900438,
+    "sport_diversity_index": 0.7836411124783234,
     "tags": [
       "summer-strong",
       "south",
@@ -1204,6 +1094,61 @@
     "search_aliases": [
       "Brinkley",
       "AR"
+    ]
+  },
+  {
+    "hub_id": "HUB_CO_DENVER",
+    "display_name": "Denver Region, CO",
+    "centroid_latitude": 39.739166666,
+    "centroid_longitude": -104.984722222,
+    "medoid_hometown": "Denver",
+    "radius_km": 266.8957670015755,
+    "region": "mountain",
+    "region_name": "Front Range Colorado",
+    "macro_region": "Mountain West",
+    "states": [
+      "CO",
+      "KS",
+      "SD"
+    ],
+    "total_athletes": 62,
+    "composition": {
+      "olympic_count": 59,
+      "paralympic_count": 3,
+      "both_count": 0,
+      "paralympic_share": 0.04838709677419355,
+      "composition_label": "olympic_dominant"
+    },
+    "is_paralympic_hot_spot": false,
+    "top_sports": [
+      {
+        "sport": "freestyle skiing",
+        "count": 7,
+        "paralympic_count": 0,
+        "track_type": "olympic"
+      },
+      {
+        "sport": "competitive swimming",
+        "count": 5,
+        "paralympic_count": 0,
+        "track_type": "olympic"
+      },
+      {
+        "sport": "cycle sport",
+        "count": 4,
+        "paralympic_count": 0,
+        "track_type": "olympic"
+      }
+    ],
+    "sport_diversity_index": 0.9469699061867418,
+    "tags": [
+      "winter-strong",
+      "mountain",
+      "freestyle-skiing"
+    ],
+    "search_aliases": [
+      "Denver",
+      "CO"
     ]
   },
   {
@@ -1221,12 +1166,12 @@
       "PA",
       "WV"
     ],
-    "total_athletes": 61,
+    "total_athletes": 62,
     "composition": {
-      "olympic_count": 56,
+      "olympic_count": 57,
       "paralympic_count": 5,
       "both_count": 0,
-      "paralympic_share": 0.08196721311475409,
+      "paralympic_share": 0.08064516129032258,
       "composition_label": "balanced"
     },
     "is_paralympic_hot_spot": false,
@@ -1239,7 +1184,7 @@
       },
       {
         "sport": "competitive swimming",
-        "count": 7,
+        "count": 8,
         "paralympic_count": 1,
         "track_type": "both"
       },
@@ -1250,7 +1195,7 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.9064853995795791,
+    "sport_diversity_index": 0.9027929405138196,
     "tags": [
       "summer-strong",
       "midwest",
@@ -1259,61 +1204,6 @@
     "search_aliases": [
       "Cleveland",
       "OH"
-    ]
-  },
-  {
-    "hub_id": "HUB_IN_INDIANAPOLIS",
-    "display_name": "Indianapolis Region, IN",
-    "centroid_latitude": 39.768611111,
-    "centroid_longitude": -86.158055555,
-    "medoid_hometown": "Indianapolis",
-    "radius_km": 233.29760472184515,
-    "region": "midwest",
-    "region_name": "Indianapolis / Indiana",
-    "macro_region": "Midwest",
-    "states": [
-      "IN",
-      "IL",
-      "XX"
-    ],
-    "total_athletes": 56,
-    "composition": {
-      "olympic_count": 54,
-      "paralympic_count": 2,
-      "both_count": 0,
-      "paralympic_share": 0.03571428571428571,
-      "composition_label": "olympic_dominant"
-    },
-    "is_paralympic_hot_spot": false,
-    "top_sports": [
-      {
-        "sport": "athletics",
-        "count": 14,
-        "paralympic_count": 0,
-        "track_type": "olympic"
-      },
-      {
-        "sport": "competitive swimming",
-        "count": 6,
-        "paralympic_count": 0,
-        "track_type": "olympic"
-      },
-      {
-        "sport": "diving",
-        "count": 5,
-        "paralympic_count": 0,
-        "track_type": "olympic"
-      }
-    ],
-    "sport_diversity_index": 0.8755344216091009,
-    "tags": [
-      "summer-strong",
-      "midwest",
-      "athletics"
-    ],
-    "search_aliases": [
-      "Indianapolis",
-      "IN"
     ]
   },
   {
@@ -1331,12 +1221,12 @@
       "TX",
       "NM"
     ],
-    "total_athletes": 55,
+    "total_athletes": 60,
     "composition": {
-      "olympic_count": 48,
+      "olympic_count": 53,
       "paralympic_count": 7,
       "both_count": 0,
-      "paralympic_share": 0.12727272727272726,
+      "paralympic_share": 0.11666666666666667,
       "composition_label": "balanced"
     },
     "is_paralympic_hot_spot": true,
@@ -1348,28 +1238,138 @@
         "track_type": "olympic"
       },
       {
+        "sport": "Winter Sport",
+        "count": 5,
+        "paralympic_count": 2,
+        "track_type": "both"
+      },
+      {
         "sport": "competitive swimming",
         "count": 5,
         "paralympic_count": 1,
         "track_type": "both"
-      },
-      {
-        "sport": "ice hockey",
-        "count": 4,
-        "paralympic_count": 1,
-        "track_type": "both"
       }
     ],
-    "sport_diversity_index": 0.9177736437040042,
+    "sport_diversity_index": 0.9177244875290425,
     "tags": [
       "para-hot-spot",
-      "winter-strong",
+      "summer-strong",
       "mountain",
       "athletics"
     ],
     "search_aliases": [
       "Phoenix",
       "AZ"
+    ]
+  },
+  {
+    "hub_id": "HUB_IN_INDIANAPOLIS",
+    "display_name": "Indianapolis Region, IN",
+    "centroid_latitude": 39.768611111,
+    "centroid_longitude": -86.158055555,
+    "medoid_hometown": "Indianapolis",
+    "radius_km": 233.29760472184515,
+    "region": "midwest",
+    "region_name": "Indianapolis / Indiana",
+    "macro_region": "Midwest",
+    "states": [
+      "IN",
+      "IL",
+      "XX"
+    ],
+    "total_athletes": 59,
+    "composition": {
+      "olympic_count": 57,
+      "paralympic_count": 2,
+      "both_count": 0,
+      "paralympic_share": 0.03389830508474576,
+      "composition_label": "olympic_dominant"
+    },
+    "is_paralympic_hot_spot": false,
+    "top_sports": [
+      {
+        "sport": "athletics",
+        "count": 14,
+        "paralympic_count": 0,
+        "track_type": "olympic"
+      },
+      {
+        "sport": "competitive swimming",
+        "count": 7,
+        "paralympic_count": 0,
+        "track_type": "olympic"
+      },
+      {
+        "sport": "diving",
+        "count": 5,
+        "paralympic_count": 0,
+        "track_type": "olympic"
+      }
+    ],
+    "sport_diversity_index": 0.8787558409304754,
+    "tags": [
+      "summer-strong",
+      "midwest",
+      "athletics"
+    ],
+    "search_aliases": [
+      "Indianapolis",
+      "IN"
+    ]
+  },
+  {
+    "hub_id": "HUB_CO_VAIL",
+    "display_name": "Vail Region, CO",
+    "centroid_latitude": 39.635833333,
+    "centroid_longitude": -106.363055555,
+    "medoid_hometown": "Vail",
+    "radius_km": 506.72668749424025,
+    "region": "mountain",
+    "region_name": "Western Slope Colorado",
+    "macro_region": "Mountain West",
+    "states": [
+      "CO",
+      "NM",
+      "UT"
+    ],
+    "total_athletes": 55,
+    "composition": {
+      "olympic_count": 53,
+      "paralympic_count": 2,
+      "both_count": 0,
+      "paralympic_share": 0.03636363636363636,
+      "composition_label": "olympic_dominant"
+    },
+    "is_paralympic_hot_spot": false,
+    "top_sports": [
+      {
+        "sport": "alpine skiing",
+        "count": 11,
+        "paralympic_count": 1,
+        "track_type": "both"
+      },
+      {
+        "sport": "ski jumping",
+        "count": 8,
+        "paralympic_count": 0,
+        "track_type": "olympic"
+      },
+      {
+        "sport": "Winter Sport",
+        "count": 4,
+        "paralympic_count": 0,
+        "track_type": "olympic"
+      }
+    ],
+    "sport_diversity_index": 0.8973060505664585,
+    "tags": [
+      "winter-strong",
+      "mountain",
+      "alpine-skiing"
+    ],
+    "search_aliases": [
+      "Vail",
+      "CO"
     ]
   },
   {
@@ -1416,7 +1416,7 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.8667199842383982,
+    "sport_diversity_index": 0.8676536664605224,
     "tags": [
       "summer-strong",
       "midwest",
@@ -1442,12 +1442,12 @@
       "GU",
       "AS"
     ],
-    "total_athletes": 51,
+    "total_athletes": 53,
     "composition": {
-      "olympic_count": 49,
+      "olympic_count": 51,
       "paralympic_count": 2,
       "both_count": 0,
-      "paralympic_share": 0.0392156862745098,
+      "paralympic_share": 0.03773584905660377,
       "composition_label": "olympic_dominant"
     },
     "is_paralympic_hot_spot": false,
@@ -1471,7 +1471,7 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.8677815688075607,
+    "sport_diversity_index": 0.8724186543316172,
     "tags": [
       "summer-strong",
       "west",
@@ -1488,7 +1488,7 @@
     "centroid_latitude": 25.783333333,
     "centroid_longitude": -80.216666666,
     "medoid_hometown": "Miami",
-    "radius_km": 160.63615594522707,
+    "radius_km": 145.6569010760169,
     "region": "south",
     "region_name": "South Florida (Gold Coast)",
     "macro_region": "South",
@@ -1524,7 +1524,7 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.8914613615394965,
+    "sport_diversity_index": 0.894377921371895,
     "tags": [
       "summer-strong",
       "south",
@@ -1541,7 +1541,7 @@
     "centroid_latitude": 29.976111111,
     "centroid_longitude": -90.078333333,
     "medoid_hometown": "New Orleans",
-    "radius_km": 293.6600316497719,
+    "radius_km": 327.0296173219822,
     "region": "south",
     "region_name": "Greater New Orleans",
     "macro_region": "South",
@@ -1550,19 +1550,19 @@
       "MS",
       "FL"
     ],
-    "total_athletes": 49,
+    "total_athletes": 50,
     "composition": {
-      "olympic_count": 48,
+      "olympic_count": 49,
       "paralympic_count": 1,
       "both_count": 0,
-      "paralympic_share": 0.02040816326530612,
+      "paralympic_share": 0.02,
       "composition_label": "olympic_dominant"
     },
     "is_paralympic_hot_spot": false,
     "top_sports": [
       {
         "sport": "athletics",
-        "count": 15,
+        "count": 17,
         "paralympic_count": 0,
         "track_type": "olympic"
       },
@@ -1579,7 +1579,7 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.8548775684527846,
+    "sport_diversity_index": 0.8430421419154579,
     "tags": [
       "summer-strong",
       "south",
@@ -1591,57 +1591,57 @@
     ]
   },
   {
-    "hub_id": "HUB_NY_BUFFALO",
-    "display_name": "Buffalo Region, NY",
-    "centroid_latitude": 42.886388888,
-    "centroid_longitude": -78.878055555,
-    "medoid_hometown": "Buffalo",
-    "radius_km": 240.99587091301197,
-    "region": "northeast",
-    "region_name": "Western New York / Finger Lakes",
-    "macro_region": "Northeast",
+    "hub_id": "HUB_FL_ORLANDO",
+    "display_name": "Orlando Region, FL",
+    "centroid_latitude": 28.533611111000003,
+    "centroid_longitude": -81.386666666,
+    "medoid_hometown": "Orlando",
+    "radius_km": 199.90009386119834,
+    "region": "south",
+    "region_name": "Central Florida",
+    "macro_region": "South",
     "states": [
-      "NY",
-      "PA"
+      "FL",
+      "GA"
     ],
-    "total_athletes": 45,
+    "total_athletes": 49,
     "composition": {
-      "olympic_count": 42,
-      "paralympic_count": 3,
+      "olympic_count": 47,
+      "paralympic_count": 2,
       "both_count": 0,
-      "paralympic_share": 0.06666666666666667,
-      "composition_label": "balanced"
+      "paralympic_share": 0.04081632653061224,
+      "composition_label": "olympic_dominant"
     },
     "is_paralympic_hot_spot": false,
     "top_sports": [
       {
         "sport": "athletics",
-        "count": 8,
-        "paralympic_count": 0,
-        "track_type": "olympic"
-      },
-      {
-        "sport": "rowing",
-        "count": 7,
+        "count": 12,
         "paralympic_count": 0,
         "track_type": "olympic"
       },
       {
         "sport": "competitive swimming",
-        "count": 6,
+        "count": 8,
+        "paralympic_count": 0,
+        "track_type": "olympic"
+      },
+      {
+        "sport": "basketball",
+        "count": 7,
         "paralympic_count": 0,
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.8825503887545207,
+    "sport_diversity_index": 0.8593633961805647,
     "tags": [
       "summer-strong",
-      "northeast",
+      "south",
       "athletics"
     ],
     "search_aliases": [
-      "Buffalo",
-      "NY"
+      "Orlando",
+      "FL"
     ]
   },
   {
@@ -1650,7 +1650,7 @@
     "centroid_latitude": 37.302222222,
     "centroid_longitude": -120.483055555,
     "medoid_hometown": "Merced",
-    "radius_km": 157.90576525459136,
+    "radius_km": 157.17904201774323,
     "region": "pacific",
     "region_name": "Northern California / Central Valley North",
     "macro_region": "Pacific",
@@ -1658,15 +1658,15 @@
       "CA",
       "NV"
     ],
-    "total_athletes": 43,
+    "total_athletes": 45,
     "composition": {
-      "olympic_count": 39,
+      "olympic_count": 41,
       "paralympic_count": 4,
       "both_count": 0,
-      "paralympic_share": 0.09302325581395349,
+      "paralympic_share": 0.08888888888888889,
       "composition_label": "balanced"
     },
-    "is_paralympic_hot_spot": true,
+    "is_paralympic_hot_spot": false,
     "top_sports": [
       {
         "sport": "athletics",
@@ -1687,9 +1687,8 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.9347419249456024,
+    "sport_diversity_index": 0.9361167210860025,
     "tags": [
-      "para-hot-spot",
       "summer-strong",
       "pacific",
       "athletics"
@@ -1705,7 +1704,7 @@
     "centroid_latitude": 39.962222222,
     "centroid_longitude": -83.000555555,
     "medoid_hometown": "Columbus",
-    "radius_km": 233.66052970865545,
+    "radius_km": 231.56614078322644,
     "region": "midwest",
     "region_name": "Columbus / Central Ohio",
     "macro_region": "Midwest",
@@ -1714,12 +1713,12 @@
       "VA",
       "WV"
     ],
-    "total_athletes": 43,
+    "total_athletes": 45,
     "composition": {
-      "olympic_count": 40,
+      "olympic_count": 42,
       "paralympic_count": 3,
       "both_count": 0,
-      "paralympic_share": 0.06976744186046512,
+      "paralympic_share": 0.06666666666666667,
       "composition_label": "balanced"
     },
     "is_paralympic_hot_spot": false,
@@ -1743,7 +1742,7 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.904534732710871,
+    "sport_diversity_index": 0.9070004256285252,
     "tags": [
       "summer-strong",
       "midwest",
@@ -1760,26 +1759,26 @@
     "centroid_latitude": 29.425,
     "centroid_longitude": -98.493888888,
     "medoid_hometown": "San Antonio",
-    "radius_km": 368.542289459637,
+    "radius_km": 368.4611787810018,
     "region": "south",
     "region_name": "Texas Triangle",
     "macro_region": "Southwest",
     "states": [
       "TX"
     ],
-    "total_athletes": 42,
+    "total_athletes": 43,
     "composition": {
-      "olympic_count": 39,
+      "olympic_count": 40,
       "paralympic_count": 3,
       "both_count": 0,
-      "paralympic_share": 0.07142857142857142,
+      "paralympic_share": 0.06976744186046512,
       "composition_label": "balanced"
     },
     "is_paralympic_hot_spot": false,
     "top_sports": [
       {
         "sport": "athletics",
-        "count": 11,
+        "count": 12,
         "paralympic_count": 1,
         "track_type": "both"
       },
@@ -1796,7 +1795,7 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.8763607696947058,
+    "sport_diversity_index": 0.8659673359478912,
     "tags": [
       "summer-strong",
       "south",
@@ -1808,58 +1807,222 @@
     ]
   },
   {
-    "hub_id": "HUB_MI_DOWAGIAC",
-    "display_name": "Dowagiac Region, MI",
-    "centroid_latitude": 41.984166666,
-    "centroid_longitude": -86.108611111,
-    "medoid_hometown": "Dowagiac",
-    "radius_km": 257.3888585999636,
-    "region": "midwest",
-    "region_name": "Continental US",
-    "macro_region": "Other",
+    "hub_id": "HUB_NY_BUFFALO",
+    "display_name": "Buffalo Region, NY",
+    "centroid_latitude": 42.886388888,
+    "centroid_longitude": -78.878055555,
+    "medoid_hometown": "Buffalo",
+    "radius_km": 129.8959965762547,
+    "region": "northeast",
+    "region_name": "Western New York / Finger Lakes",
+    "macro_region": "Northeast",
     "states": [
-      "MI",
-      "IN",
-      "OH"
+      "NY",
+      "PA"
     ],
-    "total_athletes": 33,
+    "total_athletes": 42,
     "composition": {
-      "olympic_count": 30,
+      "olympic_count": 39,
       "paralympic_count": 3,
       "both_count": 0,
-      "paralympic_share": 0.09090909090909091,
+      "paralympic_share": 0.07142857142857142,
       "composition_label": "balanced"
     },
     "is_paralympic_hot_spot": false,
     "top_sports": [
       {
         "sport": "athletics",
-        "count": 6,
-        "paralympic_count": 1,
-        "track_type": "both"
+        "count": 7,
+        "paralympic_count": 0,
+        "track_type": "olympic"
       },
       {
-        "sport": "basketball",
-        "count": 5,
+        "sport": "rowing",
+        "count": 7,
         "paralympic_count": 0,
         "track_type": "olympic"
       },
       {
         "sport": "competitive swimming",
-        "count": 5,
+        "count": 6,
+        "paralympic_count": 0,
+        "track_type": "olympic"
+      }
+    ],
+    "sport_diversity_index": 0.8845066031953308,
+    "tags": [
+      "summer-strong",
+      "northeast",
+      "athletics"
+    ],
+    "search_aliases": [
+      "Buffalo",
+      "NY"
+    ]
+  },
+  {
+    "hub_id": "HUB_MI_ALLEGAN",
+    "display_name": "Allegan Region, MI",
+    "centroid_latitude": 42.529166666,
+    "centroid_longitude": -85.855277777,
+    "medoid_hometown": "Allegan",
+    "radius_km": 406.3271709597974,
+    "region": "midwest",
+    "region_name": "West Michigan / Grand Rapids",
+    "macro_region": "Midwest",
+    "states": [
+      "MI",
+      "IN",
+      "WI"
+    ],
+    "total_athletes": 39,
+    "composition": {
+      "olympic_count": 36,
+      "paralympic_count": 3,
+      "both_count": 0,
+      "paralympic_share": 0.07692307692307693,
+      "composition_label": "balanced"
+    },
+    "is_paralympic_hot_spot": false,
+    "top_sports": [
+      {
+        "sport": "athletics",
+        "count": 7,
+        "paralympic_count": 1,
+        "track_type": "both"
+      },
+      {
+        "sport": "basketball",
+        "count": 4,
+        "paralympic_count": 0,
+        "track_type": "olympic"
+      },
+      {
+        "sport": "competitive swimming",
+        "count": 4,
         "paralympic_count": 1,
         "track_type": "both"
       }
     ],
-    "sport_diversity_index": 0.8999569973094285,
+    "sport_diversity_index": 0.9177219581771627,
     "tags": [
       "summer-strong",
       "midwest",
       "athletics"
     ],
     "search_aliases": [
-      "Dowagiac",
+      "Allegan",
       "MI"
+    ]
+  },
+  {
+    "hub_id": "HUB_FL_TAMPA",
+    "display_name": "Tampa Region, FL",
+    "centroid_latitude": 27.9475,
+    "centroid_longitude": -82.458611111,
+    "medoid_hometown": "Tampa",
+    "radius_km": 328.603103555618,
+    "region": "south",
+    "region_name": "Tampa Bay / Suncoast",
+    "macro_region": "South",
+    "states": [
+      "FL",
+      "GA"
+    ],
+    "total_athletes": 35,
+    "composition": {
+      "olympic_count": 31,
+      "paralympic_count": 4,
+      "both_count": 0,
+      "paralympic_share": 0.11428571428571428,
+      "composition_label": "balanced"
+    },
+    "is_paralympic_hot_spot": true,
+    "top_sports": [
+      {
+        "sport": "athletics",
+        "count": 4,
+        "paralympic_count": 0,
+        "track_type": "olympic"
+      },
+      {
+        "sport": "sailing",
+        "count": 4,
+        "paralympic_count": 0,
+        "track_type": "olympic"
+      },
+      {
+        "sport": "ice hockey",
+        "count": 3,
+        "paralympic_count": 1,
+        "track_type": "both"
+      }
+    ],
+    "sport_diversity_index": 0.9554893194914423,
+    "tags": [
+      "para-hot-spot",
+      "winter-strong",
+      "south",
+      "athletics"
+    ],
+    "search_aliases": [
+      "Tampa",
+      "FL"
+    ]
+  },
+  {
+    "hub_id": "HUB_AK_ANCHORAGE",
+    "display_name": "Anchorage Region, AK",
+    "centroid_latitude": 61.216666666,
+    "centroid_longitude": -149.893611111,
+    "medoid_hometown": "Anchorage",
+    "radius_km": 5937.9241077212255,
+    "region": "pacific",
+    "region_name": "Southcentral Alaska",
+    "macro_region": "Alaska",
+    "states": [
+      "AK",
+      "XX"
+    ],
+    "total_athletes": 30,
+    "composition": {
+      "olympic_count": 26,
+      "paralympic_count": 4,
+      "both_count": 0,
+      "paralympic_share": 0.13333333333333333,
+      "composition_label": "balanced"
+    },
+    "is_paralympic_hot_spot": true,
+    "top_sports": [
+      {
+        "sport": "cross-country skiing",
+        "count": 7,
+        "paralympic_count": 0,
+        "track_type": "olympic"
+      },
+      {
+        "sport": "Winter Sport",
+        "count": 4,
+        "paralympic_count": 1,
+        "track_type": "both"
+      },
+      {
+        "sport": "ice hockey",
+        "count": 3,
+        "paralympic_count": 0,
+        "track_type": "olympic"
+      }
+    ],
+    "sport_diversity_index": 0.9189677763643849,
+    "tags": [
+      "para-hot-spot",
+      "winter-strong",
+      "pacific",
+      "cross-country-skiing"
+    ],
+    "search_aliases": [
+      "Anchorage",
+      "AK"
     ]
   },
   {
@@ -1868,21 +2031,21 @@
     "centroid_latitude": 39.526111111,
     "centroid_longitude": -119.812666666,
     "medoid_hometown": "Reno",
-    "radius_km": 317.8377917989106,
+    "radius_km": 314.76993400861403,
     "region": "pacific",
     "region_name": "Northern Nevada / Reno-Tahoe",
     "macro_region": "Mountain West",
     "states": [
-      "NV",
       "CA",
+      "NV",
       "OR"
     ],
-    "total_athletes": 29,
+    "total_athletes": 30,
     "composition": {
-      "olympic_count": 27,
+      "olympic_count": 28,
       "paralympic_count": 2,
       "both_count": 0,
-      "paralympic_share": 0.06896551724137931,
+      "paralympic_share": 0.06666666666666667,
       "composition_label": "balanced"
     },
     "is_paralympic_hot_spot": false,
@@ -1906,7 +2069,7 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.9356741713429256,
+    "sport_diversity_index": 0.9376797559849955,
     "tags": [
       "winter-strong",
       "pacific",
@@ -1923,7 +2086,7 @@
     "centroid_latitude": 40.116388888,
     "centroid_longitude": -88.243611111,
     "medoid_hometown": "Champaign",
-    "radius_km": 168.18880827703637,
+    "radius_km": 165.07031751048245,
     "region": "midwest",
     "region_name": "Continental US",
     "macro_region": "Other",
@@ -1932,12 +2095,12 @@
       "IN",
       "MO"
     ],
-    "total_athletes": 29,
+    "total_athletes": 30,
     "composition": {
-      "olympic_count": 27,
+      "olympic_count": 28,
       "paralympic_count": 2,
       "both_count": 0,
-      "paralympic_share": 0.06896551724137931,
+      "paralympic_share": 0.06666666666666667,
       "composition_label": "balanced"
     },
     "is_paralympic_hot_spot": false,
@@ -1961,7 +2124,7 @@
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.9149010514717387,
+    "sport_diversity_index": 0.9161767513786778,
     "tags": [
       "summer-strong",
       "midwest",
@@ -1973,57 +2136,58 @@
     ]
   },
   {
-    "hub_id": "HUB_AK_ANCHORAGE",
-    "display_name": "Anchorage Region, AK",
-    "centroid_latitude": 61.216666666,
-    "centroid_longitude": -149.893611111,
-    "medoid_hometown": "Anchorage",
-    "radius_km": 417.82656660543205,
-    "region": "pacific",
-    "region_name": "Southcentral Alaska",
-    "macro_region": "Alaska",
+    "hub_id": "HUB_NY_ROCHESTER",
+    "display_name": "Rochester Region, NY",
+    "centroid_latitude": 43.165555555,
+    "centroid_longitude": -77.611388888,
+    "medoid_hometown": "Rochester",
+    "radius_km": 290.33472459099573,
+    "region": "northeast",
+    "region_name": "Western New York / Finger Lakes",
+    "macro_region": "Northeast",
     "states": [
-      "AK"
+      "NY",
+      "PA",
+      "XX"
     ],
-    "total_athletes": 24,
+    "total_athletes": 26,
     "composition": {
-      "olympic_count": 21,
-      "paralympic_count": 3,
+      "olympic_count": 25,
+      "paralympic_count": 1,
       "both_count": 0,
-      "paralympic_share": 0.125,
-      "composition_label": "balanced"
+      "paralympic_share": 0.038461538461538464,
+      "composition_label": "olympic_dominant"
     },
-    "is_paralympic_hot_spot": true,
+    "is_paralympic_hot_spot": false,
     "top_sports": [
       {
-        "sport": "cross-country skiing",
-        "count": 7,
+        "sport": "athletics",
+        "count": 4,
         "paralympic_count": 0,
         "track_type": "olympic"
       },
       {
-        "sport": "ice hockey",
+        "sport": "amateur wrestling",
         "count": 3,
         "paralympic_count": 0,
         "track_type": "olympic"
       },
       {
-        "sport": "curling",
-        "count": 3,
+        "sport": "Winter Sport",
+        "count": 2,
         "paralympic_count": 0,
         "track_type": "olympic"
       }
     ],
-    "sport_diversity_index": 0.9018562490051553,
+    "sport_diversity_index": 0.9546691837369874,
     "tags": [
-      "para-hot-spot",
-      "winter-strong",
-      "pacific",
-      "cross-country-skiing"
+      "summer-strong",
+      "northeast",
+      "athletics"
     ],
     "search_aliases": [
-      "Anchorage",
-      "AK"
+      "Rochester",
+      "NY"
     ]
   }
 ]

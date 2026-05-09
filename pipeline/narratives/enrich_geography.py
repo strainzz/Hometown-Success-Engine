@@ -1,18 +1,12 @@
-"""Generate 'why this region' geographic context for each hub.
+"""Generate geographic context for each hub.
 
 Reads:
   pipeline/clustered/hubs.json
   pipeline/climate/climate.json
-  pipeline/narratives/hubs.json (existing narratives)
+  pipeline/narratives/hubs.json
 
 Writes:
-  pipeline/narratives/hubs.json (in-place update with new geographic_context field)
-
-Uses Vertex AI Gemini 2.5 Flash. Each call is grounded in real climate data
-plus the hub's actual top sports, so output cites specific numbers.
-
-Note on phrasing: the contest brief says use conditional phrasing like 'could
-help find', not deterministic claims. Prompt enforces this.
+  pipeline/narratives/hubs.json
 """
 import json
 import os
@@ -21,6 +15,7 @@ from pathlib import Path
 
 from google import genai
 from google.genai import types as genai_types
+
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 HUBS_PATH = PROJECT_ROOT / "pipeline" / "clustered" / "hubs.json"
@@ -39,39 +34,38 @@ actually appear in this hub.
 CRITICAL RULES:
 - Use CONDITIONAL phrasing only. NEVER claim geography "produces" or "creates"
   athletes. Use "could help foster", "is well-suited to", "supports access to",
-  "may explain", "the conditions for".
-- Cite the specific climate or geographic features given to you (temperature,
-  precipitation, elevation, terrain).
+  "may explain", or "the conditions for".
+- Cite the specific climate or geographic features given to you.
 - Tie the climate features to the actual top sports in this hub.
 - Stay neutral and factual. No hype words like "incredible", "powerhouse", "elite".
 - Output exactly 2 sentences. No more, no less. No headers, no bullet points.
 - Do not name specific athletes, teams, or NGB organizations.
-- Do not use em dashes (—). Use commas or periods.
+- Do not use em dashes. Use commas or periods.
 """
 
 
 USER_TEMPLATE = """Hub: {display_name} ({region_name}, {macro_region})
 Top sports in this hub (with athlete count): {top_sports}
-Annual avg temperature: {temp_f}°F
+Annual avg temperature: {temp_f} degrees F
 Annual precipitation: {precip_in} inches
 Annual sunshine: {sunshine_hours} hours
 Elevation: {elevation_ft} feet
-Paralympic share: {para_pct}% (national baseline 4.6%)
+Paralympic share: {para_pct}% (national baseline {baseline_pct}%)
 {hot_spot_note}
 
 Write the 2-sentence geographic context."""
 
 
-def build_user_prompt(hub: dict, climate: dict) -> str:
+def build_user_prompt(hub: dict, climate: dict, baseline_pct: float) -> str:
     top_sports_str = ", ".join(
         f"{s['sport']} ({s['count']} athletes)"
         for s in hub.get("top_sports", [])[:4]
     ) or "various sports"
-
     para_pct = round(hub["composition"]["paralympic_share"] * 100, 1)
     hot_spot_note = (
         "This is a Paralympic Hot Spot (Para share runs more than 2x national rate)."
-        if hub.get("is_paralympic_hot_spot") else ""
+        if hub.get("is_paralympic_hot_spot")
+        else ""
     )
 
     return USER_TEMPLATE.format(
@@ -84,6 +78,7 @@ def build_user_prompt(hub: dict, climate: dict) -> str:
         sunshine_hours=climate.get("annual_sunshine_hours", "unknown"),
         elevation_ft=climate.get("elevation_ft", "unknown"),
         para_pct=para_pct,
+        baseline_pct=round(baseline_pct, 1),
         hot_spot_note=hot_spot_note,
     )
 
@@ -95,6 +90,13 @@ def main():
     hubs = json.loads(HUBS_PATH.read_text(encoding="utf-8"))
     climate_all = json.loads(CLIMATE_PATH.read_text(encoding="utf-8"))
     narratives = json.loads(NARRATIVES_PATH.read_text(encoding="utf-8"))
+    total_athletes = sum(h.get("total_athletes", 0) for h in hubs)
+    total_para = sum(
+        h.get("composition", {}).get("paralympic_count", 0)
+        + h.get("composition", {}).get("both_count", 0)
+        for h in hubs
+    )
+    baseline_pct = (total_para / total_athletes * 100) if total_athletes else 0.0
 
     print(f"Enriching {len(hubs)} hubs with geographic_context...")
 
@@ -106,13 +108,18 @@ def main():
             print(f"  [{i+1}/{len(hubs)}] {hub_id}... SKIP (no climate)")
             continue
 
-        prompt = build_user_prompt(hub, climate)
+        prompt = build_user_prompt(hub, climate, baseline_pct)
         print(f"  [{i+1}/{len(hubs)}] {hub_id}... ", end="", flush=True)
 
         try:
             response = client.models.generate_content(
                 model="gemini-2.5-flash",
-                contents=[genai_types.Content(role="user", parts=[genai_types.Part(text=prompt)])],
+                contents=[
+                    genai_types.Content(
+                        role="user",
+                        parts=[genai_types.Part(text=prompt)],
+                    )
+                ],
                 config=genai_types.GenerateContentConfig(
                     system_instruction=SYSTEM_PROMPT,
                     temperature=0.5,
@@ -126,10 +133,10 @@ def main():
                     if hasattr(part, "text") and part.text:
                         text += part.text
 
-            text = text.strip().replace("\u2014", ",").replace("—", ",")
+            text = text.strip().replace("\u2014", ",")
 
             if hub_id not in narratives:
-                print(f"SKIP (no narrative entry)")
+                print("SKIP (no narrative entry)")
                 continue
 
             narratives[hub_id]["geographic_context"] = text

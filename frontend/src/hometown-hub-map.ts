@@ -968,7 +968,7 @@ export class HometownHubMap extends HTMLElement {
           </div>
           <div class="hsm-header-sub" style="font-size: 14px; color: #b9bfd2;
                 margin-top: 6px; font-weight: 400; letter-spacing: 0.3px;">
-            Mapping 5,012 Olympians and Paralympians across 37 hometown regions where America's next Team USA roster could emerge
+            Mapping 5,119 Olympians and Paralympians across 40 hometown regions, including the Milan-Cortina 2026 cohort.
           </div>
         </header>
 
@@ -1250,8 +1250,8 @@ export class HometownHubMap extends HTMLElement {
 
     grid.innerHTML = `
       ${card("Paralympic Hot Spots", hotSpots, "regions w/ Paralympic share &gt;2x national rate", true)}
-      ${card("Athletes Mapped", fmtNumber(totalAthletes), "Olympians and Paralympians, 2020-2026")}
-      ${card("Hometown Hubs", hubsDiscovered, "regions discovered via HDBSCAN clustering")}
+      ${card("Athletes Mapped", fmtNumber(totalAthletes), "Olympians and Paralympians, Tokyo 2020 through Milan-Cortina 2026")}
+      ${card("Hometown Hubs", hubsDiscovered, "regions discovered via HDBSCAN clustering, including new winter hubs for 2026")}
       ${card("Paralympic Share", overallParaPct.toFixed(1) + "%", "of mapped athletes are Paralympians")}
     `;
   }

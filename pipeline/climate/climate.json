@@ -17,17 +17,17 @@
     "annual_sunshine_hours": 3059.0,
     "elevation_ft": 748.0
   },
-  "HUB_CA_OAKLAND": {
-    "annual_avg_temp_f": 56.5,
-    "annual_precipitation_in": 36.2,
-    "annual_sunshine_hours": 3625.0,
-    "elevation_ft": 39.0
-  },
   "HUB_MN_MINNEAPOLIS": {
     "annual_avg_temp_f": 48.0,
     "annual_precipitation_in": 42.6,
     "annual_sunshine_hours": 3220.0,
     "elevation_ft": 850.0
+  },
+  "HUB_CA_OAKLAND": {
+    "annual_avg_temp_f": 56.5,
+    "annual_precipitation_in": 36.2,
+    "annual_sunshine_hours": 3625.0,
+    "elevation_ft": 39.0
   },
   "HUB_MI_DETROIT": {
     "annual_avg_temp_f": 51.6,
@@ -59,12 +59,6 @@
     "annual_sunshine_hours": 3297.0,
     "elevation_ft": 1066.0
   },
-  "HUB_CO_DENVER": {
-    "annual_avg_temp_f": 48.4,
-    "annual_precipitation_in": 21.2,
-    "annual_sunshine_hours": 3627.0,
-    "elevation_ft": 5279.0
-  },
   "HUB_NC_CHARLOTTE": {
     "annual_avg_temp_f": 61.7,
     "annual_precipitation_in": 42.9,
@@ -83,11 +77,11 @@
     "annual_sunshine_hours": 3463.0,
     "elevation_ft": 909.0
   },
-  "HUB_FL_TAMPA": {
-    "annual_avg_temp_f": 74.2,
-    "annual_precipitation_in": 44.4,
-    "annual_sunshine_hours": 3768.0,
-    "elevation_ft": 33.0
+  "HUB_NE_LINCOLN": {
+    "annual_avg_temp_f": 54.8,
+    "annual_precipitation_in": 21.7,
+    "annual_sunshine_hours": 3502.0,
+    "elevation_ft": 1230.0
   },
   "HUB_OH_CINCINNATI": {
     "annual_avg_temp_f": 56.5,
@@ -95,29 +89,23 @@
     "annual_sunshine_hours": 3286.0,
     "elevation_ft": 587.0
   },
-  "HUB_NE_LINCOLN": {
-    "annual_avg_temp_f": 54.8,
-    "annual_precipitation_in": 21.7,
-    "annual_sunshine_hours": 3502.0,
-    "elevation_ft": 1230.0
-  },
   "HUB_TX_DALLAS": {
     "annual_avg_temp_f": 68.6,
     "annual_precipitation_in": 56.6,
     "annual_sunshine_hours": 3395.0,
     "elevation_ft": 427.0
   },
-  "HUB_TX_HOUSTON": {
-    "annual_avg_temp_f": 71.6,
-    "annual_precipitation_in": 57.2,
-    "annual_sunshine_hours": 3304.0,
-    "elevation_ft": 16.0
-  },
   "HUB_PA_PITTSBURGH": {
     "annual_avg_temp_f": 53.8,
     "annual_precipitation_in": 41.1,
     "annual_sunshine_hours": 2950.0,
     "elevation_ft": 758.0
+  },
+  "HUB_TX_HOUSTON": {
+    "annual_avg_temp_f": 71.6,
+    "annual_precipitation_in": 57.2,
+    "annual_sunshine_hours": 3304.0,
+    "elevation_ft": 16.0
   },
   "HUB_OR_PORTLAND": {
     "annual_avg_temp_f": 53.5,
@@ -131,11 +119,23 @@
     "annual_sunshine_hours": 3421.0,
     "elevation_ft": 210.0
   },
+  "HUB_CO_DENVER": {
+    "annual_avg_temp_f": 48.4,
+    "annual_precipitation_in": 21.2,
+    "annual_sunshine_hours": 3627.0,
+    "elevation_ft": 5279.0
+  },
   "HUB_OH_CLEVELAND": {
     "annual_avg_temp_f": 52.6,
     "annual_precipitation_in": 42.9,
     "annual_sunshine_hours": 3079.0,
     "elevation_ft": 663.0
+  },
+  "HUB_AZ_PHOENIX": {
+    "annual_avg_temp_f": 74.3,
+    "annual_precipitation_in": 10.0,
+    "annual_sunshine_hours": 3927.0,
+    "elevation_ft": 1093.0
   },
   "HUB_IN_INDIANAPOLIS": {
     "annual_avg_temp_f": 55.2,
@@ -143,11 +143,11 @@
     "annual_sunshine_hours": 3182.0,
     "elevation_ft": 702.0
   },
-  "HUB_AZ_PHOENIX": {
-    "annual_avg_temp_f": 74.3,
-    "annual_precipitation_in": 10.0,
-    "annual_sunshine_hours": 3927.0,
-    "elevation_ft": 1093.0
+  "HUB_CO_VAIL": {
+    "annual_avg_temp_f": 36.6,
+    "annual_precipitation_in": 28.1,
+    "annual_sunshine_hours": 3775.0,
+    "elevation_ft": 8370.0
   },
   "HUB_MO_KANSAS_CITY": {
     "annual_avg_temp_f": 57.6,
@@ -173,11 +173,11 @@
     "annual_sunshine_hours": 3604.0,
     "elevation_ft": 10.0
   },
-  "HUB_NY_BUFFALO": {
-    "annual_avg_temp_f": 50.7,
-    "annual_precipitation_in": 42.4,
-    "annual_sunshine_hours": 2900.0,
-    "elevation_ft": 600.0
+  "HUB_FL_ORLANDO": {
+    "annual_avg_temp_f": 73.1,
+    "annual_precipitation_in": 64.4,
+    "annual_sunshine_hours": 3675.0,
+    "elevation_ft": 118.0
   },
   "HUB_CA_MERCED": {
     "annual_avg_temp_f": 62.7,
@@ -197,11 +197,29 @@
     "annual_sunshine_hours": 3344.0,
     "elevation_ft": 696.0
   },
-  "HUB_MI_DOWAGIAC": {
-    "annual_avg_temp_f": 51.4,
-    "annual_precipitation_in": 44.0,
-    "annual_sunshine_hours": 2948.0,
-    "elevation_ft": 771.0
+  "HUB_NY_BUFFALO": {
+    "annual_avg_temp_f": 50.7,
+    "annual_precipitation_in": 42.4,
+    "annual_sunshine_hours": 2900.0,
+    "elevation_ft": 600.0
+  },
+  "HUB_MI_ALLEGAN": {
+    "annual_avg_temp_f": 50.9,
+    "annual_precipitation_in": 41.2,
+    "annual_sunshine_hours": 2944.0,
+    "elevation_ft": 663.0
+  },
+  "HUB_FL_TAMPA": {
+    "annual_avg_temp_f": 74.2,
+    "annual_precipitation_in": 44.4,
+    "annual_sunshine_hours": 3768.0,
+    "elevation_ft": 33.0
+  },
+  "HUB_AK_ANCHORAGE": {
+    "annual_avg_temp_f": 36.7,
+    "annual_precipitation_in": 39.8,
+    "annual_sunshine_hours": 2142.0,
+    "elevation_ft": 118.0
   },
   "HUB_NV_RENO": {
     "annual_avg_temp_f": 51.5,
@@ -215,10 +233,10 @@
     "annual_sunshine_hours": 3247.0,
     "elevation_ft": 745.0
   },
-  "HUB_AK_ANCHORAGE": {
-    "annual_avg_temp_f": 36.7,
-    "annual_precipitation_in": 39.8,
-    "annual_sunshine_hours": 2142.0,
-    "elevation_ft": 118.0
+  "HUB_NY_ROCHESTER": {
+    "annual_avg_temp_f": 50.5,
+    "annual_precipitation_in": 43.6,
+    "annual_sunshine_hours": 2799.0,
+    "elevation_ft": 505.0
   }
 }

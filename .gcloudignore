@@ -1,0 +1,34 @@
+﻿# .gcloudignore — controls what gets uploaded to Cloud Build
+# This OVERRIDES .gitignore for gcloud uploads.
+# IMPORTANT: pipeline/clustered/athletes.json IS gitignored for NIL safety on GitHub,
+# but we MUST upload it to Cloud Build so the container can read it.
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+pipeline/.venv/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/node_modules/
+
+# Git/IDE
+.git/
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Pipeline raw data (large, not needed in container)
+pipeline/raw_data/
+pipeline/cache/
+pipeline/geocoded/
+pipeline/normalized/
+
+# DO NOT exclude pipeline/clustered/athletes.json — needed by Dockerfile

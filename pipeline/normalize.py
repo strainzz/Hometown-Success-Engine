@@ -193,16 +193,30 @@ def log_summary(athletes: list[Athlete]) -> None:
 def main() -> None:
     base_dir = Path("pipeline")
     raw_dir = base_dir / "raw_data" / "wikidata"
-    olympic_path = raw_dir / "athletes_olympic.json"
-    paralympic_path = raw_dir / "athletes_paralympic.json"
+    olympic_paths = [
+        raw_dir / "athletes_olympic.json",
+        raw_dir / "athletes_olympic_2026.json",
+    ]
+    paralympic_paths = [
+        raw_dir / "athletes_paralympic.json",
+        raw_dir / "athletes_paralympic_2026.json",
+    ]
     out_path = base_dir / "normalized" / "athletes.json"
 
     logger.info("Loading and parsing Olympic data...")
-    olympic_bindings = load_raw(olympic_path)
+    olympic_bindings: list[dict[str, Any]] = []
+    for p in olympic_paths:
+        loaded = load_raw(p)
+        logger.info(f"  {p.name}: {len(loaded)} bindings")
+        olympic_bindings.extend(loaded)
     olympic_athletes = build_athletes(olympic_bindings, OlympicParalympicStatus.OLYMPIC)
 
     logger.info("Loading and parsing Paralympic data...")
-    paralympic_bindings = load_raw(paralympic_path)
+    paralympic_bindings: list[dict[str, Any]] = []
+    for p in paralympic_paths:
+        loaded = load_raw(p)
+        logger.info(f"  {p.name}: {len(loaded)} bindings")
+        paralympic_bindings.extend(loaded)
     paralympic_athletes = build_athletes(paralympic_bindings, OlympicParalympicStatus.PARALYMPIC)
 
     logger.info("Merging datasets...")

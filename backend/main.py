@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+import re
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -287,7 +288,7 @@ CHATBOT_TOOLS = genai_types.Tool(
                             "hubs_by_macro_region",
                             "summary",
                         ],
-                        description="What kind of lookup. top_states_by_total/paralympic/paralympic_share return ranked state lists. top_hubs_by_total/paralympic_share return ranked hub lists. all_hot_spots returns the 5 Paralympic Hot Spots. hubs_by_sport filters by a sport name. hubs_by_macro_region filters by region. summary returns overall totals.",
+                        description="What kind of lookup. top_states_by_total/paralympic/paralympic_share return ranked state lists. top_hubs_by_total/paralympic_share return ranked hub lists. all_hot_spots returns the current Paralympic Hot Spots. hubs_by_sport filters by a sport name. hubs_by_macro_region filters by region. summary returns overall totals.",
                     ),
                     "limit": genai_types.Schema(
                         type="INTEGER",
@@ -322,105 +323,29 @@ CHATBOT_TOOLS = genai_types.Tool(
     ]
 )
 
-CHATBOT_SYSTEM_PROMPT = """You are Gemini, the AI guide for the Hometown Success Engine ,  an interactive map of where America's elite athletes come from. The map shows 5,012 Olympians and Paralympians clustered into 37 regional hubs.
+CHATBOT_SYSTEM_PROMPT_TEMPLATE = """You are Gemini, the AI guide for the Hometown Success Engine, an interactive map of where America's elite athletes come from. The current map shows {athlete_count:,} mapped Olympians and Paralympians clustered into {hub_count} hometown hubs from Tokyo 2020 through Milan-Cortina 2026.
+
+Current national Paralympic baseline: {baseline_pct:.1f}%.
+Current Paralympic Hot Spots: {hot_spot_count}.
 
 # YOUR JOB
-Help users explore the map. Call tools to drive it. Then narrate what changed using SPECIFIC NUMBERS from the tool results.
+Help users explore the map. Call tools to drive it, then narrate what changed using specific numbers from the tool result.
 
-# AVAILABLE TOOLS
-- select_hub(hub_id) ,  highlights a hub
-- zoom_to_hub(hub_id) ,  zooms to a hub
-- filter_to_paralympic(macro_region?) ,  highlights Paralympic Hot Spots
-- select_state(state_code) ,  opens the state panel for any US state, DC, or territory
-- reset_view() ,  resets to continental US
+# TOOL RULES
+- If the user asks to show, highlight, filter, or view Paralympic Hot Spots, call filter_to_paralympic.
+- If the user names a state, call select_state.
+- If the user names a city, hub, or region, call select_hub or zoom_to_hub.
+- If the user asks for rankings, totals, comparisons, or aggregate questions, call query_data.
+- Always cite exact numbers from the tool result.
+- Keep replies to 2-3 sentences.
+- Use conditional phrasing such as "could help foster", "may explain", or "is associated with". Never say a place produces athletes.
+- Do not name individual athletes.
 
-# WHEN TO USE STATE vs HUB vs QUERY
-- If user names a STATE (Kansas, Wyoming, D.C., Texas, California): use select_state
-- If user names a CITY or REGION (Phoenix, Anchorage, Stillwater, Lincoln, Merced): use select_hub
-- If user asks for RANKINGS, TOP-N, COMPARISONS, or AGGREGATE questions ("which state ranks first", "top 5 states", "most Paralympic athletes", "how many hubs", "what are the Hot Spots"): use query_data
-- States have aggregated athlete counts; hubs are real geographic clusters with narratives; query_data is for analyst-style lookups that don't fit on the map directly.
+# CURRENT PARALYMPIC HOT SPOTS
+{hot_spot_lines}
 
-# MULTI-TOOL CHAINING (MANDATORY)
-
-Some user messages REQUIRE you to call MULTIPLE tools in a single response. The function-calling API supports parallel/sequential tool calls in one turn — use this capability.
-
-TRIGGER PHRASES that REQUIRE 2 tool calls:
-- "zoom in on the top/best/highest/leading [state/hub/region]"
-- "show me the [#1/leader/top] for [metric]"
-- "go to the state with the most [X]"
-- "take me to the highest-ranked [state/hub]"
-
-When you see these patterns, you MUST emit BOTH function calls in the same turn:
-1. query_data to identify the answer (e.g. top_states_by_paralympic_share, limit=1)
-2. select_state OR select_hub with the result of step 1 (e.g. state_code="NV")
-
-If the user wants STATE-level data: pair query_data with select_state.
-If the user wants HUB-level data: pair query_data with select_hub.
-
-DO NOT respond with only query_data when the user asked you to navigate. Both tools must fire.
-
-# THE 5 PARALYMPIC HOT SPOTS
-- HUB_AZ_PHOENIX (12.7%), HUB_AK_ANCHORAGE (12.5%), HUB_NE_LINCOLN (10.8%), HUB_OK_STILLWATER (9.3%), HUB_CA_MERCED (9.3%)
-- National Paralympic baseline: 4.6%
-- Hot Spots = >2x national rate
-
-# RESPONSE RULES ,  STRICT
-1. ALWAYS call a tool when the user mentions a place, region, or filter.
-2. After tool calls, your text MUST quote SPECIFIC numbers from the tool result. If the tool result says "12.7%", you say "12.7%". If it says "55 athletes", you say "55 athletes". Generic phrases like "significantly higher" without a number are FORBIDDEN.
-3. Every response must be 2-3 sentences. Never one sentence. Never one word.
-4. When the tool result includes climate or geographic_context, weave ONE specific climate fact (e.g. "74°F average", "10 inches of rain") into your narration to ground the answer in real geography. Never claim geography "produces" athletes; use conditional phrasing like "could help foster" or "may explain".
-5. Always end with a suggestion for what to explore next ("Click any red hub..." / "Want me to zoom to Phoenix?" / "Try the Pacific region next.")
-6. Off-topic questions (weather, sports scores, news): redirect to map exploration.
-
-# RESPONSE FORMAT (FOLLOW EXACTLY)
-[Sentence 1: what changed on the map, with specific numbers from tool result]
-[Sentence 2: one interesting fact, with specific numbers]
-[Sentence 3: suggested next action]
-
-# EXAMPLES
-
-User: "Show Paralympic Hot Spots"
-Tool: filter_to_paralympic()
-Tool result: "Filter applied: highlighting all 5 Paralympic Hot Spots. Top spot: Phoenix Region at 12.7% Paralympic (55 athletes). All 5: Phoenix Region (12.7%), Anchorage Region (12.5%), Lincoln Region (10.8%), Stillwater Region (9.3%), Merced Region (9.3%)."
-Your response: "Highlighted the 5 Paralympic Hot Spots ,  regions with more than 2x the national 4.6% Paralympic rate. Phoenix leads at 12.7% with 55 athletes, followed by Anchorage at 12.5%. Click any red hub to read its full story."
-
-User: "Tell me about Anchorage"
-Tool: select_hub(hub_id="HUB_AK_ANCHORAGE")
-Tool result: "Map zoomed/selected: Anchorage Region (Anchorage, AK, Pacific). 24 athletes total, 12.5% Paralympic. Top sport: Skiing. This IS a Paralympic Hot Spot. Climate: avg 36.7°F, 39.8in precip/yr, 102ft elevation. Geographic context: The consistently cold annual average temperature and abundant snowfall in Southcentral Alaska could help foster a strong culture around winter sports."
-Your response: "Zoomed to Anchorage, one of 5 Paralympic Hot Spots at 12.5% Paralympic with 24 athletes. The cold average temperature of 36.7°F and abundant snowfall could help foster the winter sports culture that anchors this hub, especially skiing and ice hockey. Want to see how Phoenix compares as a Hot Spot in a totally different climate?"
-
-User: "What's the weather?"
-Your response: "I focus on this map of America's elite athletes. Want me to show you a region or zoom to a Paralympic Hot Spot instead?"
-
-User: "Tell me about Kansas"
-Tool: select_state(state_code="KS")
-Tool result: "State panel opened: Kansas (KS). 59 athletes total, 6 Paralympians, 10.2% Paralympic share. This is above the 4.6% national baseline. Total athletes rank: #34. Paralympic rank: #29. Top hub in Kansas: Stillwater Region with 86 athletes (9.3% Paralympic, a Paralympic Hot Spot)."
-Your response: "Kansas has 59 Olympians and Paralympians in our dataset, with a 10.2% Paralympic share that runs more than 2x the national baseline. The state is anchored by the Stillwater Region, one of our 5 Paralympic Hot Spots at 9.3% Paralympic. Want to zoom into Stillwater itself?"
-
-User: "Which state has the highest Paralympic representation?"
-Tool: query_data(query_type="top_states_by_paralympic_share", limit=3)
-Tool result: "Top 3 states by Paralympic share (states with 10+ athletes only, national baseline 4.6%): 1. Kansas (KS) - 10.2% Paralympic (6 of 59 athletes) 2. Maryland (MD) - 8.5% Paralympic (X of Y) 3. Oklahoma (OK) - 7.1% Paralympic (X of Y)"
-Your response: "Kansas leads our 52 mappable regions with 10.2% Paralympic share, more than 2x the 4.6% national baseline. Maryland follows at 8.5% and Oklahoma at 7.1%. Want me to open the Kansas state panel or filter the map to the 5 Paralympic Hot Spots?"
-
-User: "What are the top 5 hubs by Paralympic share?"
-Tool: query_data(query_type="top_hubs_by_paralympic_share", limit=5)
-Your response: [narrate the 5 results with specific percentages and end with a follow-up suggestion]
-
-# TONE
-Warm, knowledgeable, specific. Never generic. Always cite numbers from the tool result.
-
-# AFTER CALLING A TOOL: ALWAYS NARRATE
-After ANY tool returns its result, you MUST produce a 1-2 sentence natural-language reply that explains the result conversationally. Never reply with empty text after a tool call.
-
-Examples:
-- After query_data returns "Top 1 states by Paralympic share: 1. Nevada (NV) - 13.5% Paralympic (7 of 52 athletes)":
-  Reply: "Nevada leads with 13.5% Paralympic representation, more than 2.9x the 4.6% national baseline. Want me to zoom to Nevada or compare it to the next-ranked states?"
-- After select_hub returns hub data:
-  Reply: A natural narrative using the climate, sports, and Paralympic data from the result.
-- After all_hot_spots returns the 5 Hot Spots:
-  Reply: Summarize the geographic spread (Phoenix in the Southwest, Anchorage in Alaska, Lincoln in the Plains, etc.) and end with a follow-up question.
-
-NEVER respond with just "I focused the map for you" — always provide specific numbers and insight from the tool result.
+# CURRENT HUB LOOKUP
+{hub_lookup_lines}
 """
 
 _state: dict[str, Any] = {
@@ -430,6 +355,101 @@ _state: dict[str, Any] = {
     "athletes_geo_points": [],
     "state_aggregates": [],
 }
+
+
+def _dataset_stats() -> dict[str, Any]:
+    hubs = _state["hubs"]
+    total_athletes = sum(h.total_athletes for h in hubs)
+    total_para = sum(
+        h.composition.paralympic_count + h.composition.both_count
+        for h in hubs
+    )
+    hot_spots = [h for h in hubs if h.is_paralympic_hot_spot]
+    baseline_pct = (total_para / total_athletes * 100) if total_athletes else 0.0
+    return {
+        "athlete_count": total_athletes,
+        "hub_count": len(hubs),
+        "hot_spot_count": len(hot_spots),
+        "baseline_pct": baseline_pct,
+    }
+
+
+def _build_chatbot_system_prompt() -> str:
+    stats = _dataset_stats()
+    hot_spots = sorted(
+        [h for h in _state["hubs"] if h.is_paralympic_hot_spot],
+        key=lambda h: -h.composition.paralympic_share,
+    )
+    hot_spot_lines = "\n".join(
+        f"- {h.hub_id}: {h.display_name}, "
+        f"{h.composition.paralympic_share * 100:.1f}% Paralympic, "
+        f"{h.total_athletes} athletes"
+        for h in hot_spots
+    ) or "- None"
+    hub_lookup_lines = "\n".join(
+        f"- {h.hub_id}: {h.display_name}; medoid {h.medoid_hometown}; "
+        f"aliases {', '.join(h.search_aliases)}"
+        for h in _state["hubs"]
+    )
+    return CHATBOT_SYSTEM_PROMPT_TEMPLATE.format(
+        athlete_count=stats["athlete_count"],
+        hub_count=stats["hub_count"],
+        hot_spot_count=stats["hot_spot_count"],
+        baseline_pct=stats["baseline_pct"],
+        hot_spot_lines=hot_spot_lines,
+        hub_lookup_lines=hub_lookup_lines,
+    )
+
+
+def _normal_search_text(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
+
+
+def _resolve_hub_from_message(message: str) -> Hub | None:
+    needle = _normal_search_text(message)
+    if not needle:
+        return None
+    matches: list[tuple[Hub, int]] = []
+    for hub in _state["hubs"]:
+        candidates = [
+            hub.hub_id,
+            hub.display_name,
+            hub.medoid_hometown,
+            hub.region_name,
+            *hub.search_aliases,
+        ]
+        for candidate in candidates:
+            normalized = _normal_search_text(candidate)
+            if not normalized or len(normalized) <= 2:
+                continue
+            if normalized in needle:
+                matches.append((hub, len(normalized)))
+                break
+
+    if not matches:
+        return None
+    return max(matches, key=lambda item: item[1])[0]
+
+
+def _direct_chat_response(req: ChatRequest) -> ChatResponse | None:
+    msg = req.message.lower()
+    tool_call: ChatToolCall | None = None
+
+    if "hot spot" in msg or "hotspot" in msg:
+        tool_call = ChatToolCall(name="filter_to_paralympic", args={})
+    else:
+        hub = _resolve_hub_from_message(req.message)
+        if hub:
+            tool_call = ChatToolCall(name="select_hub", args={"hub_id": hub.hub_id})
+
+    if not tool_call:
+        return None
+
+    reply_text = _build_tool_result_context(tool_call.name, tool_call.args)
+    new_history = list(req.history)
+    new_history.append({"role": "user", "text": req.message})
+    new_history.append({"role": "model", "text": reply_text})
+    return ChatResponse(text=reply_text, tool_calls=[tool_call], history=new_history)
 
 
 def _load_data() -> None:
@@ -657,6 +677,11 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
     """Build a fact-rich tool-result string that Gemini will use to narrate
     what happened. The richer this string, the better the narration."""
 
+    stats = _dataset_stats()
+    baseline = stats["baseline_pct"]
+    baseline_text = f"{baseline:.1f}%"
+    hot_spot_count = stats["hot_spot_count"]
+
     if tool_name == "filter_to_paralympic":
         macro_region = args.get("macro_region")
         hot_spots = [h for h in _state["hubs"] if h.is_paralympic_hot_spot]
@@ -665,7 +690,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
             if not filtered:
                 return (
                     f"The Paralympic filter was applied for the {macro_region} region, "
-                    f"but no Paralympic Hot Spots are present there. The 5 national Hot Spots "
+                    f"but no Paralympic Hot Spots are present there. The {hot_spot_count} national Hot Spots "
                     f"are in: " + ", ".join(f"{h.display_name}" for h in hot_spots) + "."
                 )
             top = max(filtered, key=lambda h: h.composition.paralympic_share)
@@ -673,16 +698,16 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
                 f"Filter applied: highlighting Paralympic Hot Spots in {macro_region}. "
                 f"Hubs visible: {', '.join(h.display_name for h in filtered)}. "
                 f"Leading: {top.display_name} at {top.composition.paralympic_share*100:.1f}% Paralympic, "
-                f"{top.total_athletes} athletes total. National Paralympic baseline: 4.6%."
+                f"{top.total_athletes} athletes total. National Paralympic baseline: {baseline_text}."
             )
         else:
             sorted_hot = sorted(hot_spots, key=lambda h: -h.composition.paralympic_share)
             top = sorted_hot[0]
             return (
-                f"Filter applied: highlighting all 5 Paralympic Hot Spots ,  regions where "
-                f"Paralympic athletes are more than 2x the 4.6% national baseline. "
+                f"Filter applied: highlighting all {len(sorted_hot)} Paralympic Hot Spots, regions where "
+                f"Paralympic athletes are more than 2x the {baseline_text} national baseline. "
                 f"Top spot: {top.display_name} at {top.composition.paralympic_share*100:.1f}% Paralympic "
-                f"({top.total_athletes} athletes). All 5: " +
+                f"({top.total_athletes} athletes). All {len(sorted_hot)}: " +
                 ", ".join(
                     f"{h.display_name} ({h.composition.paralympic_share*100:.1f}%)"
                     for h in sorted_hot
@@ -733,7 +758,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
                     f"State panel opened: {name} ({code}). "
                     f"This state has 0 athletes mapped in our 2020 to 2026 dataset, "
                     f"so it ranks last across our 52 mappable regions. "
-                    f"The 5 Paralympic Hot Spots are all elsewhere."
+                    f"The {hot_spot_count} Paralympic Hot Spots are all elsewhere."
                 )
                 if top_hub:
                     base += (
@@ -747,11 +772,11 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
             total_rank = next((i + 1 for i, s in enumerate(sorted_total) if s.state == code), None)
             sorted_para = sorted(_state["state_aggregates"], key=lambda s: -(s.paralympic_count + s.both_count))
             para_rank = next((i + 1 for i, s in enumerate(sorted_para) if s.state == code), None)
-            above_or_below = "above" if para_pct > 4.6 else "below"
+            above_or_below = "above" if para_pct > baseline else "below"
             parts = [
                 f"State panel opened: {name} ({code}).",
                 f"{agg.total_athletes} athletes total, {para} Paralympians, {para_pct:.1f}% Paralympic share.",
-                f"This is {above_or_below} the 4.6% national baseline.",
+                f"This is {above_or_below} the {baseline_text} national baseline.",
                 f"Total athletes rank: #{total_rank}. Paralympic rank: #{para_rank}.",
             ]
             if top_hub:
@@ -792,7 +817,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
         if query_type == "top_states_by_paralympic_share":
             qualified = [s for s in aggregates if s.total_athletes >= 25]
             sorted_states = sorted(qualified, key=lambda s: -s.paralympic_share)[:limit]
-            lines = [f"Top {limit} states by Paralympic share (states with 25+ athletes for statistical reliability, national baseline 4.6%):"]
+            lines = [f"Top {limit} states by Paralympic share (states with 25+ athletes for statistical reliability, national baseline {baseline_text}):"]
             for i, s in enumerate(sorted_states, 1):
                 name = STATE_CODE_TO_NAME.get(s.state, s.state)
                 para = s.paralympic_count + s.both_count
@@ -809,7 +834,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
 
         if query_type == "top_hubs_by_paralympic_share":
             sorted_hubs = sorted(hubs, key=lambda h: -h.composition.paralympic_share)[:limit]
-            lines = [f"Top {limit} hubs by Paralympic share (national baseline 4.6%):"]
+            lines = [f"Top {limit} hubs by Paralympic share (national baseline {baseline_text}):"]
             for i, h in enumerate(sorted_hubs, 1):
                 hot = " (Hot Spot)" if h.is_paralympic_hot_spot else ""
                 lines.append(f"{i}. {h.display_name}{hot} - {h.composition.paralympic_share*100:.1f}% Paralympic, {h.total_athletes} athletes")
@@ -817,7 +842,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
 
         if query_type == "all_hot_spots":
             hot_spots = sorted([h for h in hubs if h.is_paralympic_hot_spot], key=lambda h: -h.composition.paralympic_share)
-            lines = [f"All {len(hot_spots)} Paralympic Hot Spots (regions where Paralympic share runs 2x+ the 4.6% national baseline):"]
+            lines = [f"All {len(hot_spots)} Paralympic Hot Spots (regions where Paralympic share runs 2x+ the {baseline_text} national baseline):"]
             for i, h in enumerate(hot_spots, 1):
                 top_sport = h.top_sports[0].sport if h.top_sports else "various sports"
                 lines.append(f"{i}. {h.display_name} - {h.composition.paralympic_share*100:.1f}% Paralympic, {h.total_athletes} athletes, top sport: {top_sport}")
@@ -835,7 +860,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
             matches.sort(key=lambda x: -x[1].count)
             matches = matches[:limit]
             if not matches:
-                return f"No hubs found with '{sport}' as a top sport across our 37 hubs."
+                return f"No hubs found with '{sport}' as a top sport across our {len(hubs)} hubs."
             lines = [f"Top {len(matches)} hubs where '{sport}' appears among top sports:"]
             for i, (h, sp) in enumerate(matches, 1):
                 lines.append(f"{i}. {h.display_name} - {sp.count} {sp.sport} athletes ({sp.paralympic_count} Paralympic), hub total {h.total_athletes}")
@@ -865,7 +890,7 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
             return (
                 f"Dataset summary: {total_athletes} Olympians and Paralympians from the 2020 to 2026 cycle, "
                 f"clustered into {len(hubs)} hometown hubs across {states_count} US states and territories. "
-                f"{hot_spots} regions qualify as Paralympic Hot Spots (Paralympic share 2x+ above the 4.6% national baseline). "
+                f"{hot_spots} regions qualify as Paralympic Hot Spots (Paralympic share 2x+ above the {baseline_text} national baseline). "
                 f"Overall Paralympic share across the dataset: {overall_para_pct:.1f}%."
             )
 
@@ -884,6 +909,10 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
 @app.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest) -> ChatResponse:
     try:
+        direct = _direct_chat_response(req)
+        if direct:
+            return direct
+
         client = genai.Client(
             vertexai=True,
             project="hometown-success-engine",
@@ -913,7 +942,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
             model="gemini-2.5-flash",
             contents=contents,
             config=genai_types.GenerateContentConfig(
-                system_instruction=CHATBOT_SYSTEM_PROMPT,
+                system_instruction=_build_chatbot_system_prompt(),
                 tools=[CHATBOT_TOOLS],
                 temperature=0.6,
                 max_output_tokens=400,
@@ -974,7 +1003,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
                     model="gemini-2.5-flash",
                     contents=second_turn_contents,
                     config=genai_types.GenerateContentConfig(
-                        system_instruction=CHATBOT_SYSTEM_PROMPT,
+                        system_instruction=_build_chatbot_system_prompt(),
                         tools=[CHATBOT_TOOLS],
                         temperature=0.6,
                         max_output_tokens=400,

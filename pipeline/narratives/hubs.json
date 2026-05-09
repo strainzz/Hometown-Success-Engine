@@ -2,12 +2,12 @@
   "HUB_NJ_UNION_CITY": {
     "hub_id": "HUB_NJ_UNION_CITY",
     "display_name": "New York Metro Region",
-    "headline": "Athletic Excellence in the Northeast",
-    "summary": "The Greater NYC / Tri-State area is associated with a remarkable legacy of sporting excellence, supporting an impressive 1438 competitors on the global stage. This vibrant Northeast hub appears to support both Olympians and Paralympians, fostering inclusive environments where Paralympic athletes can thrive alongside their peers. The region's diverse athletic infrastructure may foster exceptional talent across multiple disciplines, particularly in athletics, rowing, and ice hockey. By providing access to top-tier training facilities and competitive programs, this bustling metropolitan corridor could help find the next generation of Team USA stars. Whether on the track, the water, or the ice, the area's deep-rooted sports culture is associated with sustained competitive success.",
+    "headline": "Greater NYC / Tri-State Athletic Excellence",
+    "summary": "The Greater NYC / Tri-State region is associated with a remarkable legacy of sporting achievement, supporting a total of 1439 elite competitors. This bustling metropolitan area appears to support the development of both Olympic and Paralympic athletes who compete on the world stage. With fifty-three Paralympians and over thirteen hundred Olympians originating from this expansive hub, the local environment may foster dedication and elite skill. The region's robust infrastructure and competitive culture could help find exceptional talent across a wide variety of disciplines. Specifically, the area is associated with strong participation in athletics, rowing, and ice hockey. By providing access to diverse training environments, this northeastern community appears to support the continued growth of Team USA competitors.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find athletics, rowing, and ice hockey",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The region's consistent precipitation and moderate temperatures could support year-round training for athletics, while the extensive waterways of the Tri-State area are well-suited for rowing. Furthermore, the cold winters and infrastructure for ice sports may explain the prevalence of ice hockey within this hub.",
+    "geographic_context": "The region's substantial annual precipitation and varied terrain, including coastal areas and rivers, could support access to water sports like rowing and provide diverse training environments for athletics. Additionally, the distinct four seasons with cold winters may contribute to the prevalence of ice hockey, offering extended periods for ice-based activities.",
     "climate": {
       "annual_avg_temp_f": 55.4,
       "annual_precipitation_in": 59.8,
@@ -19,11 +19,11 @@
     "hub_id": "HUB_CA_BELL",
     "display_name": "Los Angeles Metro Region",
     "headline": "Greater Los Angeles: A Pacific Hub of Excellence",
-    "summary": "Greater Los Angeles is associated with an extraordinary legacy of sporting excellence, supporting a total of 490 competitors on the global stage. This dynamic Pacific region appears to support both Olympians and Paralympians, fostering an environment where Paralympic athletes and their Olympic counterparts can thrive. The area's robust infrastructure and year-round favorable climate may foster exceptional talent across a wide variety of disciplines. Specifically, the region could help find athletics, competitive swimming, and water polo competitors. By cultivating such a diverse and dedicated athletic community, this vibrant metropolitan hub is associated with ongoing success for Team USA at the highest levels of international competition.",
+    "summary": "Greater Los Angeles is associated with an incredible legacy of athletic achievement, supporting 494 total athletes on their journey to the world stage. This vibrant Pacific region appears to support a strong contingent of competitors, including 19 Paralympians and one dual-sport athlete who have proudly represented Team USA. The area's robust sporting culture may foster exceptional talent across a variety of disciplines. Specifically, the region's infrastructure and climate could help find dedicated competitors in athletics, competitive swimming, and water polo. By providing access to premier training environments, this dynamic metropolitan landscape is associated with continued success for both Olympic and Paralympic athletes as they strive for excellence.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find athletics, competitive swimming, and water polo",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The consistently mild temperatures, abundant sunshine, and low elevation of the Los Angeles Metro Region could help foster year-round training opportunities for sports like athletics and competitive swimming. Furthermore, the extensive coastline and numerous aquatic facilities in this densely populated area may explain the strong presence of water polo.",
+    "geographic_context": "The consistently warm average annual temperature and abundant sunshine in the Los Angeles Metro Region could help foster year-round training opportunities for outdoor sports like athletics and water polo. Furthermore, access to the Pacific Ocean and numerous aquatic facilities in a mild climate is well-suited to developing competitive swimmers and water polo players.",
     "climate": {
       "annual_avg_temp_f": 62.5,
       "annual_precipitation_in": 35.5,
@@ -34,12 +34,12 @@
   "HUB_IL_CHICAGO": {
     "hub_id": "HUB_IL_CHICAGO",
     "display_name": "Chicago Region, IL",
-    "headline": "Chicagoland may foster athletic excellence",
-    "summary": "Anchored in the heart of the Midwest, Chicagoland is associated with a deep tradition of sporting excellence. This vibrant region appears to support hundreds of competitors, including dedicated Paralympians and Olympians who represent Team USA on the global stage. The area's diverse athletic infrastructure may foster remarkable talent across both summer and winter disciplines. With strong representation in track and aquatic events, the region could help find formidable competitors ready for international competition. From local pools to icy rinks, this dynamic community is associated with a legacy of athletic dedication.",
+    "headline": "Chicagoland is associated with athletic excellence",
+    "summary": "Anchored in the Midwest, Chicagoland is associated with a rich sporting tradition that appears to support both Olympians and Paralympians. This vibrant region may foster athletic development across a diverse range of disciplines, contributing to the journeys of three hundred fifty-nine Team USA athletes. The local environment could help find dedicated competitors, with strong participation in athletics, competitive swimming, and speed skating. By providing robust community resources and seasonal variety, the area is associated with sustained athletic growth. Whether on the track, in the pool, or on the ice, this region appears to support the foundational years of many Paralympic athletes and Olympians striving for international success.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find athletics, competitive swimming, and speed skating",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The relatively flat terrain and four distinct seasons with moderate precipitation could help foster a strong tradition in athletics and speed skating, as these conditions are conducive to both indoor and outdoor training for endurance and track sports. The consistent annual precipitation and access to Lake Michigan may also support the development of competitive swimmers, offering varied training environments.",
+    "geographic_context": "The relatively flat terrain and varied seasonal temperatures, including cold winters with potential for ice, could help foster a strong tradition in sports like speed skating and athletics. Ample annual precipitation and access to Lake Michigan may also support the development of competitive swimming programs.",
     "climate": {
       "annual_avg_temp_f": 51.8,
       "annual_precipitation_in": 49.0,
@@ -47,31 +47,15 @@
       "elevation_ft": 748.0
     }
   },
-  "HUB_CA_OAKLAND": {
-    "hub_id": "HUB_CA_OAKLAND",
-    "display_name": "Bay Area Region",
-    "headline": "The Bay Area may foster diverse athletic excellence",
-    "summary": "Anchored in the iconic Bay Area, this Pacific region is associated with a remarkable legacy of 241 total competitors, proudly including 10 dedicated Paralympians. The local environment appears to support Paralympic athletes alongside their Olympian peers, cultivating a rich tradition of talent across multiple demanding disciplines. With a strong focus on aquatic and track events, the community may foster exceptional skill development and competitive drive. This vibrant California hub could help find future stars by providing top-tier training grounds for competitive swimming, athletics, and rowing, proving that the region is associated with enduring athletic success on the global stage.",
-    "paralympic_callout": null,
-    "top_sport_phrase": "could help find competitive swimming, athletics, and rowing",
-    "confidence_qualifier": "is associated with",
-    "geographic_context": "The consistent moderate temperatures and abundant sunshine in the Bay Area, combined with access to extensive waterways and coastal areas, could support year-round training for sports like competitive swimming and rowing. This environment, featuring varied terrain from flatlands to hills, may also explain the region's strong representation in athletics, accommodating diverse training needs.",
-    "climate": {
-      "annual_avg_temp_f": 56.5,
-      "annual_precipitation_in": 36.2,
-      "annual_sunshine_hours": 3625.0,
-      "elevation_ft": 39.0
-    }
-  },
   "HUB_MN_MINNEAPOLIS": {
     "hub_id": "HUB_MN_MINNEAPOLIS",
     "display_name": "Minneapolis Region, MN",
-    "headline": "Cornbelt and Heartland Plains Excellence",
-    "summary": "The Minneapolis region, anchored in the Cornbelt / Heartland Plains, is associated with a strong tradition of winter and summer sports. This vibrant Midwestern area appears to support an impressive roster of 234 competitors, which includes dedicated Paralympians who train alongside their Olympic peers. The region's cold winters and robust community infrastructure may foster exceptional talent across multiple disciplines. With a deep passion for competition, this hub could help find future stars on the ice and the track. The area's athletic development programs are associated with consistent representation on the global stage, demonstrating how local support networks may foster lasting success for both Olympians and Paralympians.",
+    "headline": "Cornbelt / Heartland Plains Excellence",
+    "summary": "The Minneapolis region, anchored in the Cornbelt / Heartland Plains, is associated with a strong tradition of winter and summer athletic excellence. This vibrant area may foster incredible talent, supporting a total of 249 athletes, including 10 dedicated Paralympians and 239 Olympians who have competed on the global stage. The local climate and community resources appear to support development in rigorous events, particularly in ice hockey, athletics, and various winter sports. By cultivating an environment that champions dedication and resilience, this midwestern hub could help find future competitors ready to represent Team USA. The region's deep passion for sports is associated with enduring success across multiple disciplines.",
     "paralympic_callout": null,
-    "top_sport_phrase": "could help find ice hockey, athletics, and curling",
-    "confidence_qualifier": "is associated with",
-    "geographic_context": "The cold annual average temperature and abundant winter precipitation in the Minneapolis region could help foster a strong culture around ice sports. Furthermore, the relatively flat terrain of the Heartland Plains might be well-suited for training in sports like athletics and curling.",
+    "top_sport_phrase": "could help find ice hockey, athletics, and Winter Sport",
+    "confidence_qualifier": "may foster",
+    "geographic_context": "The cold annual average temperature and significant winter precipitation in the Minneapolis region could help foster a strong culture for ice hockey and other winter sports. Additionally, the relatively flat terrain of the Heartland Plains may explain the development of athletes in athletics.",
     "climate": {
       "annual_avg_temp_f": 48.0,
       "annual_precipitation_in": 42.6,
@@ -79,15 +63,31 @@
       "elevation_ft": 850.0
     }
   },
+  "HUB_CA_OAKLAND": {
+    "hub_id": "HUB_CA_OAKLAND",
+    "display_name": "Bay Area Region",
+    "headline": "The Bay Area is associated with Team USA excellence",
+    "summary": "The Bay Area, anchored in the Pacific macro-region, is associated with a rich legacy of athletic achievement. This vibrant region appears to support a remarkable community of 244 total athletes, including 234 Olympians and 10 Paralympians who have represented Team USA on the global stage. The local environment may foster elite development across multiple disciplines, particularly in water and track events. With strong infrastructure and a culture of dedication, the area could help find competitive swimming, athletics, and rowing talent. This concentration of sporting excellence suggests that the region's unique climate and community resources are associated with high-level athletic success, providing a foundation where both Olympic and Paralympic athletes can thrive.",
+    "paralympic_callout": null,
+    "top_sport_phrase": "could help find competitive swimming, athletics, and rowing",
+    "confidence_qualifier": "is associated with",
+    "geographic_context": "The Bay Area's moderate average temperature and extensive sunshine hours could provide favorable year-round conditions for outdoor training in sports like competitive swimming and athletics. Its coastal proximity and numerous waterways may also support consistent access to environments suitable for rowing development.",
+    "climate": {
+      "annual_avg_temp_f": 56.5,
+      "annual_precipitation_in": 36.2,
+      "annual_sunshine_hours": 3625.0,
+      "elevation_ft": 39.0
+    }
+  },
   "HUB_MI_DETROIT": {
     "hub_id": "HUB_MI_DETROIT",
     "display_name": "Detroit Region, MI",
-    "headline": "Athletic Excellence in Southeast Michigan",
-    "summary": "The Detroit / Southeast Michigan region is associated with a strong sporting tradition, supporting a total of 146 athletes on the global stage. This Midwest hub appears to support both Olympians and Paralympians, with 9 Paralympians and 137 Olympians emerging from the area. The region's diverse athletic infrastructure may foster talent across a wide variety of disciplines. Specifically, the local environment could help find exceptional competitors in athletics, ice hockey, and rowing, which stand out as the top sports for this community. By providing access to specialized facilities and competitive programs, this area is associated with consistent athletic development. The dedication of the community appears to support Paralympic athletes and Olympians alike as they pursue their ultimate goals.",
+    "headline": "Detroit / Southeast Michigan may foster athletic greatness",
+    "summary": "The industrial grit of Detroit / Southeast Michigan appears to support a strong tradition of sporting excellence among its 146 total athletes. This dynamic region is associated with remarkable journeys for both Olympic and Paralympic athletes who have represented Team USA on the global stage. With a diverse sporting culture, the area may foster exceptional talent across various disciplines. The local environment, characterized by its hardworking ethos, could help find dedicated competitors ready for international challenges. Historically, this hub is associated with strong participation in winter and summer events alike, reflecting a balanced athletic ecosystem. Whether on the track, the ice, or the water, the region appears to support the development of world-class competitors.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find athletics, ice hockey, and rowing",
-    "confidence_qualifier": "is associated with",
-    "geographic_context": "The region's cold winters and abundant freshwater resources, including the Great Lakes, could foster a strong tradition in ice hockey and rowing. The moderate precipitation and varied terrain of Southeast Michigan may also support year-round training opportunities for athletics.",
+    "confidence_qualifier": "may foster",
+    "geographic_context": "The region's cold winters and abundant freshwater resources, including the Great Lakes, could help foster participation in ice hockey and rowing. The moderate annual precipitation and substantial sunshine hours may also support year-round training opportunities for athletics.",
     "climate": {
       "annual_avg_temp_f": 51.6,
       "annual_precipitation_in": 39.2,
@@ -98,12 +98,12 @@
   "HUB_PR_SAN_JUAN": {
     "hub_id": "HUB_PR_SAN_JUAN",
     "display_name": "San Juan Region, PR",
-    "headline": "San Juan Metro may foster athletic excellence",
-    "summary": "The vibrant San Juan Metro region is associated with a strong legacy of athletic excellence, supporting both Olympians and Paralympians on the global stage. This dynamic territory appears to support a robust pipeline of 142 competitors who have represented Team USA. The area's rich sporting culture may foster remarkable talent across multiple disciplines, with a notable concentration in high-energy competitions. Specifically, the region's athletic infrastructure could help find exceptional competitors in basketball, athletics, and boxing. By nurturing Paralympic athletes alongside their Olympic peers, the local community demonstrates a commitment to inclusive sports development. Ultimately, the San Juan Region's unique environment is associated with enduring success.",
+    "headline": "San Juan Metro appears to support Team USA excellence",
+    "summary": "The vibrant San Juan Metro is associated with a strong athletic tradition that appears to support 142 Team USA competitors. This dynamic region may foster incredible talent across multiple disciplines, proudly including both Olympic and Paralympic athletes who represent the nation on the global stage. The area's rich sporting culture could help find exceptional competitors in summer events, particularly in court, track, and ring sports. With a deep passion for athletics, the community is associated with significant participation in basketball, athletics, and boxing. By nurturing dedicated individuals, this territory may foster the resilience and skill required for international competition, celebrating a unified legacy of sporting excellence.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find basketball, athletics, and boxing",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The consistent warm temperatures and abundant sunshine in the San Juan region could provide year-round opportunities for outdoor training, which may be beneficial for sports like athletics and boxing. The relatively flat coastal terrain and urban infrastructure are well-suited for developing accessible training facilities for basketball and other indoor sports.",
+    "geographic_context": "The consistently warm temperatures and abundant sunshine in the San Juan region could support year-round outdoor training for sports like athletics and boxing. The coastal flat terrain and urban infrastructure may also provide accessible spaces for basketball courts and training facilities.",
     "climate": {
       "annual_avg_temp_f": 80.1,
       "annual_precipitation_in": 37.3,
@@ -114,12 +114,12 @@
   "HUB_WA_SEATTLE": {
     "hub_id": "HUB_WA_SEATTLE",
     "display_name": "Seattle Region, WA",
-    "headline": "Excellence in Greater Seattle / Puget Sound",
-    "summary": "Greater Seattle / Puget Sound is associated with a strong tradition of athletic development for Team USA. This dynamic Pacific region appears to support a diverse array of talent, including dedicated Paralympians and Olympians who compete on the world stage. The area's unique geography and vibrant sporting culture may foster success across multiple disciplines, representing a notable concentration of 122 total athletes. Local waterways and mountain ranges could help find exceptional competitors in rowing, athletics, and alpine skiing. By providing robust community support and access to premier training environments, this hub appears to support enduring athletic achievement. Whether competing on the water, the track, or the slopes, athletes from this region represent international excellence.",
+    "headline": "Athletic Excellence in Greater Seattle / Puget Sound",
+    "summary": "The Greater Seattle / Puget Sound region is associated with a rich sporting tradition that may foster exceptional talent across multiple disciplines. This dynamic Pacific hub appears to support the development of both Olympians and Paralympians, with 125 total athletes calling the area home. The local waterways and nearby mountain ranges are associated with a high concentration of competitors in rowing and alpine skiing, while the region's robust community programs may foster success in athletics. By nurturing a balanced roster of Paralympic athletes and Olympians, the area could help find future generations of Team USA stars. The unique geographic advantages of this Pacific enclave appear to support a diverse athletic landscape.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find rowing, athletics, and alpine skiing",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The Puget Sound's extensive waterways and moderate temperatures, coupled with significant annual precipitation, could foster a strong rowing culture. The proximity to the Cascade Mountains, offering varied terrain and reliable snowfall, supports access to alpine skiing opportunities, while the relatively high annual sunshine hours may contribute to year-round outdoor athletic training.",
+    "geographic_context": "The numerous waterways of the Puget Sound, combined with consistent precipitation, could help foster a strong rowing community. Furthermore, the proximity to the Cascade Mountains, with their significant snowfall, supports access to alpine skiing opportunities.",
     "climate": {
       "annual_avg_temp_f": 52.5,
       "annual_precipitation_in": 39.6,
@@ -130,12 +130,12 @@
   "HUB_MO_ST_LOUIS": {
     "hub_id": "HUB_MO_ST_LOUIS",
     "display_name": "St. Louis Region, MO",
-    "headline": "St. Louis: A Midwestern Athletic Hub",
-    "summary": "The St. Louis region, situated within the Cornbelt / Heartland Plains, is associated with a strong tradition of athletic excellence. This vibrant Midwestern hub appears to support the development of both Olympic and Paralympians across a variety of disciplines. With a total of 114 competitors emerging from the area, the local sports culture may foster success on the global stage. The community dedication to youth programs and accessible facilities could help find future competitors in athletics, association football, and basketball. By providing a supportive environment, this region is associated with consistent athletic achievement, demonstrating how local pride and community investment may foster remarkable journeys for Team USA.",
+    "headline": "Athletic Excellence in the Cornbelt / Heartland Plains",
+    "summary": "St. Louis, anchored in the Cornbelt / Heartland Plains, is associated with a rich sporting tradition that appears to support both Olympic and Paralympic athletes. This Midwestern hub may foster a strong foundation for Team USA, contributing to a total of 115 competitors. The region's athletic infrastructure could help find exceptional talent across various disciplines, with a notable concentration in athletics, association football, and basketball. By providing robust community support, the area is associated with developing versatile competitors. The dedication found within this heartland community appears to support the ongoing success of our national teams on the global stage, demonstrating how local roots may foster international achievement.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find athletics, association football, and basketball",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The moderate annual temperature and ample sunshine in the St. Louis region could support year-round outdoor training for sports like athletics and association football. The relatively flat terrain of the Heartland Plains may also contribute to the accessibility of open spaces suitable for these activities.",
+    "geographic_context": "The region's moderate temperatures, ample sunshine, and relatively flat terrain could support extensive outdoor training for sports like athletics and association football for much of the year. The consistent precipitation also contributes to maintaining playable field conditions, which may explain the popularity of outdoor team sports.",
     "climate": {
       "annual_avg_temp_f": 58.3,
       "annual_precipitation_in": 46.3,
@@ -146,12 +146,12 @@
   "HUB_GA_ATLANTA": {
     "hub_id": "HUB_GA_ATLANTA",
     "display_name": "Atlanta Region, GA",
-    "headline": "Athletic Excellence in Greater Atlanta",
-    "summary": "Greater Atlanta is associated with a rich sporting culture that appears to support both Olympians and Paralympians on their journey to the global stage. With a total of 112 athletes emerging from this dynamic Southern hub, the region may foster exceptional talent across multiple disciplines. The area's robust athletic infrastructure could help find top competitors, particularly in athletics, basketball, and competitive swimming. Among the elite competitors representing this region, seven are Paralympians who showcase the inclusive strength of the local sports community. This environment is associated with high-level development, providing a foundation that appears to support athletes as they train for international competition.",
+    "headline": "Greater Atlanta's Legacy of Excellence",
+    "summary": "The vibrant communities of Greater Atlanta are associated with a rich sporting tradition that appears to support both Olympic and Paralympic athletes. With a total of 112 competitors hailing from this dynamic Southern hub, the region may foster incredible talent across multiple disciplines, including seven dedicated Paralympians who have represented Team USA on the global stage. The area's robust athletic infrastructure could help find future competitors in athletics, basketball, and competitive swimming. By cultivating an environment where dedication thrives, this region is associated with consistent athletic development. Whether on the track or in the water, the local culture appears to support the rigorous training required for international competition, celebrating a balanced legacy of summer sports excellence.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find athletics, basketball, and competitive swimming",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The generally mild temperatures and abundant sunshine in the Atlanta region could support year-round outdoor training for sports like athletics. Furthermore, the consistent precipitation helps maintain green spaces and could contribute to conditions suitable for diverse athletic activities.",
+    "geographic_context": "The consistent warm temperatures and ample sunshine in the Atlanta region could support year-round outdoor training for sports like athletics. The moderate elevation and significant precipitation may also contribute to varied training environments suitable for developing endurance and aquatic sports.",
     "climate": {
       "annual_avg_temp_f": 62.8,
       "annual_precipitation_in": 55.6,
@@ -159,31 +159,15 @@
       "elevation_ft": 1066.0
     }
   },
-  "HUB_CO_DENVER": {
-    "hub_id": "HUB_CO_DENVER",
-    "display_name": "Denver Region, CO",
-    "headline": "Front Range Colorado is associated with winter excellence.",
-    "summary": "The Denver region, anchored in Front Range Colorado, is associated with a strong tradition of winter sports excellence. This mountainous environment appears to support both Olympians and Paralympians who thrive on the slopes. With a total of 109 athletes connected to the area, the high altitude and world-class facilities may foster development in competitive winter disciplines. The region is particularly known for its deep ties to alpine skiing, freestyle skiing, and ski jumping. By providing access to premier training grounds, this area could help find the next generation of competitors ready to represent Team USA on the global stage.",
-    "paralympic_callout": null,
-    "top_sport_phrase": "could help find alpine skiing, freestyle skiing, and ski jumping",
-    "confidence_qualifier": "is associated with",
-    "geographic_context": "The high elevation and significant annual snowfall in the Front Range of Colorado could help foster a strong tradition in alpine skiing, freestyle skiing, and ski jumping. The region's cold temperatures and mountainous terrain are well-suited to developing athletes in these winter sports.",
-    "climate": {
-      "annual_avg_temp_f": 48.4,
-      "annual_precipitation_in": 21.2,
-      "annual_sunshine_hours": 3627.0,
-      "elevation_ft": 5279.0
-    }
-  },
   "HUB_NC_CHARLOTTE": {
     "hub_id": "HUB_NC_CHARLOTTE",
     "display_name": "Charlotte Region, NC",
-    "headline": "Carolina Lowcountry & Outer Banks Excellence",
-    "summary": "The Charlotte Region, stretching toward the Carolina Lowcountry & Outer Banks, is associated with a strong tradition of sporting excellence. This vibrant Southern hub appears to support the development of both Olympians and Paralympians, fostering a diverse community of 101 competitors. The area may foster remarkable talent across multiple disciplines, with a notable concentration in athletics, basketball, and competitive swimming. By providing robust community support and accessible training environments, this region could help find the next generation of champions. The athletic culture here is associated with dedication and resilience, ensuring that Paralympic athletes and their Olympic counterparts have the resources they need to thrive on the world stage.",
+    "headline": "Carolina Lowcountry & Outer Banks Heritage",
+    "summary": "The Charlotte Region, stretching toward the Carolina Lowcountry & Outer Banks, is associated with a rich sporting tradition that appears to support over one hundred Team USA competitors. This vibrant southern hub may foster incredible talent, including ninety-three Olympic and eight Paralympic athletes who have represented the nation on the global stage. The area's robust athletic infrastructure could help find exceptional competitors across a variety of summer disciplines. Historically, this region is associated with strong development in athletics, basketball, and competitive swimming. By nurturing both Olympians and Paralympians, the local communities provide an environment that may foster continued success. This aggregate strength appears to support the region's reputation as a vital contributor to the national roster.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find athletics, basketball, and competitive swimming",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The mild annual average temperature and abundant sunshine in the Charlotte region could help foster year-round training opportunities for sports like athletics and competitive swimming. The moderate elevation and precipitation levels may also contribute to a consistent environment for outdoor and indoor athletic development.",
+    "geographic_context": "The mild average temperatures and abundant sunshine in the Charlotte region could support year-round outdoor training for sports like athletics. The moderate elevation and consistent precipitation may also contribute to favorable conditions for developing endurance and aquatic sports.",
     "climate": {
       "annual_avg_temp_f": 61.7,
       "annual_precipitation_in": 42.9,
@@ -194,12 +178,12 @@
   "HUB_UT_SALT_LAKE_CITY": {
     "hub_id": "HUB_UT_SALT_LAKE_CITY",
     "display_name": "Salt Lake City Region, UT",
-    "headline": "The Wasatch Front's Mountain Legacy",
-    "summary": "The Salt Lake City region, anchored along Utah's towering Wasatch Front, is associated with a remarkable legacy of winter and summer sports excellence. This high-altitude environment appears to support the development of both Olympians and Paralympians, contributing to a combined roster of 88 competitors. The region's world-class facilities and rugged terrain may foster elite talent across multiple disciplines. With a strong foundation in mountain sports, the area could help find dedicated athletes who thrive in challenging conditions. The local culture is associated with a deep commitment to athletic achievement, providing a supportive backdrop for future Paralympians and Olympians alike as they pursue their dreams on the global stage.",
+    "headline": "Athletic Excellence Along the Wasatch Front",
+    "summary": "The Salt Lake City region, anchored along Utah's stunning Wasatch Front, appears to support a thriving community of both Olympic and Paralympic athletes. This high-altitude environment is associated with remarkable athletic development, with a total of 97 Team USA competitors connected to the area. The world-class winter infrastructure and mountainous terrain may foster exceptional talent across multiple disciplines. While deeply connected to winter sports, the region is associated with summer competitors as well. By offering unparalleled access to specialized training environments, this Mountain West hub could help find dedicated athletes ready to compete on the global stage.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find alpine skiing, athletics, and freestyle skiing",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The region's high elevation and significant annual precipitation, much of which falls as snow in the surrounding mountains, could help foster a strong tradition in alpine and freestyle skiing. Additionally, the abundant annual sunshine and varied mountain terrain may provide favorable conditions for year-round athletics training.",
+    "geographic_context": "The high elevation and significant snowfall in the Wasatch Front region could help foster athletes in alpine and freestyle skiing. Additionally, the abundant sunshine and varied terrain may explain the strong presence of athletics, offering diverse training environments.",
     "climate": {
       "annual_avg_temp_f": 51.1,
       "annual_precipitation_in": 27.0,
@@ -210,12 +194,12 @@
   "HUB_OK_STILLWATER": {
     "hub_id": "HUB_OK_STILLWATER",
     "display_name": "Stillwater Region, OK",
-    "headline": "Athletic Excellence in the Stillwater Region",
-    "summary": "The Stillwater region, anchored in Oklahoma's vibrant OKC / Frontier Country, is associated with a strong tradition of developing elite competitors. This area appears to support an impressive roster of 86 total athletes, including dedicated Paralympians who have reached the highest levels of international competition. The region's robust community and athletic infrastructure may foster success across a variety of disciplines. Historically, this Southwestern hub is associated with remarkable achievements in athletics, basketball, and amateur wrestling. By cultivating an environment that champions both Olympians and Paralympians, the local culture could help find the next generation of sporting excellence.",
-    "paralympic_callout": "The Stillwater region is recognized as a dedicated hot spot for Paralympians, fostering an inclusive environment that appears to support remarkable achievements in adaptive sports.",
+    "headline": "Athletics in OKC / Frontier Country",
+    "summary": "The Stillwater region, anchored in OKC / Frontier Country, is associated with a strong tradition of athletic excellence. This vibrant area appears to support a remarkable community of 87 competitors, including 79 Olympians and 8 Paralympic athletes. The region's dedication to sports may foster exceptional talent across various disciplines, particularly on the track, the court, and the mat. By nurturing dedication and resilience, the local environment could help find future competitors. The area's robust sporting infrastructure is associated with continued success, ensuring that both Olympic and Paralympic athletes have the resources they need. This supportive culture appears to support a lasting legacy of achievement for Team USA.",
+    "paralympic_callout": null,
     "top_sport_phrase": "could help find athletics, basketball, and amateur wrestling",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The region's warm average temperature and abundant sunshine could facilitate year-round outdoor training for athletics, while its relatively flat terrain and moderate elevation may support accessible training environments for a variety of sports. These conditions, combined with a significant Paralympic share, suggest a regional infrastructure and community that could foster diverse athletic development.",
+    "geographic_context": "The high annual sunshine and moderate temperatures in the Stillwater region could help foster consistent outdoor training for sports like athletics. Furthermore, the relatively flat terrain and accessible infrastructure may support widespread participation in sports such as basketball and amateur wrestling.",
     "climate": {
       "annual_avg_temp_f": 62.4,
       "annual_precipitation_in": 32.8,
@@ -223,47 +207,15 @@
       "elevation_ft": 909.0
     }
   },
-  "HUB_FL_TAMPA": {
-    "hub_id": "HUB_FL_TAMPA",
-    "display_name": "Tampa Region, FL",
-    "headline": "Sun and Speed in the Tampa Region",
-    "summary": "The Tampa Bay / Suncoast region is associated with a strong tradition of athletic excellence, serving as the hometown for eighty-two total competitors for Team USA. This vibrant coastal area may foster incredible talent, appearing to support seventy-seven Olympians and five exceptional Paralympians who have represented the nation on the world stage. The warm climate and year-round training opportunities could help find dedicated competitors across a variety of summer disciplines. Specifically, the region's dynamic sports culture appears to support significant achievements in athletics, competitive swimming, and basketball. By providing an active environment for both Olympians and Paralympians, this southern hub continues to be associated with the ongoing success of American athletes in international competition.",
-    "paralympic_callout": null,
-    "top_sport_phrase": "could help find athletics, competitive swimming, and basketball",
-    "confidence_qualifier": "is associated with",
-    "geographic_context": "The consistently warm average temperature and abundant sunshine in the Tampa region could support year-round outdoor training for sports like athletics. The extensive coastline and numerous waterways in this low-elevation area may explain the prevalence of competitive swimming.",
-    "climate": {
-      "annual_avg_temp_f": 74.2,
-      "annual_precipitation_in": 44.4,
-      "annual_sunshine_hours": 3768.0,
-      "elevation_ft": 33.0
-    }
-  },
-  "HUB_OH_CINCINNATI": {
-    "hub_id": "HUB_OH_CINCINNATI",
-    "display_name": "Cincinnati Region, OH",
-    "headline": "Midwest Momentum in the Cincinnati Region",
-    "summary": "The vibrant area of Cincinnati / Southwest Ohio + N. KY is associated with a strong legacy of athletic excellence on the global stage. This dynamic Midwest region appears to support both Olympic and Paralympians as they reach the pinnacle of their respective sports. With seventy-five total competitors calling this area home, the local community may foster exceptional talent across a variety of disciplines. The region's infrastructure and community support could help find dedicated individuals who excel in summer events. Notably, competitive swimming, athletics, and archery stand out as the most prominent sports. By providing a nurturing environment, this region is associated with remarkable achievements, demonstrating how local roots may foster international success for Team USA.",
-    "paralympic_callout": null,
-    "top_sport_phrase": "could help find competitive swimming, athletics, and archery",
-    "confidence_qualifier": "is associated with",
-    "geographic_context": "The region's moderate annual temperature and substantial sunshine hours could support consistent outdoor training for sports like archery and athletics. Furthermore, the average precipitation and relatively low elevation may contribute to conditions conducive to year-round aquatic sports, including competitive swimming.",
-    "climate": {
-      "annual_avg_temp_f": 56.5,
-      "annual_precipitation_in": 40.9,
-      "annual_sunshine_hours": 3286.0,
-      "elevation_ft": 587.0
-    }
-  },
   "HUB_NE_LINCOLN": {
     "hub_id": "HUB_NE_LINCOLN",
     "display_name": "Lincoln Region, NE",
-    "headline": "Athletic Excellence in the Cornbelt / Heartland Plains",
-    "summary": "The Lincoln region, anchored in the Cornbelt / Heartland Plains, is associated with a strong tradition of athletic development. This Midwestern hub appears to support a diverse roster of seventy-four competitors, where Olympians and Paralympians alike find an environment that may foster elite performance. The area's dedication to sports could help find remarkable talent across multiple disciplines, particularly in summer competitions. With a balanced composition of competitors, the region's infrastructure is associated with success on the global stage. By nurturing dedicated individuals, this heartland community appears to support the journeys of many who represent Team USA, demonstrating how local support networks may foster international achievement in athletics, basketball, and shooting sports.",
-    "paralympic_callout": "The Lincoln region is recognized as a dedicated hot spot for Paralympians, offering an environment that appears to support robust development and competitive excellence in adaptive sports.",
+    "headline": "Cornbelt / Heartland Plains: A Team USA Hub",
+    "summary": "Anchored in the Cornbelt / Heartland Plains, the Lincoln region is associated with a strong tradition of developing both Olympic and Paralympic athletes. This Midwestern hub appears to support a balanced athletic ecosystem, fostering seventy-seven total competitors for Team USA. The area's dedication to sports may foster exceptional talent across multiple disciplines, with a notable presence of Paralympians contributing to the regional legacy. The local infrastructure could help find athletics, basketball, and shooting sports competitors who go on to represent the nation. By nurturing athletes through community support and dedicated training environments, this region is associated with enduring success on the global stage.",
+    "paralympic_callout": "The Lincoln region is recognized as a dedicated hot spot that may foster exceptional Paralympic athletes, particularly in athletics and basketball.",
     "top_sport_phrase": "could help find athletics, basketball, and shooting sports",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The relatively flat terrain and open spaces of the Heartland Plains, combined with a high number of sunshine hours, could provide ample opportunities for outdoor training in sports like athletics and shooting sports. The moderate average temperature and lower precipitation may also support consistent outdoor activities throughout much of the year, potentially fostering broad participation in various sports.",
+    "geographic_context": "The relatively flat terrain and open spaces of the Heartland Plains, combined with a high number of annual sunshine hours, could provide ample opportunities for outdoor athletics training and shooting sports. The generally mild annual average temperature and moderate precipitation may also contribute to consistent year-round training conditions for these sports.",
     "climate": {
       "annual_avg_temp_f": 54.8,
       "annual_precipitation_in": 21.7,
@@ -271,15 +223,31 @@
       "elevation_ft": 1230.0
     }
   },
+  "HUB_OH_CINCINNATI": {
+    "hub_id": "HUB_OH_CINCINNATI",
+    "display_name": "Cincinnati Region, OH",
+    "headline": "A Midwestern Hub for Team USA Excellence",
+    "summary": "The vibrant area of Cincinnati / Southwest Ohio + N. KY is associated with a strong tradition of athletic excellence on the global stage. This dynamic Midwestern hub appears to support the development of both Olympic and Paralympic athletes, celebrating a total of seventy-six competitors who have represented Team USA. The region's community resources and training environments may foster remarkable talent across a variety of disciplines. Specifically, the local infrastructure could help find exceptional competitors in competitive swimming, athletics, and archery. By nurturing dedication and skill, this area is associated with sustained success, proving that the heartland may foster the next generation of world-class champions.",
+    "paralympic_callout": null,
+    "top_sport_phrase": "could help find competitive swimming, athletics, and archery",
+    "confidence_qualifier": "is associated with",
+    "geographic_context": "The moderate annual temperature and ample sunshine in the Cincinnati region could support year-round training opportunities for sports like competitive swimming and athletics. Additionally, the relatively flat terrain and consistent precipitation may contribute to conditions favorable for developing skills in precision sports such as archery.",
+    "climate": {
+      "annual_avg_temp_f": 56.5,
+      "annual_precipitation_in": 40.9,
+      "annual_sunshine_hours": 3286.0,
+      "elevation_ft": 587.0
+    }
+  },
   "HUB_TX_DALLAS": {
     "hub_id": "HUB_TX_DALLAS",
     "display_name": "Dallas Region, TX",
     "headline": "Athletic Excellence in the Texas Triangle",
-    "summary": "The Dallas Region, anchored in the Texas Triangle, is associated with a strong tradition of sporting excellence. This vibrant area appears to support a diverse roster of 72 competitors, including 4 dedicated Paralympians and 68 Olympians who have represented Team USA. The region's robust community infrastructure may foster exceptional talent across multiple disciplines. Notably, the local environment could help find standout competitors in athletics, basketball, and baseball. By cultivating an atmosphere where both Olympians and Paralympians can thrive, this Southwestern hub is associated with remarkable athletic journeys. The area's commitment to sports appears to support athletes reaching the highest levels of international competition.",
+    "summary": "The Dallas Region, anchored within the vibrant Texas Triangle, is associated with a remarkable seventy-two athletes competing for Team USA. This robust athletic community appears to support both Olympic and Paralympic athletes, featuring sixty-eight Olympians and four Paralympians who have reached the highest levels of international competition. The region's extensive sports infrastructure may foster exceptional talent across a diverse range of disciplines. Notably, the area could help find strong competitors in athletics, which accounts for twenty-four of these athletes. Furthermore, the local environment is associated with success in team sports, including six basketball players and five baseball players. Ultimately, this dynamic Southwestern hub appears to support a balanced and thriving culture of elite sports development.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find athletics, basketball, and baseball",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The warm annual temperatures and abundant sunshine in the Dallas region could provide ample opportunities for year-round outdoor training in sports like athletics and baseball. The relatively flat terrain at a low elevation may also contribute to a broad base of participation in sports that do not require specialized natural features.",
+    "geographic_context": "The consistently warm temperatures and abundant sunshine in the Dallas region could support year-round outdoor training for sports like athletics and baseball. The relatively flat terrain and moderate elevation may also be conducive to developing foundational skills in a variety of sports.",
     "climate": {
       "annual_avg_temp_f": 68.6,
       "annual_precipitation_in": 56.6,
@@ -287,31 +255,15 @@
       "elevation_ft": 427.0
     }
   },
-  "HUB_TX_HOUSTON": {
-    "hub_id": "HUB_TX_HOUSTON",
-    "display_name": "Houston Region, TX",
-    "headline": "The Texas Triangle's Athletic Heritage",
-    "summary": "Anchored in the vibrant Texas Triangle, the Houston region is associated with a strong tradition of sporting excellence. This dynamic area appears to support the development of both Olympians and Paralympians, with sixty-nine total competitors calling it home. The region's extensive infrastructure and competitive environment may foster high-level success across a variety of disciplines. Specifically, the local community could help find exceptional talent in athletics, basketball, and competitive swimming. With sixty-seven Olympic representatives and two Paralympians, the Houston area's athletic ecosystem is associated with robust engagement in summer sports. By cultivating dedication and resilience, this southwestern hub may foster the next generation of Team USA competitors.",
-    "paralympic_callout": null,
-    "top_sport_phrase": "could help find athletics, basketball, and competitive swimming",
-    "confidence_qualifier": "is associated with",
-    "geographic_context": "The consistently warm temperatures and abundant sunshine in the Houston region could allow for year-round outdoor training in sports like athletics. Furthermore, the flat terrain and high annual precipitation may contribute to conditions supporting extensive aquatic facilities, which could benefit competitive swimming.",
-    "climate": {
-      "annual_avg_temp_f": 71.6,
-      "annual_precipitation_in": 57.2,
-      "annual_sunshine_hours": 3304.0,
-      "elevation_ft": 16.0
-    }
-  },
   "HUB_PA_PITTSBURGH": {
     "hub_id": "HUB_PA_PITTSBURGH",
     "display_name": "Pittsburgh Region, PA",
-    "headline": "Athletic Excellence in the Steel City",
-    "summary": "Western Pennsylvania / Pittsburgh is associated with a strong sporting culture that appears to support both Olympians and Paralympians on the global stage. This historic industrial hub may foster dedication and resilience, traits that could help find success in international competition. With a total of 68 athletes representing Team USA, the region's infrastructure and community backing are associated with significant achievements across multiple disciplines. Local training environments and youth programs appear to support development in various sports, highlighting the area's rich athletic tradition. Whether competing on the track or in the pool, athletes from this region continue to demonstrate the competitive spirit that defines this vibrant community.",
+    "headline": "Western Pennsylvania / Pittsburgh Athletics",
+    "summary": "Anchored in Western Pennsylvania / Pittsburgh, this resilient region is associated with a strong legacy of developing world-class talent, including dedicated Paralympians and Olympians. The area's athletic infrastructure may foster exceptional competitors across a variety of disciplines, supporting a total of sixty-nine national team members. With a notable concentration in athletics, competitive swimming, and association football, the local community appears to support athletes reaching the highest levels of international competition. Whether on the track, in the pool, or on the pitch, the region's commitment to sports could help find the next generation of champions. By providing robust training environments, this Northeast hub continues to be a vital contributor to the nation's sporting success.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find athletics, competitive swimming, and association football",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The region's variable terrain, including hills and river valleys, combined with a moderate climate and ample precipitation, could provide diverse training environments suitable for athletics and association football. Additionally, the consistent precipitation and moderate temperatures may support the maintenance of aquatic facilities, which could foster competitive swimming.",
+    "geographic_context": "The region's moderate annual temperature and substantial precipitation, coupled with varied terrain, could help foster year-round training opportunities for sports like athletics and association football. Furthermore, the consistent sunshine and elevation may support outdoor activities and endurance training, potentially benefiting competitive swimming development.",
     "climate": {
       "annual_avg_temp_f": 53.8,
       "annual_precipitation_in": 41.1,
@@ -319,15 +271,31 @@
       "elevation_ft": 758.0
     }
   },
+  "HUB_TX_HOUSTON": {
+    "hub_id": "HUB_TX_HOUSTON",
+    "display_name": "Houston Region, TX",
+    "headline": "Athletic Excellence in the Houston Region",
+    "summary": "The Houston Region, situated in the dynamic Texas Triangle, is associated with a strong tradition of athletic excellence. This vibrant southwestern hub appears to support the development of both Olympians and Paralympians, celebrating a combined total of sixty-six elite competitors. The area's robust sports infrastructure and community support may foster remarkable talent across a highly diverse range of disciplines. Notably, the region could help find exceptional competitors in athletics, basketball, and competitive swimming. By nurturing these dedicated Paralympic athletes and Olympians, the local environment is associated with competitive success on the global stage. Whether on the track, the court, or in the pool, this community appears to support the enduring spirit of Team USA.",
+    "paralympic_callout": null,
+    "top_sport_phrase": "could help find athletics, basketball, and competitive swimming",
+    "confidence_qualifier": "is associated with",
+    "geographic_context": "The warm annual average temperature and abundant sunshine in the Houston region could support year-round outdoor training for sports like athletics. Furthermore, the high annual precipitation, combined with flat, low-lying terrain, may facilitate the development of aquatic sports such as competitive swimming.",
+    "climate": {
+      "annual_avg_temp_f": 71.6,
+      "annual_precipitation_in": 57.2,
+      "annual_sunshine_hours": 3304.0,
+      "elevation_ft": 16.0
+    }
+  },
   "HUB_OR_PORTLAND": {
     "hub_id": "HUB_OR_PORTLAND",
     "display_name": "Portland Region, OR",
-    "headline": "Greater Portland / Willamette Valley Excellence",
-    "summary": "The Greater Portland / Willamette Valley region is associated with a strong tradition of athletic excellence, supporting 64 total competitors on the global stage. This Pacific hub appears to support a balanced roster, including 59 Olympians and 5 Paralympians who have represented Team USA. The area's diverse training environments may foster development across multiple disciplines. Specifically, the region could help find athletics, rowing, and competitive swimming talent, which stand out as the top sports. By offering access to both waterways and tracks, this community is associated with providing a foundation where Paralympic athletes and Olympians alike can thrive.",
+    "headline": "Athletic Excellence in the Greater Portland / Willamette Valley",
+    "summary": "The Greater Portland / Willamette Valley region is associated with a strong tradition of developing both Olympic and Paralympic athletes. This Pacific Northwest hub appears to support a thriving community of competitors, with sixty Olympians and five Paralympians emerging from its local programs. The area's natural landscapes and robust training infrastructure may foster success across a diverse range of summer sports. In particular, the region's waterways and tracks could help find exceptional talent in athletics, rowing, and competitive swimming. By nurturing dedication and resilience, this vibrant community is associated with athletic excellence on the global stage, proudly representing Team USA.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find athletics, rowing, and competitive swimming",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The mild temperatures and abundant precipitation in the Willamette Valley could help foster a consistent training environment for athletics and competitive swimming. Additionally, the region's numerous waterways and moderate climate may support year-round access to rowing.",
+    "geographic_context": "The moderate temperatures and significant precipitation in the Portland region could help foster year-round training opportunities for sports like athletics and rowing. Furthermore, the numerous waterways and the relatively low elevation may support access to aquatic sports such as competitive swimming and rowing.",
     "climate": {
       "annual_avg_temp_f": 53.5,
       "annual_precipitation_in": 53.8,
@@ -338,12 +306,12 @@
   "HUB_AR_BRINKLEY": {
     "hub_id": "HUB_AR_BRINKLEY",
     "display_name": "Brinkley Region, AR",
-    "headline": "Mississippi Heartland's Athletic Heritage",
-    "summary": "The Brinkley region, anchored in the Mississippi Heartland, is associated with a strong tradition of developing both Olympians and Paralympians. This Southern community appears to support competitors across a variety of disciplines, with 63 total athletes emerging from the area. The region's athletic infrastructure may foster exceptional talent, particularly in track and field events and team sports. The local environment could help find dedicated competitors who represent Team USA on the global stage. By cultivating a culture of perseverance, this area is associated with sustained success in summer sports, providing a foundation that appears to support Paralympic athletes and their Olympic peers alike as they pursue excellence.",
+    "headline": "Athletic Excellence in the Mississippi Heartland",
+    "summary": "The Brinkley Region, anchored in the Mississippi Heartland, is associated with a strong tradition of athletic excellence. This vibrant southern community appears to support the journeys of both Olympic and Paralympic athletes as they reach the world stage. With sixty-four total athletes connected to the area, the region's dedication to sports may foster remarkable talent across multiple disciplines. Athletics and basketball lead the way, reflecting a deep-rooted passion for summer sports, while competitive swimming also highlights the area's diverse athletic foundation. The local culture and community backing could help find the next generation of competitors, providing an environment where dedication and hard work thrive.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find athletics, basketball, and competitive swimming",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The warm temperatures and ample sunshine in the Mississippi Heartland could help foster consistent outdoor training opportunities for sports like athletics. While the relatively flat terrain at 210 feet elevation might not offer varied training landscapes, the high annual precipitation could support the maintenance of athletic fields and facilities.",
+    "geographic_context": "The warm annual average temperature and abundant sunshine in the Brinkley region could support year-round outdoor training for sports like athletics. The relatively flat terrain and consistent precipitation may also contribute to the development of accessible facilities for competitive swimming and basketball.",
     "climate": {
       "annual_avg_temp_f": 64.2,
       "annual_precipitation_in": 52.7,
@@ -351,15 +319,31 @@
       "elevation_ft": 210.0
     }
   },
+  "HUB_CO_DENVER": {
+    "hub_id": "HUB_CO_DENVER",
+    "display_name": "Denver Region, CO",
+    "headline": "Front Range Colorado Athletic Excellence",
+    "summary": "Anchored in Front Range Colorado, the Denver region appears to support a thriving community of elite competitors, including both Olympians and Paralympians. This Mountain West area is associated with 62 total athletes who have reached the world stage. The high altitude and active lifestyle may foster exceptional talent across a highly diverse range of disciplines. Specifically, the region could help find freestyle skiing, competitive swimming, and cycle sport standouts. By providing access to world-class training environments, this hub is associated with sustained athletic excellence. Whether navigating the slopes, pools, or roads, the local culture appears to support the dedication required for both Olympic and Paralympic athletes to succeed globally.",
+    "paralympic_callout": null,
+    "top_sport_phrase": "could help find freestyle skiing, competitive swimming, and cycle sport",
+    "confidence_qualifier": "appears to support",
+    "geographic_context": "The high elevation and significant annual sunshine in the Denver region could provide an environment conducive to training for endurance sports like competitive swimming and cycle sport. Additionally, the proximity to mountainous terrain, receiving ample snowfall, may explain the concentration of freestyle skiing athletes.",
+    "climate": {
+      "annual_avg_temp_f": 48.4,
+      "annual_precipitation_in": 21.2,
+      "annual_sunshine_hours": 3627.0,
+      "elevation_ft": 5279.0
+    }
+  },
   "HUB_OH_CLEVELAND": {
     "hub_id": "HUB_OH_CLEVELAND",
     "display_name": "Cleveland Region, OH",
-    "headline": "Greater Cleveland / Northeast Ohio may foster Team USA success",
-    "summary": "Anchored in Greater Cleveland / Northeast Ohio, this Midwest region is associated with a strong legacy of Team USA competitors. The area appears to support the development of both Olympic and Paralympians, contributing sixty-one total competitors to the national roster. This environment may foster dedication and resilience across a diverse range of events. Historically, the region is associated with notable participation in athletics, competitive swimming, and basketball. By providing access to robust community programs and training facilities, the local culture could help find the next generation of talent. Whether on the track, in the pool, or on the court, this region appears to support the enduring spirit of American sportsmanship.",
+    "headline": "Greater Cleveland / Northeast Ohio's Athletic Heritage",
+    "summary": "Greater Cleveland / Northeast Ohio is associated with a strong sporting tradition, representing a total of sixty-two Team USA athletes. This Midwestern hub appears to support both Olympic and Paralympic athletes who have reached the highest levels of international competition. The region's community infrastructure may foster exceptional talent across a highly diverse range of summer events. Specifically, the area could help find dedicated competitors excelling in athletics, competitive swimming, and basketball. By nurturing these Olympians and Paralympians, the local environment is associated with enduring athletic excellence and a balanced representation on the global stage.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find athletics, competitive swimming, and basketball",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The region's distinct four seasons, with cold winters and ample precipitation, could help foster resilience beneficial for sports like athletics and competitive swimming. Its moderate elevation and access to Lake Erie might also support varied training environments suitable for a range of athletic pursuits.",
+    "geographic_context": "The moderate annual temperatures and ample precipitation in the Cleveland region could support year-round training for sports like competitive swimming and athletics. Its relatively flat terrain and urban infrastructure may also explain the development of basketball talent.",
     "climate": {
       "annual_avg_temp_f": 52.6,
       "annual_precipitation_in": 42.9,
@@ -367,31 +351,15 @@
       "elevation_ft": 663.0
     }
   },
-  "HUB_IN_INDIANAPOLIS": {
-    "hub_id": "HUB_IN_INDIANAPOLIS",
-    "display_name": "Indianapolis Region, IN",
-    "headline": "Athletic Excellence in the Midwest",
-    "summary": "The Indianapolis / Indiana region is associated with a strong tradition of athletic excellence on the global stage. This vibrant Midwest hub may foster the development of both Olympians and Paralympians, supporting a total of 56 competitors who proudly represent Team USA. The area's world-class facilities and community backing appear to support athletes across a variety of disciplines, particularly in aquatic and track events. By cultivating an environment dedicated to high performance, this local community could help find the next generation of competitors. Whether training for the track, the pool, or the diving board, athletes from this area continue to demonstrate the immense dedication required to compete at the highest levels of international sport.",
-    "paralympic_callout": null,
-    "top_sport_phrase": "could help find athletics, competitive swimming, and diving",
-    "confidence_qualifier": "is associated with",
-    "geographic_context": "The relatively mild annual average temperature and moderate precipitation in the Indianapolis region could support year-round training for athletics, particularly track and field events. Furthermore, the flat terrain and accessible infrastructure may facilitate the development of competitive swimming and diving programs.",
-    "climate": {
-      "annual_avg_temp_f": 55.2,
-      "annual_precipitation_in": 39.4,
-      "annual_sunshine_hours": 3182.0,
-      "elevation_ft": 702.0
-    }
-  },
   "HUB_AZ_PHOENIX": {
     "hub_id": "HUB_AZ_PHOENIX",
     "display_name": "Phoenix Region, AZ",
-    "headline": "Southwest Spirit and Athletic Excellence",
-    "summary": "Anchored in the Phoenix / Valley of the Sun region, this vibrant Southwest hub is associated with a remarkable legacy of fifty-five elite competitors. The area appears to support a strong community of both Olympians and Paralympians, fostering talent across diverse disciplines. The local infrastructure may foster exceptional development in athletics, while also providing a foundation for competitive swimming and ice hockey. By cultivating an inclusive environment, this region could help find dedicated individuals ready to compete on the world stage. The community culture is associated with resilience and dedication, ensuring that Paralympic athletes have the resources they need. This dynamic landscape appears to support excellence across multiple sports.",
-    "paralympic_callout": "The region is associated with a thriving community of Paralympians, demonstrating exceptional strength and dedication in adaptive sports on the global stage.",
-    "top_sport_phrase": "could help find athletics, competitive swimming, and ice hockey",
+    "headline": "Southwest Athletic Excellence",
+    "summary": "Phoenix, anchored in the Phoenix / Valley of the Sun, is associated with a strong legacy of both Olympic and Paralympic athletes. This vibrant Southwest region appears to support a diverse array of competitors, with Paralympians making significant marks in winter sports and competitive swimming. With sixty total athletes calling this area home, the local environment may foster athletic development across multiple disciplines. The region's warm climate and training facilities are associated with success in athletics, while also supporting dedicated winter sport competitors. This balanced athletic ecosystem could help find future competitors, demonstrating how the unique landscape of the Southwest continues to inspire generations of Team USA representatives.",
+    "paralympic_callout": "The region is a recognized hot spot for Paralympic athletes, with local competitors demonstrating exceptional skill and dedication in winter sports and competitive swimming.",
+    "top_sport_phrase": "could help find athletics, Winter Sport, and competitive swimming",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The consistently warm temperatures and abundant sunshine in the Phoenix region could provide ideal year-round conditions for outdoor training in sports like athletics. The dry climate and access to aquatic facilities may also support the development of competitive swimmers, while the general infrastructure of a large metropolitan area could facilitate participation in diverse sports like ice hockey.",
+    "geographic_context": "The consistently warm temperatures and abundant sunshine in the Phoenix region could provide year-round opportunities for outdoor training in sports like athletics and competitive swimming. While not immediately obvious, the dry climate and accessible terrain may also support the development of adaptive sports, potentially explaining the higher Paralympic athlete representation.",
     "climate": {
       "annual_avg_temp_f": 74.3,
       "annual_precipitation_in": 10.0,
@@ -399,15 +367,47 @@
       "elevation_ft": 1093.0
     }
   },
+  "HUB_IN_INDIANAPOLIS": {
+    "hub_id": "HUB_IN_INDIANAPOLIS",
+    "display_name": "Indianapolis Region, IN",
+    "headline": "Indianapolis / Indiana: A Midwest Hub for Team USA",
+    "summary": "The Indianapolis / Indiana region is associated with a strong legacy of athletic excellence, featuring 59 total Team USA athletes. This vibrant Midwest community appears to support both Olympic and Paralympic athletes as they reach the world stage, including 57 Olympians and 2 Paralympians. The area's world-class facilities and community backing may foster exceptional talent across multiple disciplines. Specifically, the region could help find top competitors in athletics, competitive swimming, and diving. By providing a foundation of support, this hub is associated with consistent success on the international level, proving that the heartland may foster the dedication required for Team USA's ongoing achievements.",
+    "paralympic_callout": null,
+    "top_sport_phrase": "could help find athletics, competitive swimming, and diving",
+    "confidence_qualifier": "is associated with",
+    "geographic_context": "The moderate annual temperature and precipitation in the Indianapolis region could support year-round training for sports like athletics and competitive swimming. The relatively flat terrain and 702-foot elevation may explain the prevalence of these sports, which often benefit from accessible, consistent training environments.",
+    "climate": {
+      "annual_avg_temp_f": 55.2,
+      "annual_precipitation_in": 39.4,
+      "annual_sunshine_hours": 3182.0,
+      "elevation_ft": 702.0
+    }
+  },
+  "HUB_CO_VAIL": {
+    "hub_id": "HUB_CO_VAIL",
+    "display_name": "Vail Region, CO",
+    "headline": "Western Slope Colorado's Winter Heritage",
+    "summary": "The high altitudes of Western Slope Colorado are associated with a rich tradition of winter sports excellence. This rugged Mountain West environment appears to support the development of both Olympic and Paralympic athletes who thrive on the snow and ice. With fifty-five total competitors hailing from the area, the region's world-class slopes and facilities may foster a deep passion for alpine competition. The local terrain could help find dedicated athletes across multiple disciplines, reflecting a strong community commitment to winter athletics.",
+    "paralympic_callout": null,
+    "top_sport_phrase": "could help find alpine skiing, ski jumping, and Winter Sport",
+    "confidence_qualifier": "is associated with",
+    "geographic_context": "The consistently cold average annual temperature and significant precipitation, much of it as snow, could help foster a strong culture around winter sports. The high elevation and mountainous terrain are well-suited to the development of athletes in alpine skiing and ski jumping.",
+    "climate": {
+      "annual_avg_temp_f": 36.6,
+      "annual_precipitation_in": 28.1,
+      "annual_sunshine_hours": 3775.0,
+      "elevation_ft": 8370.0
+    }
+  },
   "HUB_MO_KANSAS_CITY": {
     "hub_id": "HUB_MO_KANSAS_CITY",
     "display_name": "Kansas City Region, MO",
-    "headline": "Kansas City Region's Athletic Heritage",
-    "summary": "Anchored in the Cornbelt / Heartland Plains, the Kansas City region is associated with a strong tradition of athletic excellence. This Midwestern hub appears to support the development of both Olympians and Paralympians, contributing fifty-five competitors to Team USA. The area's community sports programs and facilities may foster talent across a diverse range of summer events. A deep passion for competition could help find athletes who excel on the global stage, particularly in track and field, court sports, and team disciplines. By nurturing Paralympic athletes alongside their Olympic peers, this region is associated with a balanced and inclusive sporting culture that continues to enrich the national roster year after year.",
+    "headline": "Heartland Plains Athletic Excellence",
+    "summary": "The Kansas City Region, deeply rooted in the Cornbelt / Heartland Plains, is associated with a proud tradition of developing both Olympic and Paralympic athletes. This expansive Midwestern hub appears to support a diverse array of sporting talents across Missouri, Kansas, and Iowa, uniting communities through a shared passion for competition. With fifty-five total competitors calling this area home, the local environment may foster the athletic dedication and community support necessary for international success. The region's robust sports infrastructure and active lifestyle could help find exceptional competitors in athletics, basketball, and volleyball, ensuring a lasting legacy on the global stage.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find athletics, basketball, and volleyball",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The relatively flat terrain and moderate precipitation in the Kansas City region could help foster accessibility to athletics, particularly track and field, for a broad population. The extensive sunshine hours and generally temperate climate may also support consistent outdoor training opportunities for these sports.",
+    "geographic_context": "The relatively flat terrain and moderate precipitation in the Kansas City region could help foster the development of athletes in sports like athletics. The consistent sunshine and warm average temperatures may also contribute to year-round outdoor training opportunities for various sports.",
     "climate": {
       "annual_avg_temp_f": 57.6,
       "annual_precipitation_in": 43.2,
@@ -418,12 +418,12 @@
   "HUB_HI_HONOLULU": {
     "hub_id": "HUB_HI_HONOLULU",
     "display_name": "Honolulu Region, HI",
-    "headline": "Oahu / Honolulu Metro's Island Strength",
-    "summary": "The Oahu / Honolulu Metro region is associated with a rich tradition of aquatic and athletic excellence. This vibrant Pacific hub appears to support the development of both Olympic and Paralympians who thrive on the global stage. With fifty-one total athletes emerging from the area, the local environment may foster a deep connection to water and movement. The region's unique climate and community resources could help find dedicated competitors across multiple disciplines. From the pool to the track, the island's culture is associated with enduring athletic dedication, celebrating the achievements of all its hometown representatives.",
+    "headline": "Oahu / Honolulu Metro's Aquatic Heritage",
+    "summary": "The Oahu / Honolulu Metro region is associated with a rich sporting tradition that appears to support a total of 53 elite competitors. This vibrant island community may foster incredible talent, including 51 Olympic athletes and 2 Paralympic athletes who have proudly represented Team USA. The area's deep connection to the water could help find exceptional competitors in aquatic disciplines, alongside strong showings in court and track events. By embracing a culture of outdoor activity and athletic dedication, the region is associated with continued success on the global stage. Whether training in the ocean or on the track, these Olympians and Paralympians highlight the unique athletic environment of Hawaii.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find competitive swimming, volleyball, and athletics",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The consistently warm temperatures and abundant sunshine in Honolulu could support year-round outdoor training for sports like competitive swimming and volleyball. The island's coastal environment and access to water may further explain the prevalence of aquatic sports.",
+    "geographic_context": "The consistently warm temperatures and abundant sunshine in Honolulu could support year-round outdoor training for sports like competitive swimming and volleyball. The coastal environment and low elevation may also provide accessible conditions for water-based activities and general athletics.",
     "climate": {
       "annual_avg_temp_f": 75.3,
       "annual_precipitation_in": 20.7,
@@ -434,12 +434,12 @@
   "HUB_FL_MIAMI": {
     "hub_id": "HUB_FL_MIAMI",
     "display_name": "Miami Region, FL",
-    "headline": "South Florida (Gold Coast) Athletic Heritage",
-    "summary": "The vibrant communities of South Florida (Gold Coast) are associated with a strong tradition of athletic development. This dynamic region appears to support the journeys of 50 Team USA competitors, including dedicated Olympians and Paralympians who have reached the highest levels of international sport. The area's year-round warm climate and robust training infrastructure may foster exceptional talent across multiple disciplines. Historically, the region is associated with strong participation in competitive swimming, athletics, and association football. By providing access to elite coaching and competitive local leagues, the Miami area could help find the next generation of competitors. The diverse athletic culture here appears to support a wide range of sporting pursuits.",
+    "headline": "South Florida (Gold Coast) may foster athletic excellence",
+    "summary": "The vibrant Miami Region, anchored in South Florida (Gold Coast), is associated with a rich tradition of summer sports. This dynamic area appears to support an impressive roster of fifty total competitors, which includes forty-nine Olympians and one dedicated Paralympic athlete. The warm climate and robust athletic infrastructure may foster exceptional talent across various disciplines. Historically, the region could help find competitive swimming, athletics, and association football contenders who compete on the global stage. By cultivating a strong community focus on aquatic and track events, this coastal hub is associated with consistent athletic development. The area's dedication to year-round training environments appears to support the ongoing success of its elite sports programs.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find competitive swimming, athletics, and association football",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The warm annual average temperature and abundant sunshine in the Miami region could support year-round outdoor training for sports like competitive swimming, athletics, and association football. The flat terrain and high annual precipitation may also contribute to conditions suitable for maintaining numerous sports fields and aquatic facilities.",
+    "geographic_context": "The consistently warm temperatures and abundant sunshine in the Miami region could support year-round outdoor training for sports like competitive swimming, athletics, and association football. The high annual precipitation, while significant, might not hinder training due to the rapid drying typical of warm climates, further facilitating consistent practice opportunities.",
     "climate": {
       "annual_avg_temp_f": 77.1,
       "annual_precipitation_in": 76.6,
@@ -450,12 +450,12 @@
   "HUB_LA_NEW_ORLEANS": {
     "hub_id": "HUB_LA_NEW_ORLEANS",
     "display_name": "New Orleans Region, LA",
-    "headline": "Greater New Orleans may foster diverse athletic talent",
-    "summary": "Greater New Orleans is associated with a rich sporting culture that appears to support a wide array of competitors, including dedicated Paralympians and Olympians. This vibrant Southern hub may foster exceptional talent across multiple disciplines, drawing on its unique coastal and urban environments. With forty-nine total athletes representing the region on the global stage, the area's athletic infrastructure could help find standout performers. The region appears to support particular strength in athletics, alongside strong showings in sailing and baseball. Ultimately, the community's enduring passion for sports is associated with continuous development, ensuring that both Olympians and Paralympians from the region have the foundation they need to pursue their highest competitive aspirations.",
+    "headline": "Greater New Orleans: A Southern Hub for Team USA",
+    "summary": "Anchored in Greater New Orleans, this vibrant Southern region appears to support a strong tradition of athletic excellence. The area is associated with the development of fifty Team USA competitors, including both dedicated Olympians and Paralympians who have represented the nation on the world stage. The local climate and community resources may foster top-tier talent across a variety of summer disciplines. With a notable concentration of seventeen athletes in athletics, alongside strong showings in sailing and baseball, the region's unique cultural and geographic landscape could help find the next generation of competitors. This rich sporting heritage is associated with ongoing success, demonstrating how local roots may foster international achievement.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find athletics, sailing, and baseball",
-    "confidence_qualifier": "may foster",
-    "geographic_context": "The warm average temperature and abundant sunshine in the New Orleans region could support year-round outdoor training for sports like athletics and baseball. Furthermore, the low elevation and extensive coastline with access to open water may explain the presence of sailing within this hub.",
+    "confidence_qualifier": "appears to support",
+    "geographic_context": "The consistently warm temperatures and abundant sunshine in the New Orleans region could support year-round outdoor training for sports like athletics and baseball. Furthermore, the extensive coastal waterways and access to the Gulf of Mexico may provide suitable conditions for developing sailing talent.",
     "climate": {
       "annual_avg_temp_f": 72.0,
       "annual_precipitation_in": 45.3,
@@ -463,31 +463,31 @@
       "elevation_ft": 10.0
     }
   },
-  "HUB_NY_BUFFALO": {
-    "hub_id": "HUB_NY_BUFFALO",
-    "display_name": "Buffalo Region, NY",
-    "headline": "Athletic Heritage in the Buffalo Region",
-    "summary": "Anchored in the Western New York / Finger Lakes region, the Buffalo area is associated with a rich sporting tradition that supports both Olympians and Paralympians. This resilient Northeastern hub may foster competitive excellence across a diverse array of disciplines, with forty-five athletes calling the area home. The local environment appears to support dedicated training regimens, which could help find success on the global stage. By cultivating strong community ties and robust athletic programs, the region is associated with steady athletic development. Whether training on local waterways or running on community tracks, Olympians and Paralympians from this area demonstrate remarkable dedication.",
+  "HUB_FL_ORLANDO": {
+    "hub_id": "HUB_FL_ORLANDO",
+    "display_name": "Orlando Region, FL",
+    "headline": "Central Florida's Athletic Heritage",
+    "summary": "Anchored in Central Florida, the Orlando region is associated with a vibrant sporting culture that appears to support a diverse array of competitors. This dynamic area may foster the development of both Olympic and Paralympic athletes, contributing forty-nine total competitors to Team USA. The warm climate and robust local infrastructure could help find success for athletes across multiple disciplines. Historically, this region is associated with strong representations in athletics, competitive swimming, and basketball. By providing year-round training opportunities, the local environment appears to support the dedication required for elite international competition.",
     "paralympic_callout": null,
-    "top_sport_phrase": "could help find athletics, rowing, and competitive swimming",
+    "top_sport_phrase": "could help find athletics, competitive swimming, and basketball",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The moderate average temperature and ample precipitation in the Buffalo region could help foster year-round training opportunities for aquatic sports and athletics. The numerous lakes and waterways in Western New York and the Finger Lakes region support access to environments suitable for rowing and competitive swimming.",
+    "geographic_context": "The consistently warm temperatures and abundant sunshine in Central Florida could provide year-round opportunities for outdoor training in sports like athletics. Furthermore, the high annual precipitation, contributing to numerous natural and man-made water bodies, may support access to facilities for competitive swimming.",
     "climate": {
-      "annual_avg_temp_f": 50.7,
-      "annual_precipitation_in": 42.4,
-      "annual_sunshine_hours": 2900.0,
-      "elevation_ft": 600.0
+      "annual_avg_temp_f": 73.1,
+      "annual_precipitation_in": 64.4,
+      "annual_sunshine_hours": 3675.0,
+      "elevation_ft": 118.0
     }
   },
   "HUB_CA_MERCED": {
     "hub_id": "HUB_CA_MERCED",
     "display_name": "Merced Region, CA",
-    "headline": "Central Valley North's Athletic Heritage",
-    "summary": "The Merced region, anchored in Northern California / Central Valley North, is associated with a strong tradition of athletic development. This vibrant area may foster incredible talent, appearing to support both Olympians and Paralympians who compete on the world stage. With forty-three total athletes hailing from the region, the local community could help find future champions across a highly diverse range of summer events. The area's dedication to sports is associated with success in aquatic and track disciplines, reflecting a broad commitment to athletic excellence. By providing supportive environments, this region appears to support the journeys of Paralympic athletes and their peers alike, celebrating a shared pursuit of international sporting achievement.",
-    "paralympic_callout": "The region is recognized as a hot spot for Paralympians, demonstrating a robust environment that may foster exceptional talent and support the competitive journeys of Paralympians on the global stage.",
+    "headline": "Athletic Excellence in the Central Valley",
+    "summary": "The Merced Region, rooted in Northern California / Central Valley North, is associated with a strong tradition of supporting both Olympic and Paralympic athletes. This diverse area appears to support forty-five total competitors, including four dedicated Paralympians who have proudly represented Team USA. The local environment may foster athletic dedication across a wide variety of disciplines, particularly in summer sports. With a balanced composition of talent, the region's community resources and training facilities could help find future competitors. The area's legacy in athletics, competitive swimming, and water polo is associated with ongoing success, proving that this vibrant part of the Pacific macro-region may foster elite talent.",
+    "paralympic_callout": null,
     "top_sport_phrase": "could help find athletics, competitive swimming, and water polo",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The consistently warm temperatures and abundant sunshine in the Merced region could help foster year-round training opportunities for aquatic sports like competitive swimming and water polo. The relatively flat terrain and favorable weather conditions may also explain the development of athletes in athletics.",
+    "geographic_context": "The consistently warm temperatures and abundant sunshine in the Merced region could provide an extended outdoor training season for athletics. Additionally, the relatively flat terrain and access to water resources may support the development of competitive swimming and water polo.",
     "climate": {
       "annual_avg_temp_f": 62.7,
       "annual_precipitation_in": 26.6,
@@ -498,12 +498,12 @@
   "HUB_OH_COLUMBUS": {
     "hub_id": "HUB_OH_COLUMBUS",
     "display_name": "Columbus Region, OH",
-    "headline": "Columbus / Central Ohio may foster athletic excellence",
-    "summary": "Columbus / Central Ohio is associated with a strong sporting culture that may foster elite competitors. This vibrant Midwest region appears to support a diverse group of 43 competitors, including dedicated Paralympians and Olympians who train to reach the global stage. The local infrastructure and community backing could help find future competitors across multiple disciplines. Specifically, the area's athletic programs are associated with significant participation in summer events, with a notable concentration of talent in athletics, basketball, and rowing. By providing access to quality facilities, this region may foster the development of athletes who represent Team USA.",
+    "headline": "Columbus / Central Ohio Athletic Heritage",
+    "summary": "Anchored in Columbus / Central Ohio, this vibrant Midwest hub is associated with developing forty-five remarkable competitors for Team USA. This dedicated community appears to support both Olympic and Paralympic athletes as they pursue their highest sporting ambitions on the global stage. The region's strong athletic infrastructure may foster exceptional talent across a variety of disciplines, particularly in summer events. By cultivating a balanced environment of competitive excellence, this area could help find future competitors in track and field, court sports, and water events. The local dedication to athletic development is associated with a diverse sporting culture that empowers athletes to reach the pinnacle of international competition.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find athletics, basketball, and rowing",
-    "confidence_qualifier": "may foster",
-    "geographic_context": "The relatively flat terrain and 43.5 inches of annual precipitation in the Columbus region could help foster both track and field athletes and rowers, as these conditions are well-suited for developing running tracks and navigable waterways. Additionally, the 3135 hours of annual sunshine and 54.6\u00b0F average temperature may explain the prevalence of outdoor sports like athletics and the accessibility for adaptive sports, as seen in the higher Paralympic share.",
+    "confidence_qualifier": "is associated with",
+    "geographic_context": "The moderate annual temperatures and ample precipitation in the Columbus region could help foster year-round training opportunities for sports like athletics and basketball. Furthermore, the relatively flat terrain and numerous waterways may explain the presence of rowing, providing accessible environments for water-based sports.",
     "climate": {
       "annual_avg_temp_f": 54.6,
       "annual_precipitation_in": 43.5,
@@ -514,12 +514,12 @@
   "HUB_TX_SAN_ANTONIO": {
     "hub_id": "HUB_TX_SAN_ANTONIO",
     "display_name": "San Antonio Region, TX",
-    "headline": "Athletic Excellence in the Texas Triangle",
-    "summary": "The San Antonio region, anchored in the vibrant Texas Triangle, is associated with a strong tradition of sporting success for both Olympians and Paralympians. This dynamic southwestern hub appears to support the development of competitors across a diverse range of disciplines, with forty-two total athletes calling this area home. The community's expansive athletic infrastructure may foster exceptional talent, particularly in athletics, basketball, and shooting sports. By providing robust training environments, the region could help find the next generation of competitors ready to represent Team USA. The local culture is associated with dedication, empowering Paralympic athletes and their Olympic peers to reach their highest potential.",
+    "headline": "Texas Triangle Roots May Foster Team USA Success",
+    "summary": "The San Antonio region, anchored in the vibrant Texas Triangle, is associated with a strong tradition of athletic excellence. This dynamic Southwestern area appears to support a combined roster of forty-three Team USA athletes, including forty Olympians and three dedicated Paralympians. The community's expansive sports infrastructure and cultural dedication to competition may foster development across multiple disciplines. Historically, the region could help find standout talent in athletics, basketball, and shooting sports. By nurturing both Olympic and Paralympic athletes, the Texas Triangle demonstrates how local support networks and regional pride are associated with reaching the highest levels of international sport.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find athletics, basketball, and shooting sports",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The warm annual average temperature, abundant sunshine, and moderate precipitation in the San Antonio region could provide year-round outdoor training opportunities, which may be beneficial for sports like athletics and shooting sports. This climate, combined with relatively flat terrain, supports access to facilities and open spaces for consistent practice in these disciplines.",
+    "geographic_context": "The warm average temperature and abundant sunshine in the San Antonio region could support year-round outdoor training for sports like athletics and shooting sports. The relatively flat terrain at 696 feet elevation may also provide accessible conditions for a variety of physical activities.",
     "climate": {
       "annual_avg_temp_f": 72.3,
       "annual_precipitation_in": 33.4,
@@ -527,31 +527,79 @@
       "elevation_ft": 696.0
     }
   },
-  "HUB_MI_DOWAGIAC": {
-    "hub_id": "HUB_MI_DOWAGIAC",
-    "display_name": "Dowagiac Region, MI",
-    "headline": "Athletic Excellence in the Dowagiac Region",
-    "summary": "The Dowagiac Region, situated in the broader Continental US, is associated with a strong tradition of athletic development. This area appears to support a diverse group of competitors, including dedicated Olympians and Paralympians who excel on the global stage. With a total of 33 athletes representing Team USA, the region's community infrastructure may foster success across multiple disciplines. Notably, local programs could help find standout talent in athletics, basketball, and competitive swimming. By nurturing both summer sports and track events, this midwestern hub is associated with steady, balanced athletic achievement.",
+  "HUB_NY_BUFFALO": {
+    "hub_id": "HUB_NY_BUFFALO",
+    "display_name": "Buffalo Region, NY",
+    "headline": "Western New York / Finger Lakes Heritage",
+    "summary": "Buffalo, anchored in the Western New York / Finger Lakes region, is associated with a strong tradition of developing both Olympic and Paralympic athletes. This resilient Northeastern hub appears to support a diverse array of competitors, with forty-two total athletes hailing from the area, including three dedicated Paralympians. The region's access to waterways and training facilities may foster excellence across multiple disciplines. Historically, the area could help find standout talent in athletics, rowing, and competitive swimming. By nurturing local talent through community programs and dedicated coaching, the region is associated with consistent athletic achievement on the global stage. Whether on the track or in the water, this vibrant community appears to support the dreams of future Team USA representatives.",
+    "paralympic_callout": null,
+    "top_sport_phrase": "could help find athletics, rowing, and competitive swimming",
+    "confidence_qualifier": "is associated with",
+    "geographic_context": "The region's numerous lakes and rivers, combined with a moderate annual precipitation of 42.4 inches, could support extensive opportunities for water sports like rowing and competitive swimming. Furthermore, the generally flat terrain at 600 feet elevation and 2900 hours of annual sunshine may provide favorable conditions for year-round training in athletics.",
+    "climate": {
+      "annual_avg_temp_f": 50.7,
+      "annual_precipitation_in": 42.4,
+      "annual_sunshine_hours": 2900.0,
+      "elevation_ft": 600.0
+    }
+  },
+  "HUB_MI_ALLEGAN": {
+    "hub_id": "HUB_MI_ALLEGAN",
+    "display_name": "Allegan Region, MI",
+    "headline": "West Michigan / Grand Rapids Athletic Heritage",
+    "summary": "Anchored in the West Michigan / Grand Rapids area, the Allegan region is associated with a strong tradition of developing world-class competitors. This Midwestern community appears to support a diverse array of thirty-nine athletes, including dedicated Paralympians and Olympians who have represented Team USA on the global stage. The local environment may foster excellence across multiple disciplines, with a notable concentration in athletics, basketball, and competitive swimming. By providing access to quality facilities and community backing, this region could help find the next generation of sporting talent. The balanced athletic culture here is associated with summer pursuits, which remain particularly prominent among the local Paralympic athletes and Olympians.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find athletics, basketball, and competitive swimming",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The moderate annual temperatures and ample precipitation in the Dowagiac Region, combined with its numerous freshwater lakes, could help foster competitive swimming. Additionally, the generally flat terrain at 771 feet of elevation might support the development of athletics and basketball.",
+    "geographic_context": "The moderate annual temperature and ample precipitation in the Allegan region could support consistent outdoor training for athletics, while the relatively flat terrain may facilitate accessibility for a higher share of Paralympic athletes. Furthermore, the combination of these conditions could contribute to a robust local infrastructure for competitive swimming, potentially explaining its prevalence alongside basketball.",
     "climate": {
-      "annual_avg_temp_f": 51.4,
-      "annual_precipitation_in": 44.0,
-      "annual_sunshine_hours": 2948.0,
-      "elevation_ft": 771.0
+      "annual_avg_temp_f": 50.9,
+      "annual_precipitation_in": 41.2,
+      "annual_sunshine_hours": 2944.0,
+      "elevation_ft": 663.0
+    }
+  },
+  "HUB_FL_TAMPA": {
+    "hub_id": "HUB_FL_TAMPA",
+    "display_name": "Tampa Region, FL",
+    "headline": "Sun, Sea, and Ice in the Tampa Region",
+    "summary": "The Tampa Bay / Suncoast region is associated with a rich sporting culture that appears to support both Olympic and Paralympic athletes. With thirty-five total competitors calling this area home, the warm climate and coastal access may foster incredible talent across multiple disciplines. From the track to the water, and surprisingly the ice rink, this southern hub could help find dedicated competitors. The area's diverse athletic infrastructure is associated with success in athletics, sailing, and ice hockey. By nurturing such a wide variety of sports, the Tampa region continues to be a vital community for Team USA on the international stage.",
+    "paralympic_callout": "The Tampa region is a recognized hot spot for Paralympic athletes, fostering incredible talent and dedication on the international stage.",
+    "top_sport_phrase": "could help find athletics, sailing, and ice hockey",
+    "confidence_qualifier": "is associated with",
+    "geographic_context": "The warm average temperature, abundant sunshine, and coastal access in the Tampa Bay region could provide ideal year-round conditions for water sports like sailing and outdoor track and field, potentially contributing to a higher Paralympic athlete share. While less intuitive, the region's flat terrain and mild winters may also support the infrastructure necessary for a variety of indoor and outdoor sports, including ice hockey.",
+    "climate": {
+      "annual_avg_temp_f": 74.2,
+      "annual_precipitation_in": 44.4,
+      "annual_sunshine_hours": 3768.0,
+      "elevation_ft": 33.0
+    }
+  },
+  "HUB_AK_ANCHORAGE": {
+    "hub_id": "HUB_AK_ANCHORAGE",
+    "display_name": "Anchorage Region, AK",
+    "headline": "Southcentral Alaska may foster winter excellence",
+    "summary": "Anchorage, anchored in Southcentral Alaska, is associated with a strong tradition of winter sports that appears to support both Olympic and Paralympic athletes. The region's rugged terrain and snowy climate may foster incredible talent, with thirty total athletes calling this area home. Among these competitors, Paralympic athletes have found significant success, demonstrating the area's inclusive athletic environment. The local infrastructure could help find dedicated competitors in cross-country skiing, various winter sports, and ice hockey. By nurturing such a diverse group of competitors, this Alaskan hub is associated with enduring athletic achievement on the global stage.",
+    "paralympic_callout": "Southcentral Alaska is recognized as a dedicated hot spot for Paralympic athletes, where local community support appears to foster exceptional talent on the world stage.",
+    "top_sport_phrase": "could help find cross-country skiing, Winter Sport, and ice hockey",
+    "confidence_qualifier": "is associated with",
+    "geographic_context": "The consistently cold annual average temperature and significant annual precipitation in this region could help foster year-round training opportunities for winter sports. This environment, combined with varied terrain, supports access to conditions ideal for developing athletes in cross-country skiing, ice hockey, and other winter sports.",
+    "climate": {
+      "annual_avg_temp_f": 36.7,
+      "annual_precipitation_in": 39.8,
+      "annual_sunshine_hours": 2142.0,
+      "elevation_ft": 118.0
     }
   },
   "HUB_NV_RENO": {
     "hub_id": "HUB_NV_RENO",
     "display_name": "Reno Region, NV",
-    "headline": "Reno's High-Altitude Athletic Heritage",
-    "summary": "Anchored in the Northern Nevada / Reno-Tahoe area, this Mountain West hub is associated with a strong legacy of both summer and winter sports. The region's diverse terrain appears to support the development of 29 total competitors, including 27 Olympians and 2 dedicated Paralympians who have represented Team USA. This dynamic environment may foster exceptional talent across various disciplines, particularly in athletics, alpine skiing, and snowboarding. By providing access to high-altitude training grounds and world-class winter facilities, the area could help find future generations of champions. Whether navigating snowy slopes or competing on the track, athletes from this community continue to demonstrate the enduring athletic spirit of the region.",
+    "headline": "Athletics in Northern Nevada / Reno-Tahoe",
+    "summary": "The Northern Nevada / Reno-Tahoe region is associated with a strong heritage of winter and summer athletic excellence. This Mountain West hub appears to support the development of both Olympic and Paralympic athletes, contributing thirty competitors to Team USA. The area's diverse geography and high-altitude training environments may foster success across multiple disciplines. Historically, the region is associated with strong performances in athletics, alpine skiing, and snowboarding. By providing access to world-class slopes and tracks, this community could help find the next generation of competitors. The balanced athletic culture here appears to support athletes who thrive on the global stage, demonstrating how regional environments may foster enduring sporting traditions.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find athletics, alpine skiing, and snowboarding",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The high elevation and proximity to mountainous terrain, combined with significant annual sunshine, could provide year-round opportunities for training in sports like alpine skiing, snowboarding, and various athletics disciplines. The relatively low annual precipitation, often falling as snow in higher elevations, may also contribute to consistent conditions for winter sports.",
+    "geographic_context": "The high elevation and mountainous terrain of the Reno Region, combined with a climate that supports significant snowfall, could help foster athletes in alpine skiing and snowboarding. The abundant annual sunshine and relatively dry conditions may also provide an environment conducive to year-round training for athletics.",
     "climate": {
       "annual_avg_temp_f": 51.5,
       "annual_precipitation_in": 18.6,
@@ -562,12 +610,12 @@
   "HUB_IL_CHAMPAIGN": {
     "hub_id": "HUB_IL_CHAMPAIGN",
     "display_name": "Champaign Region, IL",
-    "headline": "Athletic Excellence in the Continental US",
-    "summary": "Located in the heart of the Continental US, the Champaign region appears to support a strong tradition of sporting excellence for Team USA. This Midwestern hub is associated with the development of twenty-nine total competitors, including dedicated Olympians and Paralympians who have trained to reach the highest levels of international competition. The area's athletic infrastructure may foster remarkable talent across multiple disciplines, with a notable concentration in competitive swimming, basketball, and athletics. By cultivating an environment that values dedication and hard work, this region could help find the next generation of champions. Whether in the pool or on the track, the local community appears to support the diverse journeys of its athletes.",
+    "headline": "Athletic Excellence in the Champaign Region",
+    "summary": "Located in the heart of the Continental US, the Champaign region is associated with a strong tradition of athletic development for Team USA. This vibrant midwestern hub appears to support the journeys of both Olympic and Paralympic athletes, fostering a community where dedication thrives. With thirty total athletes tracing their roots to this area, the local environment may foster success across a diverse range of summer sports. Competitive swimming stands out as a leading pursuit, alongside basketball and athletics. By providing access to quality facilities and community encouragement, the region could help find the next generation of competitors. The balanced athletic culture here is associated with enduring excellence on the global stage.",
     "paralympic_callout": null,
     "top_sport_phrase": "could help find competitive swimming, basketball, and athletics",
-    "confidence_qualifier": "appears to support",
-    "geographic_context": "The relatively flat terrain and moderate precipitation in the Champaign region could facilitate the development of athletics and outdoor training for sports like basketball. Additionally, the consistent sunshine hours might encourage outdoor physical activity, supporting a broad base for various sports, including competitive swimming which often utilizes indoor facilities.",
+    "confidence_qualifier": "is associated with",
+    "geographic_context": "The continental climate of the Champaign Region, with its distinct seasons and moderate precipitation, could support year-round training regimens for sports like competitive swimming and basketball. The relatively flat terrain and accessible infrastructure may also contribute to the development of athletics.",
     "climate": {
       "annual_avg_temp_f": 55.1,
       "annual_precipitation_in": 35.6,
@@ -575,20 +623,20 @@
       "elevation_ft": 745.0
     }
   },
-  "HUB_AK_ANCHORAGE": {
-    "hub_id": "HUB_AK_ANCHORAGE",
-    "display_name": "Anchorage Region, AK",
-    "headline": "Southcentral Alaska's Winter Heritage",
-    "summary": "Anchored in Southcentral Alaska, the Anchorage region is associated with a strong tradition of winter sports excellence. This rugged environment appears to support both Olympians and Paralympians who thrive in cold-weather disciplines. With a total of twenty-four athletes hailing from the area, the local culture may foster dedication and resilience on the snow and ice. The community's deep connection to winter activities could help find talent across various demanding events. By embracing the challenging climate, this region is associated with developing competitors who represent Team USA on the global stage.",
-    "paralympic_callout": "The region is associated with a proud community of Paralympians, showcasing remarkable talent and dedication on the international stage.",
-    "top_sport_phrase": "could help find cross-country skiing, ice hockey, and curling",
+  "HUB_NY_ROCHESTER": {
+    "hub_id": "HUB_NY_ROCHESTER",
+    "display_name": "Rochester Region, NY",
+    "headline": "Western New York / Finger Lakes Athletic Heritage",
+    "summary": "Anchored in the Western New York / Finger Lakes region, the Rochester area is associated with a strong tradition of athletic excellence. This dynamic environment appears to support a diverse group of twenty-six competitors, including both Olympic and Paralympic athletes who have represented Team USA on the global stage. The local climate and community resources may foster development across a variety of disciplines. Historically, this area could help find standout competitors in summer events like athletics and amateur wrestling, while also providing a foundation for Winter Sport participants. By cultivating such a broad spectrum of talent, the local community is associated with enduring athletic dedication, ensuring that future Olympians and Paralympians may continue to thrive.",
+    "paralympic_callout": null,
+    "top_sport_phrase": "could help find athletics, amateur wrestling, and Winter Sport",
     "confidence_qualifier": "is associated with",
-    "geographic_context": "The consistently cold annual average temperature and abundant snowfall in Southcentral Alaska could help foster a strong culture around winter sports. This environment, combined with varied terrain, supports access to extensive trails and frozen surfaces, which may explain the prevalence of cross-country skiing, ice hockey, and curling.",
+    "geographic_context": "The region's distinct four seasons, including cold winters with significant precipitation, could help foster a culture of winter sports and indoor athletic training. Its varied terrain, from the flat Lake Ontario plain to the rolling hills of the Finger Lakes, may explain the development of athletes in sports like amateur wrestling and track and field.",
     "climate": {
-      "annual_avg_temp_f": 36.7,
-      "annual_precipitation_in": 39.8,
-      "annual_sunshine_hours": 2142.0,
-      "elevation_ft": 118.0
+      "annual_avg_temp_f": 50.5,
+      "annual_precipitation_in": 43.6,
+      "annual_sunshine_hours": 2799.0,
+      "elevation_ft": 505.0
     }
   }
 }
