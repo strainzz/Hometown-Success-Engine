@@ -568,6 +568,11 @@ def _build_chatbot_tools() -> genai_types.Tool:
                             type="INTEGER",
                             description="How many rows to return. Default 5, max 20.",
                         ),
+                        "sort_order": genai_types.Schema(
+                            type="STRING",
+                            enum=["desc", "asc"],
+                            description="Use desc for most/highest/top and asc for least/fewest/lowest/bottom.",
+                        ),
                         "min_athletes": genai_types.Schema(
                             type="INTEGER",
                             description="Minimum athletes for share rankings. State Paralympic-share rankings default to 25.",
@@ -591,7 +596,7 @@ Help users explore the map and understand the data. Call tools to move the map o
 
 # TOOL RULES
 - If the user asks for the top, highest, leading, best, or number-one Paralympic Hot Spot, select the top Hot Spot hub so the map moves to it.
-- If the user asks which state leads or has the most of a metric, select the leading state so the map moves to it.
+- If the user asks which state leads, has the most, or has the least/fewest/lowest of a metric, select that state so the map moves to it.
 - If the user asks to show, highlight, filter, or view Paralympic Hot Spots, call filter_to_paralympic.
 - If the user asks to reset, clear, start over, or go back to the national view, call reset_view.
 - If the user asks what the dots, circles, colors, legend, state shading, territory insets, Alaska/Hawaii/Puerto Rico insets, or Hot Spots mean, call explain_map.
@@ -600,7 +605,7 @@ Help users explore the map and understand the data. Call tools to move the map o
 - If the user names a city, hub, or regional label and is not asking for rank or comparison, call select_hub or zoom_to_hub.
 - If the user asks for rankings, totals, comparisons, profiles, sports, macro regions, or aggregate questions, call query_data.
 - For "what rank is X" questions, call query_data with query_type entity_rank, entity_type hub or state, and the requested metric.
-- For "rank/list/top" questions, call query_data with query_type rank_list, entity_type hub or state, metric, and limit.
+- For "rank/list/top/bottom/least/fewest" questions, call query_data with query_type rank_list, entity_type hub or state, metric, limit, and sort_order.
 - Always cite exact numbers from the tool result.
 - Keep replies concise: usually 2-3 sentences unless the user asks for a list.
 - Use conditional phrasing such as "could help find", "may foster", "may explain", or "is associated with". Never say a place produces athletes.
@@ -731,6 +736,13 @@ def _metric_from_text(message: str) -> str:
     if "sport" in msg or "ski" in msg or "swim" in msg:
         return "sport_count"
     return "total_athletes"
+
+
+def _rank_order_from_text(message: str) -> str:
+    msg = message.lower()
+    if any(term in msg for term in ["least", "fewest", "lowest", "smallest", "bottom"]):
+        return "asc"
+    return "desc"
 
 
 def _hub_para_count(hub: Hub) -> int:
@@ -1203,6 +1215,8 @@ def _top_ranked_hub_for_query(args: dict[str, Any]) -> Hub | None:
         metric = "total_athletes"
 
     ranked = _ranked_hubs(metric, sport, None)
+    if str(args.get("sort_order") or args.get("order") or "").lower() in {"asc", "ascending", "least", "lowest"}:
+        ranked = list(reversed(ranked))
     return ranked[0] if ranked else None
 
 
@@ -1236,6 +1250,8 @@ def _top_ranked_state_for_query(args: dict[str, Any]) -> StateAggregate | None:
     except (TypeError, ValueError):
         min_athletes = None
     ranked = _ranked_states(metric, min_athletes)
+    if str(args.get("sort_order") or args.get("order") or "").lower() in {"asc", "ascending", "least", "lowest"}:
+        ranked = list(reversed(ranked))
     return ranked[0] if ranked else None
 
 
@@ -1259,8 +1275,14 @@ def _normalize_tool_call_for_message(
 ) -> tuple[str, dict[str, Any]]:
     msg = (message or "").lower()
     if tool_name == "query_data":
-        state_leader_terms = ["which state", "what state", "state has", "state leads", "leading state", "top state", "highest state"]
-        leader_terms = ["most", "top", "highest", "leads", "leading", "representation"]
+        state_leader_terms = [
+            "which state", "what state", "state has", "state leads", "leading state",
+            "top state", "highest state", "lowest state", "bottom state",
+        ]
+        leader_terms = [
+            "most", "top", "highest", "leads", "leading", "representation",
+            "least", "fewest", "lowest", "smallest", "bottom",
+        ]
         if any(term in msg for term in state_leader_terms) and any(term in msg for term in leader_terms):
             normalized = dict(args)
             normalized.update({
@@ -1268,7 +1290,12 @@ def _normalize_tool_call_for_message(
                 "entity_type": "state",
                 "metric": _metric_from_text(message),
                 "limit": 1,
+                "sort_order": _rank_order_from_text(message),
             })
+            return tool_name, normalized
+        if any(term in msg for term in ["least", "fewest", "lowest", "smallest", "bottom"]):
+            normalized = dict(args)
+            normalized["sort_order"] = "asc"
             return tool_name, normalized
     return tool_name, args
 
@@ -1410,13 +1437,21 @@ def _direct_query_tool_call(message: str) -> ChatToolCall | None:
         if top_hot_spot:
             return ChatToolCall(name="select_hub", args={"hub_id": top_hot_spot.hub_id})
 
-    state_leader_terms = ["which state", "what state", "state has", "state leads", "leading state", "top state", "highest state"]
-    if any(term in msg for term in state_leader_terms) and any(term in msg for term in ["most", "top", "highest", "leads", "leading", "representation"]):
+    state_leader_terms = [
+        "which state", "what state", "state has", "state leads", "leading state",
+        "top state", "highest state", "lowest state", "bottom state",
+    ]
+    state_rank_terms = [
+        "most", "top", "highest", "leads", "leading", "representation",
+        "least", "fewest", "lowest", "smallest", "bottom",
+    ]
+    if any(term in msg for term in state_leader_terms) and any(term in msg for term in state_rank_terms):
         leader_args = {
             "query_type": "rank_list",
             "entity_type": "state",
             "metric": metric,
             "limit": 1,
+            "sort_order": _rank_order_from_text(message),
         }
         return _prepare_tool_call_for_frontend("query_data", leader_args)
 
@@ -1487,7 +1522,7 @@ def _direct_query_tool_call(message: str) -> ChatToolCall | None:
                 },
             )
 
-    if "rank" in msg or "top" in msg or "list" in msg:
+    if "rank" in msg or "top" in msg or "list" in msg or any(term in msg for term in ["bottom", "least", "fewest", "lowest", "smallest"]):
         entity_type = "state" if "state" in msg or "states" in msg else "hub"
         return ChatToolCall(
             name="query_data",
@@ -1496,6 +1531,7 @@ def _direct_query_tool_call(message: str) -> ChatToolCall | None:
                 "entity_type": entity_type,
                 "metric": metric,
                 "limit": limit,
+                "sort_order": _rank_order_from_text(message),
                 **({"sport": _extract_sport(message)} if metric == "sport_count" else {}),
             },
         )
@@ -1967,6 +2003,10 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
             min_athletes = int(min_athletes) if min_athletes is not None else None
         except (TypeError, ValueError):
             min_athletes = None
+        sort_order = str(args.get("sort_order") or args.get("order") or "desc").lower()
+        ascending = sort_order in {"asc", "ascending", "least", "fewest", "lowest", "bottom"}
+        sort_order = str(args.get("sort_order") or args.get("order") or "desc").lower()
+        ascending = sort_order in {"asc", "ascending", "least", "fewest", "lowest", "bottom"}
 
         aggregates = _state["state_aggregates"]
         hubs = _state["hubs"]
@@ -1986,18 +2026,26 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
 
         if query_type == "rank_list":
             if entity_type == "state":
-                ranked_states = _ranked_states(metric, min_athletes)[:limit]
+                ranked_states = _ranked_states(metric, min_athletes)
+                if ascending:
+                    ranked_states = list(reversed(ranked_states))
+                ranked_states = ranked_states[:limit]
                 qualifier = ""
                 if metric == "paralympic_share":
                     qualifier = " among states/territories with at least 25 mapped athletes"
-                lines = [f"Top {len(ranked_states)} states/territories by {_metric_label(metric)}{qualifier}:"]
+                label = "Lowest" if ascending else "Top"
+                lines = [f"{label} {len(ranked_states)} states/territories by {_metric_label(metric)}{qualifier}:"]
                 for i, state in enumerate(ranked_states, 1):
                     lines.append(_state_line(state, metric, i))
                 return " ".join(lines)
 
-            ranked_hubs = _ranked_hubs(metric, sport, min_athletes)[:limit]
+            ranked_hubs = _ranked_hubs(metric, sport, min_athletes)
+            if ascending:
+                ranked_hubs = list(reversed(ranked_hubs))
+            ranked_hubs = ranked_hubs[:limit]
             sport_text = f" for {_display_sport(sport)}" if metric == "sport_count" and sport else ""
-            lines = [f"Top {len(ranked_hubs)} hubs by {_metric_label(metric)}{sport_text}:"]
+            label = "Lowest" if ascending else "Top"
+            lines = [f"{label} {len(ranked_hubs)} hubs by {_metric_label(metric)}{sport_text}:"]
             for i, hub in enumerate(ranked_hubs, 1):
                 lines.append(_hub_line(hub, metric, i, sport))
             return " ".join(lines)
@@ -2490,12 +2538,20 @@ def _build_voice_spoken_summary(tool_name: str, args: dict[str, Any], full_resul
             return _build_voice_spoken_summary("filter_to_paralympic", {}, full_result)
         if query_type == "rank_list":
             if entity_type == "state":
-                ranked_states = _ranked_states(metric, min_athletes)[:limit]
+                ranked_states = _ranked_states(metric, min_athletes)
+                if ascending:
+                    ranked_states = list(reversed(ranked_states))
+                ranked_states = ranked_states[:limit]
                 top = ", ".join(f"{_state_name(s.state)} at {_format_metric_value(_state_metric_value(s, metric), metric)}" for s in ranked_states[:3])
-                return f"Top states by {_metric_label(metric)}: {top}."
-            ranked_hubs = _ranked_hubs(metric, sport, min_athletes)[:limit]
+                label = "Lowest" if ascending else "Top"
+                return f"{label} states by {_metric_label(metric)}: {top}."
+            ranked_hubs = _ranked_hubs(metric, sport, min_athletes)
+            if ascending:
+                ranked_hubs = list(reversed(ranked_hubs))
+            ranked_hubs = ranked_hubs[:limit]
             top = ", ".join(f"{_voice_short_place(h.display_name)} at {_format_metric_value(_hub_metric_value(h, metric, sport), metric)}" for h in ranked_hubs[:3])
-            return f"Top hubs by {_metric_label(metric)}: {top}."
+            label = "Lowest" if ascending else "Top"
+            return f"{label} hubs by {_metric_label(metric)}: {top}."
         if query_type == "entity_rank":
             state_code = str(args.get("state_code") or "").upper().strip()
             hub_id = str(args.get("hub_id") or "").strip()
