@@ -927,13 +927,16 @@ def _remember_session_turn(
     _prune_chat_sessions()
     session = _chat_sessions.setdefault(sid, {"turns": [], "updated_at": time.time()})
     turns = session.setdefault("turns", [])
+    normalized_tools: list[dict[str, Any]] = []
+    for call in (tool_calls or [])[:4]:
+        if isinstance(call, ChatToolCall):
+            normalized_tools.append({"name": call.name, "args": call.args})
+        elif isinstance(call, dict):
+            normalized_tools.append({"name": call.get("name"), "args": call.get("args", {})})
     turns.append({
         "user": re.sub(r"\s+", " ", user_text or "").strip()[:700],
         "model": re.sub(r"\s+", " ", model_text or "").strip()[:900],
-        "tools": [
-            {"name": getattr(call, "name", None) or call.get("name"), "args": getattr(call, "args", None) or call.get("args", {})}
-            for call in (tool_calls or [])
-        ][:4],
+        "tools": normalized_tools,
     })
     del turns[:-CHAT_SESSION_MAX_TURNS]
     session["updated_at"] = time.time()
@@ -1256,6 +1259,9 @@ def _is_map_explain_request(message: str) -> bool:
         "alaska inset", "hawaii inset", "puerto rico inset",
         "state shading", "colors mean",
         "what are hot spots", "what is a hot spot", "what do hot spots mean",
+        "what is this project", "what is this map", "what is this tool",
+        "what is this about", "project about", "explain this for judges",
+        "explain this project", "explain the project", "demo this",
     ]
     return any(term in msg for term in explain_terms)
 

@@ -369,10 +369,13 @@ export class HometownHubMap extends HTMLElement {
     this.renderChatBody();
 
     const baseUrl = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_URL;
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 25000);
     try {
       const res = await fetch(`${baseUrl}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           message,
           history: this.chatHistory.slice(0, -1),
@@ -390,7 +393,9 @@ export class HometownHubMap extends HTMLElement {
       }
       return data.text;
     } catch (err) {
-      const fallbackText = "Sorry, I had trouble connecting. Try again in a moment.";
+      const fallbackText = err instanceof DOMException && err.name === "AbortError"
+        ? "Gemini is taking longer than expected. Try a direct map question like 'Show Paralympic Hot Spots' or ask again in a moment."
+        : "Sorry, I had trouble connecting. Try again in a moment.";
       this.chatHistory.push({
         role: "model",
         text: fallbackText,
@@ -398,6 +403,7 @@ export class HometownHubMap extends HTMLElement {
       if (options.speak) this.speakText(fallbackText);
       return null;
     } finally {
+      window.clearTimeout(timeoutId);
       this.chatLoading = false;
       this.renderChatBody();
     }
