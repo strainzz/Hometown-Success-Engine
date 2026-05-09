@@ -4,7 +4,9 @@ import base64
 import logging
 import os
 import re
-from collections import defaultdict
+import time
+import unicodedata
+from collections import Counter, defaultdict
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from typing import Any, Literal, Optional
@@ -360,6 +362,7 @@ class ChatRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     message: str = Field(..., min_length=1, max_length=2000)
     history: list[dict] = Field(default_factory=list)
+    session_id: Optional[str] = None
 
 
 class ChatToolCall(BaseModel):
@@ -371,6 +374,8 @@ class ChatToolCall(BaseModel):
         "reset_view",
         "select_state",
         "query_data",
+        "explain_map",
+        "focus_hometown",
     ]
     args: dict
 
@@ -480,6 +485,38 @@ def _build_chatbot_tools() -> genai_types.Tool:
                 parameters=genai_types.Schema(type="OBJECT", properties={}),
             ),
             genai_types.FunctionDeclaration(
+                name="explain_map",
+                description="Explain how to read the map legend, including athlete dots, hub circles, Hot Spots, state shading, colors, and Alaska/Hawaii/Puerto Rico insets.",
+                parameters=genai_types.Schema(
+                    type="OBJECT",
+                    properties={
+                        "topic": genai_types.Schema(
+                            type="STRING",
+                            description="Optional focus such as dots, circles, colors, red, blue, territories, Hot Spots, or legend.",
+                        ),
+                    },
+                ),
+            ),
+            genai_types.FunctionDeclaration(
+                name="focus_hometown",
+                description="Resolve an aggregate hometown lookup and move the map to that hometown when possible. Use for questions like 'how many athletes are from Boise, Idaho?' or 'tell me about my hometown Park City'. Never returns individual athlete names.",
+                parameters=genai_types.Schema(
+                    type="OBJECT",
+                    properties={
+                        "hometown": genai_types.Schema(
+                            type="STRING",
+                            description="City or hometown name from the user's question.",
+                        ),
+                        "state_code": genai_types.Schema(
+                            type="STRING",
+                            enum=state_codes,
+                            description="Optional state or territory code when the user provides one.",
+                        ),
+                    },
+                    required=["hometown"],
+                ),
+            ),
+            genai_types.FunctionDeclaration(
                 name="query_data",
                 description="Ask the Hometown Success Engine data layer for rankings, profiles, comparisons, totals, sports, regions, and Hot Spot intelligence without moving the map.",
                 parameters=genai_types.Schema(
@@ -557,6 +594,8 @@ Help users explore the map and understand the data. Call tools to move the map o
 # TOOL RULES
 - If the user asks to show, highlight, filter, or view Paralympic Hot Spots, call filter_to_paralympic.
 - If the user asks to reset, clear, start over, or go back to the national view, call reset_view.
+- If the user asks what the dots, circles, colors, legend, state shading, territory insets, Alaska/Hawaii/Puerto Rico insets, or Hot Spots mean, call explain_map.
+- If the user asks how many athletes are from a hometown, asks about "my hometown", or gives a city that is not one of the 40 hub names, call focus_hometown with the city and state code if provided.
 - If the user names a state and is not asking for rank or comparison, call select_state.
 - If the user names a city, hub, or regional label and is not asking for rank or comparison, call select_hub or zoom_to_hub.
 - If the user asks for rankings, totals, comparisons, profiles, sports, macro regions, or aggregate questions, call query_data.
@@ -581,9 +620,15 @@ _state: dict[str, Any] = {
     "narratives": {},
     "athletes_geo_points": [],
     "state_aggregates": [],
+    "hometowns": [],
+    "hometowns_by_key": {},
+    "hometowns_by_name": defaultdict(list),
 }
 
 PARALYMPIC_HOT_SPOT_THRESHOLD_PCT = 7.5
+CHAT_SESSION_TTL_SECONDS = 30 * 60
+CHAT_SESSION_MAX_TURNS = 12
+_chat_sessions: dict[str, dict[str, Any]] = {}
 
 
 def _dataset_stats() -> dict[str, Any]:
@@ -847,6 +892,278 @@ def _state_rank_bundle(state: StateAggregate) -> str:
     )
 
 
+def _ascii_search_text(value: str) -> str:
+    ascii_value = unicodedata.normalize("NFKD", value or "").encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^a-z0-9]+", " ", ascii_value.lower()).strip()
+
+
+def _hometown_key(label: str, state_code: str | None = None) -> str:
+    return f"{_ascii_search_text(label)}|{(state_code or '').upper()}"
+
+
+def _session_id(value: str | None) -> str:
+    return re.sub(r"[^A-Za-z0-9_.:-]", "", value or "")[:96]
+
+
+def _prune_chat_sessions() -> None:
+    now = time.time()
+    expired = [
+        sid for sid, data in _chat_sessions.items()
+        if now - float(data.get("updated_at", 0)) > CHAT_SESSION_TTL_SECONDS
+    ]
+    for sid in expired:
+        _chat_sessions.pop(sid, None)
+
+
+def _remember_session_turn(
+    session_id: str | None,
+    user_text: str,
+    model_text: str,
+    tool_calls: list[ChatToolCall] | list[dict[str, Any]] | None = None,
+) -> None:
+    sid = _session_id(session_id)
+    if not sid:
+        return
+    _prune_chat_sessions()
+    session = _chat_sessions.setdefault(sid, {"turns": [], "updated_at": time.time()})
+    turns = session.setdefault("turns", [])
+    turns.append({
+        "user": re.sub(r"\s+", " ", user_text or "").strip()[:700],
+        "model": re.sub(r"\s+", " ", model_text or "").strip()[:900],
+        "tools": [
+            {"name": getattr(call, "name", None) or call.get("name"), "args": getattr(call, "args", None) or call.get("args", {})}
+            for call in (tool_calls or [])
+        ][:4],
+    })
+    del turns[:-CHAT_SESSION_MAX_TURNS]
+    session["updated_at"] = time.time()
+
+
+def _session_context_text(session_id: str | None) -> str:
+    sid = _session_id(session_id)
+    if not sid:
+        return ""
+    _prune_chat_sessions()
+    session = _chat_sessions.get(sid)
+    if not session:
+        return ""
+    lines: list[str] = []
+    for turn in session.get("turns", [])[-6:]:
+        if turn.get("user"):
+            lines.append(f"User: {turn['user']}")
+        if turn.get("model"):
+            lines.append(f"Gemini: {turn['model']}")
+        tools = turn.get("tools") or []
+        if tools:
+            lines.append("Tools: " + ", ".join(str(t.get("name")) for t in tools if t.get("name")))
+    return "\n".join(lines)[-1800:]
+
+
+def _build_hometown_index(raw_athletes: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]], dict[str, list[dict[str, Any]]]]:
+    buckets: dict[str, dict[str, Any]] = {}
+    for athlete in raw_athletes:
+        hometown = athlete.get("hometown") or {}
+        label = str(hometown.get("label") or "").strip()
+        lat = hometown.get("latitude")
+        lon = hometown.get("longitude")
+        if not label or lat is None or lon is None:
+            continue
+        parsed_lat = float(lat)
+        parsed_lon = float(lon)
+        state_code = state_from_latlon(parsed_lat, parsed_lon)
+        key = _hometown_key(label, state_code)
+        if key not in buckets:
+            buckets[key] = {
+                "label": label,
+                "state": state_code,
+                "lat_sum": 0.0,
+                "lon_sum": 0.0,
+                "total_athletes": 0,
+                "olympic_count": 0,
+                "paralympic_count": 0,
+                "both_count": 0,
+                "sports": Counter(),
+                "hubs": Counter(),
+                "distances": [],
+            }
+        bucket = buckets[key]
+        bucket["lat_sum"] += parsed_lat
+        bucket["lon_sum"] += parsed_lon
+        bucket["total_athletes"] += 1
+        status = athlete.get("status")
+        if status == "olympic":
+            bucket["olympic_count"] += 1
+        elif status == "paralympic":
+            bucket["paralympic_count"] += 1
+        elif status == "both":
+            bucket["both_count"] += 1
+        for sport in athlete.get("sports") or []:
+            if sport:
+                bucket["sports"][str(sport)] += 1
+        hub_id = athlete.get("hub_id")
+        if hub_id:
+            bucket["hubs"][str(hub_id)] += 1
+        distance = athlete.get("distance_to_hub_km")
+        if isinstance(distance, (int, float)):
+            bucket["distances"].append(float(distance))
+
+    hometowns: list[dict[str, Any]] = []
+    by_key: dict[str, dict[str, Any]] = {}
+    by_name: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for key, bucket in buckets.items():
+        total = int(bucket["total_athletes"])
+        hub_id = bucket["hubs"].most_common(1)[0][0] if bucket["hubs"] else ""
+        hub = _state["hubs_by_id"].get(hub_id)
+        para_total = int(bucket["paralympic_count"] + bucket["both_count"])
+        item = {
+            "hometown": bucket["label"],
+            "state": bucket["state"],
+            "lat": round(bucket["lat_sum"] / total, 6),
+            "lon": round(bucket["lon_sum"] / total, 6),
+            "total_athletes": total,
+            "olympic_count": int(bucket["olympic_count"]),
+            "paralympic_count": int(bucket["paralympic_count"]),
+            "both_count": int(bucket["both_count"]),
+            "paralympic_share": para_total / total if total else 0.0,
+            "top_sports": [
+                {"sport": _display_sport(sport), "count": count}
+                for sport, count in bucket["sports"].most_common(5)
+            ],
+            "hub_id": hub_id,
+            "hub_name": hub.display_name if hub else hub_id,
+            "distance_to_hub_km": round(sum(bucket["distances"]) / len(bucket["distances"]), 1) if bucket["distances"] else None,
+        }
+        hometowns.append(item)
+        by_key[key] = item
+        by_name[_ascii_search_text(bucket["label"])].append(item)
+
+    hometowns.sort(key=lambda item: (-item["total_athletes"], item["hometown"], item["state"]))
+    for matches in by_name.values():
+        matches.sort(key=lambda item: (-item["total_athletes"], item["state"], item["hometown"]))
+    return hometowns, by_key, by_name
+
+
+def _extract_state_from_text(value: str) -> tuple[str, str]:
+    text = value or ""
+    found_code = ""
+    for code in sorted(STATE_CODE_TO_NAME, key=len, reverse=True):
+        if re.search(rf"\b{re.escape(code)}\b", text, flags=re.IGNORECASE):
+            found_code = code
+            text = re.sub(rf"\b{re.escape(code)}\b", " ", text, flags=re.IGNORECASE)
+            break
+    if not found_code:
+        lowered = text.lower()
+        for name, code in sorted(STATE_NAME_TO_CODE.items(), key=lambda item: -len(item[0])):
+            if re.search(rf"\b{re.escape(name)}\b", lowered):
+                found_code = code
+                text = re.sub(rf"\b{re.escape(name)}\b", " ", text, flags=re.IGNORECASE)
+                break
+    text = re.sub(r"\b(usa|united states|hometown)\b", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"[^A-Za-z0-9 .'-]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip(" ,."), found_code
+
+
+def _extract_hometown_query(message: str) -> tuple[str, str]:
+    cleaned = re.sub(r"\?", "", message or "").strip()
+    patterns = [
+        r"(?:from|in|near)\s+(?:my\s+)?hometown\s+(.+)$",
+        r"(?:my\s+)?hometown\s+(?:is\s+)?(.+)$",
+        r"(?:from|in|near)\s+([A-Za-z0-9 .,'-]+)$",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, cleaned, flags=re.IGNORECASE)
+        if match:
+            candidate = match.group(1).strip()
+            candidate = re.sub(r"\b(athletes?|mapped|team usa|are|there|come|came)\b", " ", candidate, flags=re.IGNORECASE)
+            hometown, state_code = _extract_state_from_text(candidate)
+            if hometown:
+                return hometown, state_code
+    return "", ""
+
+
+def _hometown_matches(hometown: str, state_code: str | None = None) -> list[dict[str, Any]]:
+    query = _ascii_search_text(hometown)
+    if not query:
+        return []
+    exact = _state["hometowns_by_key"].get(_hometown_key(hometown, state_code or ""))
+    if exact:
+        return [exact]
+    matches = list(_state["hometowns_by_name"].get(query, []))
+    if state_code:
+        matches = [m for m in matches if m.get("state") == state_code.upper()]
+    if matches:
+        return matches
+    fuzzy = [
+        item for item in _state["hometowns"]
+        if query in _ascii_search_text(item["hometown"]) or _ascii_search_text(item["hometown"]) in query
+    ]
+    if state_code:
+        fuzzy = [m for m in fuzzy if m.get("state") == state_code.upper()]
+    return fuzzy[:8]
+
+
+def _resolve_focus_hometown_args(args: dict[str, Any]) -> dict[str, Any]:
+    raw_hometown = str(args.get("hometown") or args.get("query") or "").strip()
+    explicit_state = str(args.get("state_code") or "").upper().strip()
+    parsed_hometown, parsed_state = _extract_state_from_text(raw_hometown)
+    hometown = parsed_hometown or raw_hometown
+    state_code = explicit_state or parsed_state
+    matches = _hometown_matches(hometown, state_code)
+    if len(matches) == 1:
+        match = dict(matches[0])
+        match.update({
+            "resolved": True,
+            "ambiguous": False,
+            "query": raw_hometown,
+            "state_code": match.get("state"),
+            "source": "dataset",
+        })
+        return match
+    if len(matches) > 1:
+        return {
+            "resolved": False,
+            "ambiguous": True,
+            "query": raw_hometown,
+            "hometown": hometown,
+            "state_code": state_code,
+            "geocode_query": ", ".join(part for part in [hometown, _state_name(state_code) if state_code else ""] if part),
+            "options": [
+                {
+                    "hometown": m["hometown"],
+                    "state": m["state"],
+                    "total_athletes": m["total_athletes"],
+                    "hub_id": m["hub_id"],
+                    "hub_name": m["hub_name"],
+                }
+                for m in matches[:5]
+            ],
+            "source": "ambiguous",
+        }
+    return {
+        "resolved": False,
+        "ambiguous": False,
+        "query": raw_hometown,
+        "hometown": hometown or raw_hometown,
+        "state_code": state_code,
+        "total_athletes": 0,
+        "olympic_count": 0,
+        "paralympic_count": 0,
+        "both_count": 0,
+        "paralympic_share": 0,
+        "top_sports": [],
+        "hub_id": "",
+        "hub_name": "",
+        "geocode_query": ", ".join(part for part in [hometown or raw_hometown, _state_name(state_code) if state_code else ""] if part),
+        "source": "geocode_fallback",
+    }
+
+
+def _prepare_tool_call_for_frontend(tool_name: str, args: dict[str, Any]) -> ChatToolCall:
+    if tool_name == "focus_hometown":
+        return ChatToolCall(name="focus_hometown", args=_resolve_focus_hometown_args(args))
+    return ChatToolCall(name=tool_name, args=args)
+
+
 def _hub_line(hub: Hub, metric: str, rank: int | None = None, sport: str | None = None) -> str:
     value = _format_metric_value(_hub_metric_value(hub, metric, sport), metric)
     para = _hub_para_count(hub)
@@ -928,6 +1245,30 @@ def _is_analyst_request(message: str) -> bool:
     return any(term in msg for term in analyst_terms)
 
 
+def _is_map_explain_request(message: str) -> bool:
+    msg = _normal_search_text(message)
+    explain_terms = [
+        "what do the dots mean", "what do dots mean", "little dots",
+        "red dots", "blue dots", "red circles", "blue circles",
+        "what are the dots", "what are the circles", "legend",
+        "how do i read", "read the map", "what does red mean",
+        "what does blue mean", "territories", "insets",
+        "alaska inset", "hawaii inset", "puerto rico inset",
+        "state shading", "colors mean",
+        "what are hot spots", "what is a hot spot", "what do hot spots mean",
+    ]
+    return any(term in msg for term in explain_terms)
+
+
+def _is_hometown_lookup_request(message: str) -> bool:
+    msg = _normal_search_text(message)
+    return (
+        "hometown" in msg
+        or ("how many" in msg and (" from " in f" {message.lower()} " or " in " in f" {message.lower()} "))
+        or ("athletes from" in msg)
+    )
+
+
 def _direct_query_tool_call(message: str) -> ChatToolCall | None:
     msg = message.lower()
     metric = _metric_from_text(message)
@@ -935,6 +1276,22 @@ def _direct_query_tool_call(message: str) -> ChatToolCall | None:
     state_codes = _resolve_state_codes_from_text(message)
     hub = _resolve_hub_from_message(message)
     macro_region = _macro_region_from_text(message)
+
+    if _is_map_explain_request(message):
+        topic = ""
+        for candidate in ["dots", "circles", "red", "blue", "territories", "legend", "hot spots", "state shading"]:
+            if candidate.replace(" ", "") in msg.replace(" ", ""):
+                topic = candidate
+                break
+        return ChatToolCall(name="explain_map", args={"topic": topic})
+
+    if _is_hometown_lookup_request(message):
+        hometown, state_code = _extract_hometown_query(message)
+        if hometown:
+            return _prepare_tool_call_for_frontend(
+                "focus_hometown",
+                {"hometown": hometown, **({"state_code": state_code} if state_code else {})},
+            )
 
     if "how many" in msg or "summary" in msg or ("athlete" in msg and "hub" in msg):
         return ChatToolCall(name="query_data", args={"query_type": "summary"})
@@ -1020,7 +1377,7 @@ def _direct_query_tool_call(message: str) -> ChatToolCall | None:
 
 
 def _normal_search_text(value: str) -> str:
-    return re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
+    return _ascii_search_text(value)
 
 
 def _resolve_hub_from_message(message: str) -> Hub | None:
@@ -1071,6 +1428,7 @@ def _direct_chat_response(req: ChatRequest) -> ChatResponse | None:
     new_history = list(req.history)
     new_history.append({"role": "user", "text": req.message})
     new_history.append({"role": "model", "text": reply_text})
+    _remember_session_turn(req.session_id, req.message, reply_text, [tool_call])
     return ChatResponse(text=reply_text, tool_calls=[tool_call], history=new_history)
 
 
@@ -1083,27 +1441,6 @@ def _load_data() -> None:
         Path(__file__).parent,         # Cloud Run /app
         Path("/app"),                  # absolute fallback
     ]
-
-    hubs_path = None
-    narratives_path = None
-    athletes_path = None
-
-    for root in candidate_roots:
-        c_hubs = root / "pipeline" / "clustered" / "hubs.json"
-        c_narratives = root / "pipeline" / "narratives" / "hubs.json"
-        c_athletes = root / "pipeline" / "clustered" / "athletes.json"
-        if c_hubs.exists() and c_narratives.exists() and c_athletes.exists():
-            hubs_path = c_hubs
-            narratives_path = c_narratives
-            athletes_path = c_athletes
-            logger.info(f"Loading data from: {root}")
-            break
-
-    if hubs_path is None:
-        tried = [str(r) for r in candidate_roots]
-        raise RuntimeError(
-            f"Data files not found in any candidate location: {tried}"
-        )
 
     hubs_path = None
     narratives_path = None
@@ -1201,11 +1538,16 @@ def _load_data() -> None:
     _state["narratives"] = narratives
     _state["athletes_geo_points"] = athletes_geo_points
     _state["state_aggregates"] = state_aggregates
+    hometowns, hometowns_by_key, hometowns_by_name = _build_hometown_index(raw_athletes)
+    _state["hometowns"] = hometowns
+    _state["hometowns_by_key"] = hometowns_by_key
+    _state["hometowns_by_name"] = hometowns_by_name
 
     logger.info(
         f"Loaded {len(hubs)} hubs, {len(narratives)} narratives, {len(athletes_geo_points)} athletes. "
         f"Aggregated {len(state_aggregates)} states. "
-        f"{sum(1 for h in hubs if h.is_paralympic_hot_spot)} Paralympic Hot Spots."
+        f"{sum(1 for h in hubs if h.is_paralympic_hot_spot)} Paralympic Hot Spots. "
+        f"Indexed {len(hometowns)} hometown aggregates."
     )
 
 
@@ -1304,6 +1646,66 @@ def _build_tool_result_context(tool_name: str, args: dict) -> str:
     baseline_text = f"{baseline:.1f}%"
     hot_spot_threshold_text = f"{PARALYMPIC_HOT_SPOT_THRESHOLD_PCT:.1f}%"
     hot_spot_count = stats["hot_spot_count"]
+
+    if tool_name == "explain_map":
+        topic = _normal_search_text(str(args.get("topic") or "legend"))
+        base = (
+            f"Map guide: the blue state shading shows mapped athlete density by state or territory, "
+            f"with darker blue meaning more mapped athletes. Large circles are the 40 hometown hubs; "
+            f"blue circles are standard hubs and red circles are Paralympic Hot Spots at or above the "
+            f"{hot_spot_threshold_text} Paralympic-share threshold. Small constellation dots are individual "
+            f"mapped athlete hometown points: blue dots are Olympians and red dots are Paralympians or athletes "
+            f"tagged as both. Alaska, Hawaii, and Puerto Rico appear as insets so their geography stays visible "
+            f"alongside the continental map."
+        )
+        if "red" in topic:
+            return base + f" In short: red means Paralympic focus, either a small Paralympian dot or a larger Hot Spot hub."
+        if "blue" in topic:
+            return base + " In short: blue means general Olympic/hub density context, either state shading, standard hubs, or Olympian dots."
+        if "territor" in topic or "inset" in topic:
+            return base + " The inset row keeps non-contiguous Team USA geographies visible without distorting the main map."
+        return base
+
+    if tool_name == "focus_hometown":
+        focus = _resolve_focus_hometown_args(args)
+        requested = focus.get("query") or focus.get("hometown") or "that hometown"
+        if focus.get("ambiguous"):
+            options = focus.get("options") or []
+            option_text = "; ".join(
+                f"{o['hometown']}, {o['state']} ({o['total_athletes']} mapped athletes, closest hub {o['hub_name']})"
+                for o in options
+            )
+            return (
+                f"I found multiple mapped hometown matches for {requested}. "
+                f"Please include a state for a deterministic lookup. Options: {option_text}."
+            )
+        if not focus.get("resolved"):
+            geocode_query = focus.get("geocode_query") or requested
+            return (
+                f"No exact mapped hometown match was found for {requested}. "
+                f"The map can still zoom to {geocode_query} using Google Maps geocoding, but the current dataset has "
+                f"0 mapped athletes for that exact hometown label. Use the nearest hub for regional context."
+            )
+        total = int(focus.get("total_athletes") or 0)
+        para = int(focus.get("paralympic_count") or 0) + int(focus.get("both_count") or 0)
+        para_share = float(focus.get("paralympic_share") or 0) * 100
+        top_sports = ", ".join(
+            f"{item['sport']} ({item['count']})"
+            for item in (focus.get("top_sports") or [])[:3]
+        ) or "various sports"
+        hub_id = focus.get("hub_id") or ""
+        hub = _state["hubs_by_id"].get(hub_id)
+        hub_context = ""
+        if hub:
+            hub_context = (
+                f" Assigned hub: {hub.display_name}, which has {hub.total_athletes} mapped athletes "
+                f"and {hub.composition.paralympic_share * 100:.1f}% Paralympic share."
+            )
+        return (
+            f"Hometown focus: {focus['hometown']}, {focus['state']} has {total} mapped athletes in the public dataset: "
+            f"{focus['olympic_count']} Olympians, {para} Paralympians, {para_share:.1f}% Paralympic share. "
+            f"Top sports from this hometown: {top_sports}.{hub_context}"
+        )
 
     if tool_name == "filter_to_paralympic":
         macro_region = args.get("macro_region")
@@ -1685,6 +2087,22 @@ async def chat(req: ChatRequest) -> ChatResponse:
         )
 
         contents = []
+        session_context = _session_context_text(req.session_id)
+        if session_context:
+            contents.append(
+                genai_types.Content(
+                    role="user",
+                    parts=[
+                        genai_types.Part(
+                            text=(
+                                "Recent session context for resolving follow-up references only. "
+                                "Ground all facts in tools before answering:\n"
+                                f"{session_context}"
+                            )
+                        )
+                    ],
+                )
+            )
         for turn in req.history:
             role = turn.get("role", "user")
             text = turn.get("text", "")
@@ -1724,12 +2142,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
                     text_parts.append(part.text)
                 if hasattr(part, "function_call") and part.function_call:
                     fc = part.function_call
-                    tool_calls.append(
-                        ChatToolCall(
-                            name=fc.name,
-                            args=dict(fc.args) if fc.args else {},
-                        )
-                    )
+                    tool_calls.append(_prepare_tool_call_for_frontend(fc.name, dict(fc.args) if fc.args else {}))
                     function_call_parts.append(part)
 
         reply_text = " ".join(text_parts).strip()
@@ -1801,6 +2214,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
         new_history = list(req.history)
         new_history.append({"role": "user", "text": req.message})
         new_history.append({"role": "model", "text": reply_text})
+        _remember_session_turn(req.session_id, req.message, reply_text, tool_calls)
 
         return ChatResponse(
             text=reply_text,
@@ -1933,9 +2347,11 @@ async def voice_websocket(websocket: WebSocket) -> None:
         project="hometown-success-engine",
         location=VOICE_LOCATION,
     )
-    voice_context = str(websocket.query_params.get("context") or "").strip()
-    if len(voice_context) > 1600:
-        voice_context = voice_context[-1600:]
+    voice_session_id = _session_id(str(websocket.query_params.get("session_id") or ""))
+    voice_context = _session_context_text(voice_session_id)
+    legacy_context = str(websocket.query_params.get("context") or "").strip()
+    if legacy_context and not voice_context:
+        voice_context = legacy_context[-1600:]
     voice_system_instruction = _build_chatbot_system_prompt()
     if voice_context:
         voice_system_instruction = (
@@ -1947,6 +2363,10 @@ async def voice_websocket(websocket: WebSocket) -> None:
         )
     audio_enabled_for_turn = True
     voice_turn_id = 0
+    voice_input_text = ""
+    voice_output_text = ""
+    voice_tool_calls: list[dict[str, Any]] = []
+    voice_tool_result_texts: list[str] = []
 
     async def send_voice_state(
         state: str,
@@ -1964,6 +2384,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
         await websocket.send_json(message)
 
     async def send_live_messages(session) -> None:
+        nonlocal voice_input_text, voice_output_text, voice_tool_calls, voice_tool_result_texts
         async for message in session.receive():
             if message.setup_complete:
                 await websocket.send_json({"type": "ready", "turn_id": voice_turn_id})
@@ -1975,6 +2396,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
                     await websocket.send_json({"type": "interrupted", "turn_id": voice_turn_id})
                     await send_voice_state("interrupted", "Interrupted", "Listening for your next question.")
                 if content.input_transcription and content.input_transcription.text:
+                    voice_input_text = content.input_transcription.text.strip() or voice_input_text
                     await websocket.send_json({
                         "type": "input_transcript",
                         "text": content.input_transcription.text,
@@ -1982,6 +2404,10 @@ async def voice_websocket(websocket: WebSocket) -> None:
                         "turn_id": voice_turn_id,
                     })
                 if content.output_transcription and content.output_transcription.text:
+                    voice_output_text = (
+                        f"{voice_output_text} {content.output_transcription.text}".strip()
+                        if voice_output_text else content.output_transcription.text.strip()
+                    )
                     await websocket.send_json({
                         "type": "output_transcript",
                         "text": content.output_transcription.text,
@@ -2004,6 +2430,13 @@ async def voice_websocket(websocket: WebSocket) -> None:
                                 "turn_id": voice_turn_id,
                             })
                 if content.turn_complete:
+                    remembered_text = voice_output_text or " ".join(voice_tool_result_texts)
+                    _remember_session_turn(
+                        voice_session_id,
+                        voice_input_text,
+                        remembered_text,
+                        voice_tool_calls,
+                    )
                     await websocket.send_json({
                         "type": "turn_complete",
                         "turn_id": voice_turn_id,
@@ -2017,8 +2450,9 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 for call in message.tool_call.function_calls:
                     args = dict(call.args) if call.args else {}
                     tool_name = call.name or ""
-                    frontend_calls.append({"name": tool_name, "args": args})
-                    result = _build_tool_result_context(tool_name, args)
+                    frontend_call = _prepare_tool_call_for_frontend(tool_name, args)
+                    frontend_calls.append(frontend_call.model_dump())
+                    result = _build_tool_result_context(frontend_call.name, frontend_call.args)
                     tool_result_texts.append(result)
                     function_responses.append(
                         genai_types.FunctionResponse(
@@ -2027,6 +2461,8 @@ async def voice_websocket(websocket: WebSocket) -> None:
                             response={"result": result},
                         )
                     )
+                voice_tool_calls = frontend_calls
+                voice_tool_result_texts = tool_result_texts
                 await websocket.send_json({
                     "type": "tool_calls",
                     "tool_calls": frontend_calls,
@@ -2105,6 +2541,10 @@ async def voice_websocket(websocket: WebSocket) -> None:
                                 voice_turn_id = max(voice_turn_id, incoming_turn)
                             else:
                                 voice_turn_id += 1
+                            voice_input_text = text
+                            voice_output_text = ""
+                            voice_tool_calls = []
+                            voice_tool_result_texts = []
                             await websocket.send_json({
                                 "type": "turn_started",
                                 "turn_id": voice_turn_id,
@@ -2132,6 +2572,10 @@ async def voice_websocket(websocket: WebSocket) -> None:
                             voice_turn_id = max(voice_turn_id, incoming_turn)
                         else:
                             voice_turn_id += 1
+                        voice_input_text = ""
+                        voice_output_text = ""
+                        voice_tool_calls = []
+                        voice_tool_result_texts = []
                         await websocket.send_json({
                             "type": "turn_started",
                             "turn_id": voice_turn_id,

@@ -44,8 +44,31 @@ type AthleteGeoPoint = {
 };
 
 type ChatToolCall = {
-  name: "select_hub" | "filter_to_paralympic" | "zoom_to_hub" | "reset_view" | "select_state" | "query_data";
+  name: "select_hub" | "filter_to_paralympic" | "zoom_to_hub" | "reset_view" | "select_state" | "query_data" | "explain_map" | "focus_hometown";
   args: Record<string, any>;
+};
+
+type HometownFocus = {
+  hometown: string;
+  state?: string;
+  state_code?: string;
+  lat?: number;
+  lon?: number;
+  total_athletes: number;
+  olympic_count: number;
+  paralympic_count: number;
+  both_count: number;
+  paralympic_share?: number;
+  top_sports?: { sport: string; count: number }[];
+  hub_id?: string;
+  hub_name?: string;
+  distance_to_hub_km?: number | null;
+  resolved?: boolean;
+  ambiguous?: boolean;
+  geocode_query?: string;
+  nearest_hub_name?: string;
+  nearest_hub_distance_km?: number;
+  options?: { hometown: string; state: string; total_athletes: number; hub_name?: string }[];
 };
 
 type ChatTurn = {
@@ -105,10 +128,10 @@ const GMAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const GMAPS_MAP_ID = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID;
 
 const SUGGESTED_PROMPTS = [
+  "What do the dots mean?",
+  "How many athletes are from Boise, Idaho?",
   "Show Paralympic Hot Spots",
-  "Tell me about Anchorage",
-  "Show me Mountain region athletes",
-  "Reset the view",
+  "Tell me about Vail",
 ];
 
 export class HometownHubMap extends HTMLElement {
@@ -128,6 +151,7 @@ export class HometownHubMap extends HTMLElement {
   private chatOpen: boolean = false;
   private chatHistory: ChatTurn[] = [];
   private chatLoading: boolean = false;
+  private chatSessionId: string = this.createSessionId();
   private voiceSocket: WebSocket | null = null;
   private voiceListening: boolean = false;
   private voiceInputStream: MediaStream | null = null;
@@ -143,6 +167,9 @@ export class HometownHubMap extends HTMLElement {
   private voiceTurnId: number = 0;
   private activeVoiceTurnId: number = 0;
   private voiceClosingAfterTurn: boolean = false;
+  private voiceReadyTimer: number | null = null;
+  private voiceResponseTimer: number | null = null;
+  private voiceLastInputText: string = "";
   private audioEnabled: boolean = true;
   private audioContext: AudioContext | null = null;
   private audioPlayTime: number = 0;
@@ -151,6 +178,7 @@ export class HometownHubMap extends HTMLElement {
   private hoveredHubId: string | null = null;
   private selectedStateCode: string | null = null;
   private selectedStateName: string | null = null;
+  private selectedHometown: HometownFocus | null = null;
 
   constructor() {
     super();
@@ -159,6 +187,12 @@ export class HometownHubMap extends HTMLElement {
 
   static get observedAttributes(): string[] {
     return ["api-url"];
+  }
+
+  private createSessionId(): string {
+    const cryptoObj = window.crypto as Crypto | undefined;
+    if (cryptoObj?.randomUUID) return cryptoObj.randomUUID();
+    return `hsm-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }
 
   async connectedCallback(): Promise<void> {
@@ -262,6 +296,8 @@ export class HometownHubMap extends HTMLElement {
       });
     }
   selectHub(hub_id: string): void {
+    this.selectedHometown = null;
+    this.renderHometownPanel();
     this.dispatch({ type: "SELECT_HUB", hub_id });
     if (this.mapInitialized && this.map) {
       const state = this.getState();
@@ -286,6 +322,8 @@ export class HometownHubMap extends HTMLElement {
   }
 
   zoomToHub(hub_id: string): void {
+    this.selectedHometown = null;
+    this.renderHometownPanel();
     this.dispatch({ type: "SELECT_HUB", hub_id });
     void this.ensureNarrative(hub_id);
     if (!this.map) return;
@@ -306,6 +344,8 @@ export class HometownHubMap extends HTMLElement {
   resetView(): void {
     this.dispatch({ type: "CLEAR_SELECTION" });
     this.dispatch({ type: "CLEAR_FILTERS" });
+    this.selectedHometown = null;
+    this.renderHometownPanel();
     if (this.mapInitialized && this.map) {
       this.map.moveCamera({
         center: { lat: 39.5, lng: -98.0 },
@@ -336,6 +376,7 @@ export class HometownHubMap extends HTMLElement {
         body: JSON.stringify({
           message,
           history: this.chatHistory.slice(0, -1),
+          session_id: this.chatSessionId,
         }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -365,15 +406,21 @@ export class HometownHubMap extends HTMLElement {
   private dispatchToolCall(call: ChatToolCall): void {
     switch (call.name) {
       case "select_hub":
+        this.selectedHometown = null;
+        this.renderHometownPanel();
         if (call.args.hub_id) this.selectHub(call.args.hub_id);
         break;
       case "zoom_to_hub":
+        this.selectedHometown = null;
+        this.renderHometownPanel();
         if (call.args.hub_id) this.zoomToHub(call.args.hub_id);
         break;
       case "filter_to_paralympic":
         this.filterToParalympic(call.args.macro_region);
         break;
       case "select_state":
+        this.selectedHometown = null;
+        this.renderHometownPanel();
         if (call.args.state_code) {
           const code = (call.args.state_code as string).toUpperCase();
           const stateName = Object.keys(STATE_NAME_TO_CODE).find(k => STATE_NAME_TO_CODE[k] === code);
@@ -390,8 +437,92 @@ export class HometownHubMap extends HTMLElement {
         this.resetView();
         break;
       case "query_data":
+      case "explain_map":
+        break;
+      case "focus_hometown":
+        void this.focusHometown(call.args as HometownFocus);
         break;
     }
+  }
+
+  private async focusHometown(args: HometownFocus): Promise<void> {
+    this.selectedStateCode = null;
+    this.selectedStateName = null;
+    this.dispatch({ type: "CLEAR_SELECTION" });
+    const lat = Number(args.lat);
+    const lon = Number(args.lon);
+    if (args.resolved && Number.isFinite(lat) && Number.isFinite(lon)) {
+      this.selectedHometown = { ...args, lat, lon };
+      this.renderStatePanel();
+      this.renderHometownPanel();
+      this.updateLayers();
+      this.map?.moveCamera({ center: { lat, lng: lon }, zoom: 9 });
+      return;
+    }
+
+    if (args.ambiguous) {
+      this.selectedHometown = args;
+      this.renderStatePanel();
+      this.renderHometownPanel();
+      this.updateLayers();
+      return;
+    }
+
+    const geocodeQuery = args.geocode_query || args.hometown;
+    if (!geocodeQuery || !this.map || typeof google === "undefined") {
+      this.selectedHometown = args;
+      this.renderHometownPanel();
+      return;
+    }
+
+    try {
+      const geocoder = new google.maps.Geocoder();
+      const response = await geocoder.geocode({ address: geocodeQuery });
+      const result = response.results?.[0];
+      const loc = result?.geometry?.location;
+      if (!loc) throw new Error("No geocode result");
+      const resolvedLat = loc.lat();
+      const resolvedLon = loc.lng();
+      const nearest = this.findNearestHub(resolvedLat, resolvedLon);
+      this.selectedHometown = {
+        ...args,
+        hometown: args.hometown || result.formatted_address || geocodeQuery,
+        lat: resolvedLat,
+        lon: resolvedLon,
+        total_athletes: 0,
+        olympic_count: 0,
+        paralympic_count: 0,
+        both_count: 0,
+        nearest_hub_name: nearest?.hub.display_name,
+        nearest_hub_distance_km: nearest?.distanceKm,
+      };
+      this.renderStatePanel();
+      this.renderHometownPanel();
+      this.updateLayers();
+      this.map.moveCamera({ center: { lat: resolvedLat, lng: resolvedLon }, zoom: 9 });
+    } catch {
+      this.selectedHometown = args;
+      this.renderHometownPanel();
+    }
+  }
+
+  private findNearestHub(lat: number, lon: number): { hub: Hub; distanceKm: number } | null {
+    const hubs = this.store.getState().hubs;
+    let best: { hub: Hub; distanceKm: number } | null = null;
+    for (const hub of hubs) {
+      const distanceKm = this.distanceKm(lat, lon, hub.centroid_latitude, hub.centroid_longitude);
+      if (!best || distanceKm < best.distanceKm) best = { hub, distanceKm: Math.round(distanceKm) };
+    }
+    return best;
+  }
+
+  private distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const toRad = (value: number) => value * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2
+      + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
   private getVoiceWsUrl(): string {
@@ -399,15 +530,8 @@ export class HometownHubMap extends HTMLElement {
     const url = new URL(baseUrl);
     url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
     url.pathname = "/voice/ws";
-    const recentContext = this.chatHistory
-      .slice(-6)
-      .map(turn => `${turn.role === "user" ? "User" : "Gemini"}: ${turn.text}`)
-      .join("\n")
-      .slice(-1400);
     url.search = "";
-    if (recentContext) {
-      url.searchParams.set("context", recentContext);
-    }
+    url.searchParams.set("session_id", this.chatSessionId);
     url.hash = "";
     return url.toString();
   }
@@ -490,6 +614,28 @@ export class HometownHubMap extends HTMLElement {
     `;
   }
 
+  private clearVoiceTimers(): void {
+    if (this.voiceReadyTimer !== null) window.clearTimeout(this.voiceReadyTimer);
+    if (this.voiceResponseTimer !== null) window.clearTimeout(this.voiceResponseTimer);
+    this.voiceReadyTimer = null;
+    this.voiceResponseTimer = null;
+  }
+
+  private startVoiceResponseWatchdog(): void {
+    if (this.voiceResponseTimer !== null) window.clearTimeout(this.voiceResponseTimer);
+    this.voiceResponseTimer = window.setTimeout(() => {
+      this.voiceResponseTimer = null;
+      const fallback = this.voiceLastInputText.trim();
+      if (!fallback) {
+        this.setVoiceHud("error", "Voice stalled", "Use typed Gemini chat or try the mic again.");
+        return;
+      }
+      this.setVoiceHud("thinking", "Voice fallback", "Using the typed Gemini path for this turn.");
+      void this.sendChatMessage(fallback, { recordUser: false, speak: this.audioEnabled });
+      this.closeVoiceSocketAfterTurn();
+    }, 22000);
+  }
+
   private stopAudioPlayback(): void {
     window.speechSynthesis?.cancel();
     for (const source of this.audioSources) {
@@ -524,6 +670,13 @@ export class HometownHubMap extends HTMLElement {
       const socket = new WebSocket(this.getVoiceWsUrl());
       this.voiceSocket = socket;
       this.setVoiceHud("connecting", "Connecting to Gemini Live", "");
+      if (this.voiceReadyTimer !== null) window.clearTimeout(this.voiceReadyTimer);
+      this.voiceReadyTimer = window.setTimeout(() => {
+        this.voiceReadyTimer = null;
+        if (this.voiceSocket === socket && socket.readyState === WebSocket.OPEN) {
+          this.setVoiceHud("error", "Voice setup is slow", "Typed Gemini chat is ready if voice stalls.");
+        }
+      }, 15000);
 
       socket.onopen = () => {
         this.setVoiceHud("idle", "Gemini Live voice ready", "Press the mic to ask a spoken question.");
@@ -531,6 +684,7 @@ export class HometownHubMap extends HTMLElement {
       };
 
       socket.onerror = () => {
+        this.clearVoiceTimers();
         this.setVoiceHud("error", "Voice connection failed", "Typed Gemini chat is still available.");
         reject(new Error("Voice WebSocket failed"));
       };
@@ -541,6 +695,7 @@ export class HometownHubMap extends HTMLElement {
         if (this.voiceSocket === socket) this.voiceSocket = null;
         if (this.voiceListening) this.stopVoiceStreaming(false);
         this.completeVoiceTurn();
+        this.clearVoiceTimers();
         this.setVoiceHud(
           "idle",
           graceful ? "Voice ready" : "Voice session closed",
@@ -575,6 +730,8 @@ export class HometownHubMap extends HTMLElement {
       return;
     }
     if (message.type === "turn_complete") {
+      if (this.voiceResponseTimer !== null) window.clearTimeout(this.voiceResponseTimer);
+      this.voiceResponseTimer = null;
       this.completeVoiceTurn();
       this.closeVoiceSocketAfterTurn();
       return;
@@ -588,20 +745,27 @@ export class HometownHubMap extends HTMLElement {
       return;
     }
     if (message.type === "ready") {
+      if (this.voiceReadyTimer !== null) window.clearTimeout(this.voiceReadyTimer);
+      this.voiceReadyTimer = null;
       this.setVoiceHud("idle", "Gemini Live voice ready", "Press the mic to ask a spoken question.");
       return;
     }
     if (message.type === "input_transcript" && message.text) {
+      this.voiceLastInputText = String(message.text || "").trim() || this.voiceLastInputText;
       this.appendVoiceUserText(message.text, Boolean(message.final));
       this.setVoiceHud("listening", "Heard you", message.text);
       return;
     }
     if (message.type === "output_transcript" && message.text) {
+      if (this.voiceResponseTimer !== null) window.clearTimeout(this.voiceResponseTimer);
+      this.voiceResponseTimer = null;
       this.appendVoiceModelText(message.text, Boolean(message.final));
       this.setVoiceHud("replying", "Gemini replying", message.text);
       return;
     }
     if (message.type === "tool_result_text" && message.text) {
+      if (this.voiceResponseTimer !== null) window.clearTimeout(this.voiceResponseTimer);
+      this.voiceResponseTimer = null;
       this.appendVoiceModelText(message.text, true);
       if (message.speak_fallback) this.speakText(message.text);
       this.setVoiceHud(
@@ -612,16 +776,22 @@ export class HometownHubMap extends HTMLElement {
       return;
     }
     if (message.type === "speech_fallback" && message.text) {
+      if (this.voiceResponseTimer !== null) window.clearTimeout(this.voiceResponseTimer);
+      this.voiceResponseTimer = null;
       this.speakText(message.text);
       this.setVoiceHud("replying", "Gemini replying", "Using browser speech fallback.");
       return;
     }
     if (message.type === "audio" && message.data) {
+      if (this.voiceResponseTimer !== null) window.clearTimeout(this.voiceResponseTimer);
+      this.voiceResponseTimer = null;
       void this.playPcmAudio(message.data, message.mime_type || "audio/pcm;rate=24000");
       this.setVoiceHud("replying", "Gemini replying", "Native Gemini Live audio is playing.");
       return;
     }
     if (message.type === "audio_chunk" && message.data) {
+      if (this.voiceResponseTimer !== null) window.clearTimeout(this.voiceResponseTimer);
+      this.voiceResponseTimer = null;
       const id = String(message.id || "voice-audio");
       const total = Number(message.total || 1);
       const index = Number(message.index || 0);
@@ -662,6 +832,9 @@ export class HometownHubMap extends HTMLElement {
     this.voiceUserDraftIndex = null;
     this.voiceModelDraftIndex = null;
     this.audioChunkBuffers.clear();
+    this.voiceLastInputText = "";
+    if (this.voiceResponseTimer !== null) window.clearTimeout(this.voiceResponseTimer);
+    this.voiceResponseTimer = null;
     return this.activeVoiceTurnId;
   }
 
@@ -684,6 +857,8 @@ export class HometownHubMap extends HTMLElement {
     if (first === "select_hub" || first === "zoom_to_hub") return "Selecting hub";
     if (first === "filter_to_paralympic") return "Filtering Hot Spots";
     if (first === "select_state") return "Opening state";
+    if (first === "focus_hometown") return "Opening hometown";
+    if (first === "explain_map") return "Explaining map";
     if (first === "reset_view") return "Resetting map";
     return "Checking rankings";
   }
@@ -817,6 +992,7 @@ export class HometownHubMap extends HTMLElement {
         audio_enabled: this.audioEnabled,
       }));
       this.setVoiceHud("thinking", "Gemini Live is thinking", "Audio turn ended.");
+      this.startVoiceResponseWatchdog();
     }
 
     try { this.voiceInputNode?.disconnect(); } catch {}
@@ -1270,8 +1446,10 @@ export class HometownHubMap extends HTMLElement {
             const name = info.object.properties.name;
             const code = STATE_NAME_TO_CODE[name];
             if (code) {
+              this.selectedHometown = null;
               this.selectedStateCode = code;
               this.selectedStateName = name;
+              this.renderHometownPanel();
               this.renderStatePanel();
               this.updateLayers();
               this.centerOnState(code);
@@ -1312,6 +1490,25 @@ export class HometownHubMap extends HTMLElement {
         updateTriggers: {
           getFillColor: [state.filters?.paralympic_focus],
         },
+      }));
+    }
+
+    if (this.selectedHometown?.lat !== undefined && this.selectedHometown?.lon !== undefined) {
+      layers.push(new ScatterplotLayer({
+        id: "hometown-focus",
+        data: [this.selectedHometown],
+        getPosition: (h: HometownFocus) => [Number(h.lon), Number(h.lat)],
+        getRadius: 8000,
+        radiusUnits: "meters",
+        radiusMinPixels: 8,
+        radiusMaxPixels: 16,
+        getFillColor: [255, 200, 50, 230],
+        getLineColor: [21, 41, 105, 255],
+        getLineWidth: 2,
+        lineWidthUnits: "pixels",
+        stroked: true,
+        filled: true,
+        pickable: false,
       }));
     }
 
@@ -1798,7 +1995,7 @@ export class HometownHubMap extends HTMLElement {
                      border-top: 1px solid #b9bfd2; background: #ffffff;">
               <input id="hubmap-chat-input"
                      type="text"
-                     placeholder="Ask about hubs, states, rankings, or sports..."
+                     placeholder="Ask about hubs, states, hometowns, rankings..."
                      autocomplete="off"
                      style="flex: 1; padding: 8px 12px;
                         border: 1px solid #b9bfd2; border-radius: 16px;
@@ -1871,6 +2068,18 @@ export class HometownHubMap extends HTMLElement {
                  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
                  font-family: system-ui, -apple-system, sans-serif;
                  z-index: 102;">
+          </div>
+          <div id="hubmap-hometown-panel"
+              class="hsm-hometown-panel"
+              style="position: absolute; top: 12px; right: 12px;
+                 display: none; flex-direction: column;
+                 background: rgba(255, 255, 255, 0.97);
+                 border: 1px solid #b9bfd2; border-radius: 8px;
+                 padding: 14px 16px;
+                 min-width: 240px; max-width: 310px;
+                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                 font-family: system-ui, -apple-system, sans-serif;
+                 z-index: 103;">
           </div>
         </div>
 
@@ -2080,6 +2289,99 @@ export class HometownHubMap extends HTMLElement {
         ${contextBlock}
       </div>
     `;
+  }
+
+  private renderHometownPanel(): void {
+    const panel = this.querySelector("#hubmap-hometown-panel") as HTMLElement;
+    if (!panel) return;
+    const focus = this.selectedHometown;
+    if (!focus) {
+      panel.style.display = "none";
+      panel.innerHTML = "";
+      return;
+    }
+
+    panel.style.display = "flex";
+    const para = (focus.paralympic_count || 0) + (focus.both_count || 0);
+    const share = focus.total_athletes > 0
+      ? ((focus.paralympic_share ?? (para / focus.total_athletes)) * 100).toFixed(1)
+      : "0.0";
+    const sports = (focus.top_sports || [])
+      .slice(0, 3)
+      .map(s => `${s.sport} (${s.count})`)
+      .join(", ");
+    const locationLabel = [focus.hometown, focus.state || focus.state_code].filter(Boolean).join(", ");
+
+    if (focus.ambiguous) {
+      const options = (focus.options || [])
+        .map(o => `<li style="margin: 4px 0;">${o.hometown}, ${o.state}: <strong>${o.total_athletes}</strong> mapped athletes${o.hub_name ? `, ${o.hub_name}` : ""}</li>`)
+        .join("");
+      panel.innerHTML = `
+        <div style="display: flex; justify-content: space-between; gap: 10px;">
+          <div>
+            <div style="font-size: 10px; color: #484645; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Hometown lookup</div>
+            <div style="color: #152969; font-size: 17px; font-weight: 800; line-height: 1.2; margin-top: 2px;">Clarify state</div>
+          </div>
+          ${this.closeHometownButtonHtml()}
+        </div>
+        <div style="margin-top: 10px; color: #484645; font-size: 12px; line-height: 1.45;">
+          Multiple mapped hometowns match. Ask with a state for a deterministic zoom.
+          <ul style="padding-left: 18px; margin: 8px 0 0;">${options}</ul>
+        </div>
+      `;
+      this.wireHometownPanelClose();
+      return;
+    }
+
+    panel.innerHTML = `
+      <div style="display: flex; justify-content: space-between; gap: 10px;">
+        <div>
+          <div style="font-size: 10px; color: #484645; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Hometown focus</div>
+          <div style="color: #152969; font-size: 17px; font-weight: 800; line-height: 1.2; margin-top: 2px;">${locationLabel || "Requested place"}</div>
+        </div>
+        ${this.closeHometownButtonHtml()}
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; padding: 12px 0; margin-top: 10px; border-top: 1px solid #e4e4e7; border-bottom: 1px solid #e4e4e7;">
+        <div>
+          <div style="font-size: 10px; color: #484645; text-transform: uppercase; letter-spacing: 0.8px;">Mapped Athletes</div>
+          <div style="color: #152969; font-size: 22px; font-weight: 800; line-height: 1.1;">${focus.total_athletes}</div>
+        </div>
+        <div>
+          <div style="font-size: 10px; color: #d31118; text-transform: uppercase; letter-spacing: 0.8px;">Paralympians</div>
+          <div style="color: #d31118; font-size: 22px; font-weight: 800; line-height: 1.1;">${para}</div>
+          <div style="font-size: 11px; color: #484645; margin-top: 2px;">${share}% share</div>
+        </div>
+      </div>
+      <div style="margin-top: 12px; color: #484645; font-size: 12px; line-height: 1.45;">
+        ${sports ? `<div><strong style="color: #152969;">Top sports:</strong> ${sports}</div>` : ""}
+        ${focus.hub_name ? `<div style="margin-top: 6px;"><strong style="color: #152969;">Hub context:</strong> ${focus.hub_name}${focus.distance_to_hub_km ? `, about ${Math.round(focus.distance_to_hub_km)} km from this hometown` : ""}.</div>` : ""}
+        ${focus.nearest_hub_name ? `<div style="margin-top: 6px;"><strong style="color: #152969;">Nearest hub:</strong> ${focus.nearest_hub_name}${focus.nearest_hub_distance_km ? `, about ${focus.nearest_hub_distance_km} km away` : ""}.</div>` : ""}
+        ${focus.total_athletes === 0 ? `<div style="margin-top: 6px;">No mapped athletes were found for this exact hometown label in the public dataset.</div>` : ""}
+      </div>
+    `;
+    this.wireHometownPanelClose();
+  }
+
+  private closeHometownButtonHtml(): string {
+    return `
+      <button class="hubmap-hometown-close" type="button" aria-label="Close"
+              style="background: transparent; border: none; cursor: pointer; padding: 2px; color: #484645; line-height: 1;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    `;
+  }
+
+  private wireHometownPanelClose(): void {
+    const close = this.querySelector(".hubmap-hometown-close") as HTMLButtonElement | null;
+    close?.addEventListener("click", () => {
+      this.selectedHometown = null;
+      this.renderHometownPanel();
+      this.updateLayers();
+    });
   }
 
   private renderStatePanel(): void {

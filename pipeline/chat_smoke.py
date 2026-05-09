@@ -9,6 +9,21 @@ DEFAULT_BASE = "http://127.0.0.1:8080"
 
 CASES = [
     {
+        "prompt": "What do the dots mean?",
+        "tool": "explain_map",
+        "contains": ["Small constellation dots", "Large circles", "Alaska", "Puerto Rico"],
+    },
+    {
+        "prompt": "How many athletes are from Boise, Idaho?",
+        "tool": "focus_hometown",
+        "contains": ["Boise", "3 mapped athletes", "Salt Lake City"],
+    },
+    {
+        "prompt": "How many athletes are from Park City, Utah?",
+        "tool": "focus_hometown",
+        "contains": ["Park City", "10 mapped athletes", "Salt Lake City"],
+    },
+    {
         "prompt": "Show Paralympic Hot Spots",
         "tool": "filter_to_paralympic",
         "contains": ["10 Paralympic Hot Spots", "7.5%"],
