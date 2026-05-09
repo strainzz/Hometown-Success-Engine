@@ -199,7 +199,6 @@ export class HometownHubMap extends HTMLElement {
   async connectedCallback(): Promise<void> {
     const apiUrl = this.getAttribute("api-url") || DEFAULT_API_URL;
     this.api = new ApiClient(apiUrl);
-    void this.prewarmVoiceAudio();
 
     this.unsubscribe = this.store.subscribe(state => this.handleStateUpdate(state));
 
@@ -215,14 +214,6 @@ export class HometownHubMap extends HTMLElement {
     await this.fetchStateData();
 
     this.resetView();
-  }
-
-  private async prewarmVoiceAudio(): Promise<void> {
-    try {
-      await this.api?.prewarmVoice();
-    } catch (err) {
-      // Voice still works without prewarm; this only reduces first-turn latency.
-    }
   }
 
   disconnectedCallback(): void {
@@ -793,19 +784,11 @@ export class HometownHubMap extends HTMLElement {
       if (this.voiceResponseTimer !== null) window.clearTimeout(this.voiceResponseTimer);
       this.voiceResponseTimer = null;
       this.appendVoiceModelText(message.text, true);
-      if (message.speak_fallback) this.speakText(message.text);
       this.setVoiceHud(
         "replying",
-        message.speak_fallback ? "Gemini replying" : "Audio off",
-        message.speak_fallback ? "Using fallback narration." : "Showing the grounded response without playback.",
+        this.audioEnabled ? "Gemini replying" : "Audio off",
+        this.audioEnabled ? "Waiting for native Gemini Live audio." : "Showing the grounded response without playback.",
       );
-      return;
-    }
-    if (message.type === "speech_fallback" && message.text) {
-      if (this.voiceResponseTimer !== null) window.clearTimeout(this.voiceResponseTimer);
-      this.voiceResponseTimer = null;
-      this.speakText(message.text);
-      this.setVoiceHud("replying", "Gemini replying", "Using browser speech fallback.");
       return;
     }
     if (message.type === "audio" && message.data) {
@@ -814,11 +797,8 @@ export class HometownHubMap extends HTMLElement {
       void this.playPcmAudio(
         message.data,
         message.mime_type || "audio/pcm;rate=24000",
-        message.source || "gemini-live",
       ).catch((err) => this.handleAudioPlaybackError(err));
-      this.setVoiceHud("replying", "Gemini replying", message.source === "gemini-tts-fallback"
-        ? "Gemini audio fallback is playing."
-        : "Native Gemini Live audio is playing.");
+      this.setVoiceHud("replying", "Gemini replying", "Native Gemini Live audio is playing.");
       return;
     }
     if (message.type === "audio_chunk" && message.data) {
@@ -840,12 +820,9 @@ export class HometownHubMap extends HTMLElement {
         void this.playPcmAudio(
           buffer.chunks.join(""),
           buffer.mimeType,
-          buffer.source,
         ).catch((err) => this.handleAudioPlaybackError(err));
       }
-      this.setVoiceHud("replying", "Gemini replying", buffer.source === "gemini-tts-fallback"
-        ? "Gemini audio fallback is streaming."
-        : "Native Gemini Live audio is streaming.");
+      this.setVoiceHud("replying", "Gemini replying", "Native Gemini Live audio is streaming.");
       return;
     }
     if (message.type === "tool_calls" && Array.isArray(message.tool_calls)) {
@@ -1214,13 +1191,9 @@ export class HometownHubMap extends HTMLElement {
     this.setVoiceHud("error", "Audio blocked", message.slice(0, 120));
   }
 
-  private async playPcmAudio(base64: string, mimeType: string, audioSource: string = "gemini-live"): Promise<void> {
+  private async playPcmAudio(base64: string, mimeType: string): Promise<void> {
     if (!this.audioEnabled) return;
     const sampleRate = this.parsePcmSampleRate(mimeType);
-    if (audioSource === "gemini-tts-fallback") {
-      await this.playWavElement(base64, sampleRate);
-      return;
-    }
     const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextCtor) {
       await this.playWavElement(base64, sampleRate);

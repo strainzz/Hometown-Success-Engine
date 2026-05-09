@@ -23,10 +23,8 @@ logger = logging.getLogger(__name__)
 # v2 build
 
 VOICE_MODEL_ID = os.getenv("GEMINI_LIVE_MODEL", "gemini-live-2.5-flash-native-audio")
-VOICE_TTS_MODEL_ID = os.getenv("GEMINI_TTS_MODEL", "gemini-2.5-flash-preview-tts")
 VOICE_NAME = os.getenv("GEMINI_VOICE_NAME", "Kore")
 VOICE_LOCATION = os.getenv("GEMINI_LIVE_LOCATION", "us-central1")
-VOICE_TTS_MAX_CHARS = int(os.getenv("GEMINI_VOICE_TTS_MAX_CHARS", "900"))
 
 # Approximate bounding boxes for all 50 US states + DC + territories.
 # Format: (lat_min, lat_max, lon_min, lon_max, state_code)
@@ -1560,13 +1558,7 @@ def _load_data() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _load_data()
-    prewarm_task = asyncio.create_task(_prewarm_voice_tts_cache())
-    try:
-        yield
-    finally:
-        prewarm_task.cancel()
-        with suppress(asyncio.CancelledError):
-            await prewarm_task
+    yield
 
 
 app = FastAPI(
@@ -1599,11 +1591,6 @@ def health_check() -> dict:
         "athletes_loaded": len(_state["athletes_geo_points"]),
         "states_with_athletes": len(_state["state_aggregates"]),
     }
-
-
-@app.get("/voice/prewarm")
-async def prewarm_voice_audio() -> dict[str, int]:
-    return await _prewarm_voice_tts_cache()
 
 
 @app.get("/hubs", response_model=list[Hub])
@@ -2249,14 +2236,6 @@ async def chat(req: ChatRequest) -> ChatResponse:
         )
 
 
-VOICE_NATIVE_AUDIO_GRACE_SECONDS = float(os.getenv("GEMINI_VOICE_NATIVE_AUDIO_GRACE_SECONDS", "1.5"))
-VOICE_CACHED_AUDIO_GRACE_SECONDS = float(os.getenv("GEMINI_VOICE_CACHED_AUDIO_GRACE_SECONDS", "0.2"))
-VOICE_PREWARM_ENABLED = os.getenv("GEMINI_VOICE_PREWARM", "1") != "0"
-_voice_tts_cache: dict[str, tuple[str, str]] = {}
-_voice_tts_inflight: dict[str, asyncio.Task] = {}
-_voice_prewarm_lock: asyncio.Lock | None = None
-
-
 def _voice_short_place(name: str) -> str:
     short = re.sub(r"\s+Region\b", "", name).strip()
     return short.split(",", 1)[0].strip()
@@ -2277,32 +2256,6 @@ def _voice_compact(text: str, max_chars: int = 340) -> str:
     if sentence_break > 120:
         clipped = clipped[:sentence_break + 1]
     return clipped.rstrip(" ,;:") + "."
-
-
-def _voice_cache_key(text: str) -> str:
-    return re.sub(r"\s+", " ", _voice_speech_text(text)).strip()
-
-
-def _voice_audio_is_cached(text: str) -> bool:
-    return _voice_cache_key(text) in _voice_tts_cache
-
-
-async def _synthesize_gemini_tts_cached(text: str) -> tuple[str, str]:
-    cache_key = _voice_cache_key(text)
-    cached = _voice_tts_cache.get(cache_key)
-    if cached:
-        return cached
-
-    task = _voice_tts_inflight.get(cache_key)
-    if task is None or task.done():
-        task = asyncio.create_task(asyncio.to_thread(_synthesize_gemini_tts, text))
-        _voice_tts_inflight[cache_key] = task
-
-    try:
-        return await asyncio.shield(task)
-    finally:
-        if task.done() and _voice_tts_inflight.get(cache_key) is task:
-            _voice_tts_inflight.pop(cache_key, None)
 
 
 def _build_voice_spoken_summary(tool_name: str, args: dict[str, Any], full_result: str) -> str:
@@ -2444,130 +2397,6 @@ def _build_voice_spoken_summary(tool_name: str, args: dict[str, Any], full_resul
     return _voice_compact(full_result)
 
 
-def _voice_speech_text(text: str) -> str:
-    clean = re.sub(r"\s+", " ", text).strip()
-    if clean.startswith("Map zoomed/selected:"):
-        hub_name = clean.split(" (", 1)[0].replace("Map zoomed/selected: ", "").strip()
-        counts_match = re.search(
-            r"(\d[\d,]* athletes total, \d[\d,]* Olympians, \d[\d,]* Paralympians, [\d.]+% Paralympic share\.)",
-            clean,
-        )
-        top_sport_match = re.search(r"Top sport: ([^.]+)\.", clean)
-        climate_match = re.search(r"Climate: avg (.*? elevation)\.", clean)
-        parts = [f"{hub_name} is selected."]
-        if counts_match:
-            parts.append(counts_match.group(1))
-        if top_sport_match:
-            parts.append(f"Top sport: {top_sport_match.group(1)}.")
-        if climate_match:
-            climate_text = (
-                climate_match.group(1)
-                .replace("°F", " degrees Fahrenheit")
-                .replace("in precip/yr", " inches of precipitation per year")
-                .replace("ft elevation", " feet elevation")
-            )
-            parts.append(f"Climate context: {climate_text}.")
-        parts.append("See the chat panel for rankings and full grounded detail.")
-        return " ".join(parts)
-
-    if len(clean) <= VOICE_TTS_MAX_CHARS:
-        return clean
-
-    clipped = clean[:VOICE_TTS_MAX_CHARS].rstrip()
-    sentence_break = clipped.rfind(". ")
-    if sentence_break > 320:
-        clipped = clipped[:sentence_break + 1]
-    return f"{clipped} See the chat panel for the full grounded detail."
-
-
-def _synthesize_gemini_tts(text: str) -> tuple[str, str]:
-    speech_text = _voice_speech_text(text)
-    cache_key = re.sub(r"\s+", " ", speech_text).strip()
-    cached = _voice_tts_cache.get(cache_key)
-    if cached:
-        return cached
-
-    client = genai.Client(
-        vertexai=True,
-        project="hometown-success-engine",
-        location=VOICE_LOCATION,
-    )
-    response = client.models.generate_content(
-        model=VOICE_TTS_MODEL_ID,
-        contents=(
-            "Read this in a warm, natural analyst voice for a live product demo. "
-            f"Keep the delivery clear and confident: {speech_text}"
-        ),
-        config=genai_types.GenerateContentConfig(
-            response_modalities=[genai_types.Modality.AUDIO],
-            speech_config=genai_types.SpeechConfig(
-                voice_config=genai_types.VoiceConfig(
-                    prebuilt_voice_config=genai_types.PrebuiltVoiceConfig(
-                        voice_name=VOICE_NAME
-                    )
-                )
-            ),
-        ),
-    )
-
-    if not response.candidates or not response.candidates[0].content:
-        raise RuntimeError("Gemini TTS returned no audio candidate")
-    for part in response.candidates[0].content.parts or []:
-        if part.inline_data and part.inline_data.data:
-            data = part.inline_data.data
-            if isinstance(data, str):
-                encoded = data
-            else:
-                encoded = base64.b64encode(data).decode("ascii")
-            result = (encoded, part.inline_data.mime_type or "audio/L16;codec=pcm;rate=24000")
-            _voice_tts_cache[cache_key] = result
-            return result
-    raise RuntimeError("Gemini TTS returned no inline audio")
-
-
-def _voice_prewarm_items() -> list[tuple[str, dict[str, Any]]]:
-    items: list[tuple[str, dict[str, Any]]] = [
-        ("select_hub", {"hub_id": "HUB_CO_VAIL"}),
-        ("filter_to_paralympic", {}),
-        ("select_hub", {"hub_id": "HUB_UT_SALT_LAKE_CITY"}),
-        ("explain_map", {"topic": "legend"}),
-        ("query_data", {"query_type": "summary"}),
-        ("reset_view", {}),
-        ("focus_hometown", {"hometown": "Boise", "state_code": "ID"}),
-        ("focus_hometown", {"hometown": "Park City", "state_code": "UT"}),
-    ]
-    return items
-
-
-async def _prewarm_voice_tts_cache() -> dict[str, int]:
-    global _voice_prewarm_lock
-    if not VOICE_PREWARM_ENABLED:
-        return {"attempted": 0, "warmed": 0, "cached": len(_voice_tts_cache)}
-    if _voice_prewarm_lock is None:
-        _voice_prewarm_lock = asyncio.Lock()
-
-    async with _voice_prewarm_lock:
-        items = _voice_prewarm_items()
-        warmed: list[str] = []
-        semaphore = asyncio.Semaphore(2)
-
-        async def warm(tool_name: str, args: dict[str, Any]) -> None:
-            async with semaphore:
-                try:
-                    full_result = _build_tool_result_context(tool_name, args)
-                    spoken_summary = _build_voice_spoken_summary(tool_name, args, full_result)
-                    if _voice_audio_is_cached(spoken_summary):
-                        return
-                    await _synthesize_gemini_tts_cached(spoken_summary)
-                    warmed.append(tool_name)
-                    logger.info(f"Prewarmed Gemini voice audio for {tool_name} {args}")
-                except Exception as exc:
-                    logger.warning(f"Gemini voice prewarm skipped for {tool_name} {args}: {exc}")
-
-        await asyncio.gather(*(warm(tool_name, args) for tool_name, args in items))
-        return {"attempted": len(items), "warmed": len(warmed), "cached": len(_voice_tts_cache)}
-
-
 async def _send_voice_audio(
     websocket: WebSocket,
     audio_data: str,
@@ -2608,6 +2437,82 @@ async def _send_voice_audio(
         await websocket.send_json(message)
 
 
+async def _stream_native_voice_summary(
+    websocket: WebSocket,
+    spoken_summary: str,
+    turn_id: int,
+) -> bool:
+    """Speak a compact tool result through Gemini Live native audio only."""
+    text = _voice_compact(spoken_summary, max_chars=360)
+    if not text:
+        return False
+
+    client = genai.Client(
+        vertexai=True,
+        project="hometown-success-engine",
+        location=VOICE_LOCATION,
+    )
+
+    async def run_summary_session() -> bool:
+        audio_sent = False
+        async with client.aio.live.connect(
+            model=VOICE_MODEL_ID,
+            config=genai_types.LiveConnectConfig(
+                response_modalities=[genai_types.Modality.AUDIO],
+                system_instruction=(
+                    "You are the Hometown Success Engine voice narrator. "
+                    "Speak the provided map result naturally in one or two concise sentences. "
+                    "Do not add facts, do not call tools, and do not mention that this is a retry."
+                ),
+                temperature=0.2,
+                speech_config=genai_types.SpeechConfig(
+                    voice_config=genai_types.VoiceConfig(
+                        prebuilt_voice_config=genai_types.PrebuiltVoiceConfig(
+                            voice_name=VOICE_NAME
+                        )
+                    )
+                ),
+                output_audio_transcription=genai_types.AudioTranscriptionConfig(),
+            ),
+        ) as session:
+            await session.send_client_content(
+                turns=genai_types.Content(
+                    role="user",
+                    parts=[genai_types.Part(text=text)],
+                ),
+                turn_complete=True,
+            )
+            async for message in session.receive():
+                if message.server_content:
+                    content = message.server_content
+                    if content.output_transcription and content.output_transcription.text:
+                        await websocket.send_json({
+                            "type": "output_transcript",
+                            "text": content.output_transcription.text,
+                            "final": bool(getattr(content.output_transcription, "finished", False)),
+                            "turn_id": turn_id,
+                        })
+                    if content.model_turn and content.model_turn.parts:
+                        for part in content.model_turn.parts:
+                            if part.inline_data and part.inline_data.data:
+                                data = part.inline_data.data
+                                if isinstance(data, bytes):
+                                    data = base64.b64encode(data).decode("ascii")
+                                await _send_voice_audio(
+                                    websocket,
+                                    data,
+                                    part.inline_data.mime_type or "audio/pcm;rate=24000",
+                                    "gemini-live",
+                                    turn_id=turn_id,
+                                )
+                                audio_sent = True
+                    if content.turn_complete:
+                        break
+        return audio_sent
+
+    return await asyncio.wait_for(run_summary_session(), timeout=20)
+
+
 @app.websocket("/voice/ws")
 async def voice_websocket(websocket: WebSocket) -> None:
     await websocket.accept()
@@ -2643,9 +2548,8 @@ async def voice_websocket(websocket: WebSocket) -> None:
     voice_output_text = ""
     voice_tool_calls: list[dict[str, Any]] = []
     voice_tool_result_texts: list[str] = []
+    voice_spoken_result_text = ""
     voice_audio_sent = False
-    voice_fallback_audio_started = False
-    voice_tts_task: asyncio.Task | None = None
 
     async def send_voice_state(
         state: str,
@@ -2662,80 +2566,10 @@ async def voice_websocket(websocket: WebSocket) -> None:
             message["turn_id"] = voice_turn_id
         await websocket.send_json(message)
 
-    def cancel_voice_tts_task() -> None:
-        nonlocal voice_tts_task
-        if voice_tts_task and not voice_tts_task.done():
-            voice_tts_task.cancel()
-        voice_tts_task = None
-
-    async def start_voice_tts_fallback(
-        spoken_summary: str,
-        turn_id: int,
-        grace_seconds: float = VOICE_NATIVE_AUDIO_GRACE_SECONDS,
-    ) -> None:
-        nonlocal voice_audio_sent, voice_fallback_audio_started, voice_tts_task
-        try:
-            await asyncio.sleep(grace_seconds)
-            if (
-                not audio_enabled_for_turn
-                or voice_audio_sent
-                or voice_turn_id != turn_id
-                or not spoken_summary.strip()
-            ):
-                return
-            await send_voice_state(
-                "replying",
-                "Preparing Gemini audio",
-                "Native Live audio was quiet, so Gemini TTS is starting.",
-            )
-            tts_audio, tts_mime_type = await _synthesize_gemini_tts_cached(spoken_summary)
-            if voice_audio_sent or voice_turn_id != turn_id:
-                return
-            voice_fallback_audio_started = True
-            await _send_voice_audio(
-                websocket,
-                tts_audio,
-                tts_mime_type,
-                "gemini-tts-fallback",
-                turn_id=turn_id,
-            )
-            voice_audio_sent = True
-            await send_voice_state(
-                "replying",
-                "Gemini speaking",
-                "Using Gemini audio fallback because native Live audio was silent.",
-            )
-        except asyncio.CancelledError:
-            return
-        except Exception as tts_error:
-            logger.warning(f"Gemini voice fallback failed: {tts_error}")
-            if voice_turn_id != turn_id:
-                return
-            await websocket.send_json({
-                "type": "speech_fallback",
-                "text": spoken_summary,
-                "turn_id": turn_id,
-            })
-            await send_voice_state(
-                "replying",
-                "Gemini replying",
-                "Using browser audio fallback because Gemini audio fallback failed.",
-            )
-        finally:
-            if voice_tts_task is asyncio.current_task():
-                voice_tts_task = None
-
-    def schedule_voice_tts_fallback(spoken_summary: str, turn_id: int) -> None:
-        nonlocal voice_tts_task
-        cancel_voice_tts_task()
-        if not audio_enabled_for_turn or not spoken_summary.strip():
-            return
-        grace = VOICE_CACHED_AUDIO_GRACE_SECONDS if _voice_audio_is_cached(spoken_summary) else VOICE_NATIVE_AUDIO_GRACE_SECONDS
-        voice_tts_task = asyncio.create_task(start_voice_tts_fallback(spoken_summary, turn_id, grace))
-
     async def send_live_messages(session) -> None:
         nonlocal voice_input_text, voice_output_text, voice_tool_calls, voice_tool_result_texts
-        nonlocal voice_audio_sent, voice_fallback_audio_started
+        nonlocal voice_spoken_result_text
+        nonlocal voice_audio_sent
         async for message in session.receive():
             if message.setup_complete:
                 await websocket.send_json({"type": "ready", "turn_id": voice_turn_id})
@@ -2771,9 +2605,6 @@ async def voice_websocket(websocket: WebSocket) -> None:
                         if part.inline_data and part.inline_data.data:
                             if not audio_enabled_for_turn:
                                 continue
-                            if voice_fallback_audio_started:
-                                continue
-                            cancel_voice_tts_task()
                             data = part.inline_data.data
                             if isinstance(data, bytes):
                                 data = base64.b64encode(data).decode("ascii")
@@ -2786,6 +2617,21 @@ async def voice_websocket(websocket: WebSocket) -> None:
                                 "turn_id": voice_turn_id,
                             })
                 if content.turn_complete:
+                    if audio_enabled_for_turn and not voice_audio_sent and voice_spoken_result_text:
+                        await send_voice_state(
+                            "replying",
+                            "Gemini replying",
+                            "Native tool response was silent; starting Gemini Live voice summary.",
+                        )
+                        try:
+                            voice_audio_sent = await _stream_native_voice_summary(
+                                websocket,
+                                voice_spoken_result_text,
+                                voice_turn_id,
+                            )
+                        except Exception as summary_error:
+                            logger.warning(f"Gemini Live voice summary failed: {summary_error}")
+                            voice_audio_sent = False
                     remembered_text = voice_output_text or " ".join(voice_tool_result_texts)
                     _remember_session_turn(
                         voice_session_id,
@@ -2793,10 +2639,21 @@ async def voice_websocket(websocket: WebSocket) -> None:
                         remembered_text,
                         voice_tool_calls,
                     )
-                    pending_tts_task = voice_tts_task
-                    if pending_tts_task and not pending_tts_task.done():
-                        with suppress(asyncio.CancelledError):
-                            await pending_tts_task
+                    if audio_enabled_for_turn and not voice_audio_sent:
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": (
+                                "Gemini Live returned text/tool context but no native voice audio for this turn. "
+                                "Showing the grounded response only."
+                            ),
+                            "recoverable": True,
+                            "turn_id": voice_turn_id,
+                        })
+                        await send_voice_state(
+                            "error",
+                            "Gemini Live audio unavailable",
+                            "Native Gemini voice did not return audio for this turn. Try again or use typed chat.",
+                        )
                     await websocket.send_json({
                         "type": "turn_complete",
                         "turn_id": voice_turn_id,
@@ -2825,11 +2682,15 @@ async def voice_websocket(websocket: WebSocket) -> None:
                         genai_types.FunctionResponse(
                             id=call.id,
                             name=tool_name,
-                            response={"result": spoken_summary},
+                            response={
+                                "result": spoken_summary,
+                                "scheduling": "INTERRUPT",
+                            },
                         )
                     )
                 voice_tool_calls = frontend_calls
                 voice_tool_result_texts = tool_result_texts
+                voice_spoken_result_text = " ".join(spoken_result_texts).strip()
                 await websocket.send_json({
                     "type": "tool_calls",
                     "tool_calls": frontend_calls,
@@ -2850,12 +2711,10 @@ async def voice_websocket(websocket: WebSocket) -> None:
                     })
                 if function_responses:
                     await session.send_tool_response(function_responses=function_responses)
-                    spoken_text = " ".join(spoken_result_texts).strip()
-                    schedule_voice_tts_fallback(spoken_text, voice_turn_id)
                     await send_voice_state(
                         "replying",
                         "Gemini replying",
-                        "Grounded map result received. Waiting briefly for native Live audio.",
+                        "Grounded map result received. Waiting for native Gemini Live audio.",
                     )
 
     try:
@@ -2917,9 +2776,8 @@ async def voice_websocket(websocket: WebSocket) -> None:
                             voice_output_text = ""
                             voice_tool_calls = []
                             voice_tool_result_texts = []
+                            voice_spoken_result_text = ""
                             voice_audio_sent = False
-                            voice_fallback_audio_started = False
-                            cancel_voice_tts_task()
                             await websocket.send_json({
                                 "type": "turn_started",
                                 "turn_id": voice_turn_id,
@@ -2951,9 +2809,8 @@ async def voice_websocket(websocket: WebSocket) -> None:
                         voice_output_text = ""
                         voice_tool_calls = []
                         voice_tool_result_texts = []
+                        voice_spoken_result_text = ""
                         voice_audio_sent = False
-                        voice_fallback_audio_started = False
-                        cancel_voice_tts_task()
                         await websocket.send_json({
                             "type": "turn_started",
                             "turn_id": voice_turn_id,
@@ -2997,7 +2854,6 @@ async def voice_websocket(websocket: WebSocket) -> None:
             except WebSocketDisconnect:
                 pass
             finally:
-                cancel_voice_tts_task()
                 receiver.cancel()
                 with suppress(asyncio.CancelledError):
                     await receiver
