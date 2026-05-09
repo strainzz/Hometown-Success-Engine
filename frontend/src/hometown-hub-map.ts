@@ -1339,11 +1339,16 @@ export class HometownHubMap extends HTMLElement {
                        transition: background 0.15s;"
                     onmouseover="this.style.background='#efeae6';"
                     onmouseout="this.style.background='rgba(255, 255, 255, 0.95)';">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                   stroke="#152969" stroke-width="2.5"
-                   stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 12a9 9 0 1 0 3-6.7" />
-                <polyline points="3 4 3 10 9 10" />
+              <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round"
+                   style="display: block; flex: 0 0 auto;">
+                <circle cx="12" cy="12" r="7" />
+                <circle cx="12" cy="12" r="2" />
+                <path d="M12 3v2" />
+                <path d="M12 19v2" />
+                <path d="M3 12h2" />
+                <path d="M19 12h2" />
               </svg>
               Reset View
             </button>
