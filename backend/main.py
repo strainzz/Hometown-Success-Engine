@@ -590,6 +590,7 @@ Current Paralympic Hot Spots: {hot_spot_count}.
 Help users explore the map and understand the data. Call tools to move the map or answer analyst questions, then explain the result with specific numbers from the tool output.
 
 # TOOL RULES
+- If the user asks for the top, highest, leading, best, or number-one Paralympic Hot Spot, select the top Hot Spot hub so the map moves to it.
 - If the user asks to show, highlight, filter, or view Paralympic Hot Spots, call filter_to_paralympic.
 - If the user asks to reset, clear, start over, or go back to the national view, call reset_view.
 - If the user asks what the dots, circles, colors, legend, state shading, territory insets, Alaska/Hawaii/Puerto Rico insets, or Hot Spots mean, call explain_map.
@@ -1159,9 +1160,52 @@ def _resolve_focus_hometown_args(args: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _top_paralympic_hot_spot() -> Hub | None:
+    hot_spots = [hub for hub in _state["hubs"] if hub.is_paralympic_hot_spot]
+    hot_spots.sort(
+        key=lambda hub: (
+            -hub.composition.paralympic_share,
+            -hub.total_athletes,
+            hub.display_name,
+        )
+    )
+    return hot_spots[0] if hot_spots else None
+
+
+def _top_ranked_hub_for_query(args: dict[str, Any]) -> Hub | None:
+    query_type = str(args.get("query_type") or "").strip()
+    if query_type not in {"rank_list", "top_hubs_by_total", "top_hubs_by_paralympic_share"}:
+        return None
+
+    try:
+        limit = int(args.get("limit") or 5)
+    except (TypeError, ValueError):
+        limit = 5
+    if limit != 1:
+        return None
+
+    entity_type = str(args.get("entity_type") or "hub").lower().strip()
+    if entity_type and entity_type != "hub":
+        return None
+
+    sport = str(args.get("sport") or "").lower().strip()
+    metric = _normalize_metric(args.get("metric"), "total_athletes")
+    if query_type == "top_hubs_by_paralympic_share":
+        metric = "paralympic_share"
+    elif query_type == "top_hubs_by_total":
+        metric = "total_athletes"
+
+    ranked = _ranked_hubs(metric, sport, None)
+    return ranked[0] if ranked else None
+
+
 def _prepare_tool_call_for_frontend(tool_name: str, args: dict[str, Any]) -> ChatToolCall:
     if tool_name == "focus_hometown":
         return ChatToolCall(name="focus_hometown", args=_resolve_focus_hometown_args(args))
+    if tool_name == "query_data":
+        top_hub = _top_ranked_hub_for_query(args)
+        if top_hub:
+            return ChatToolCall(name="select_hub", args={"hub_id": top_hub.hub_id})
     return ChatToolCall(name=tool_name, args=args)
 
 
@@ -1296,6 +1340,11 @@ def _direct_query_tool_call(message: str) -> ChatToolCall | None:
                 "focus_hometown",
                 {"hometown": hometown, **({"state_code": state_code} if state_code else {})},
             )
+
+    if ("hot spot" in msg or "hotspot" in msg) and any(term in msg for term in ["top", "best", "highest", "leading", "number one", "#1"]):
+        top_hot_spot = _top_paralympic_hot_spot()
+        if top_hot_spot:
+            return ChatToolCall(name="select_hub", args={"hub_id": top_hot_spot.hub_id})
 
     if "how many" in msg or "summary" in msg or ("athlete" in msg and "hub" in msg):
         return ChatToolCall(name="query_data", args={"query_type": "summary"})

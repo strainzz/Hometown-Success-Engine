@@ -173,6 +173,7 @@ export class HometownHubMap extends HTMLElement {
   private audioEnabled: boolean = true;
   private audioContext: AudioContext | null = null;
   private audioPlayTime: number = 0;
+  private audioQueue: Promise<void> = Promise.resolve();
   private audioChunkBuffers: Map<string, { mimeType: string; source: string; total: number; chunks: string[] }> = new Map();
   private audioSources: AudioBufferSourceNode[] = [];
   private audioElements: HTMLAudioElement[] = [];
@@ -663,6 +664,7 @@ export class HometownHubMap extends HTMLElement {
     }
     this.audioElements = [];
     this.audioChunkBuffers.clear();
+    this.audioQueue = Promise.resolve();
     this.audioPlayTime = this.audioContext?.currentTime || 0;
   }
 
@@ -794,10 +796,10 @@ export class HometownHubMap extends HTMLElement {
     if (message.type === "audio" && message.data) {
       if (this.voiceResponseTimer !== null) window.clearTimeout(this.voiceResponseTimer);
       this.voiceResponseTimer = null;
-      void this.playPcmAudio(
+      this.enqueuePcmAudio(
         message.data,
         message.mime_type || "audio/pcm;rate=24000",
-      ).catch((err) => this.handleAudioPlaybackError(err));
+      );
       this.setVoiceHud("replying", "Gemini replying", "Native Gemini Live audio is playing.");
       return;
     }
@@ -817,10 +819,10 @@ export class HometownHubMap extends HTMLElement {
       this.audioChunkBuffers.set(id, buffer);
       if (buffer.chunks.every(Boolean)) {
         this.audioChunkBuffers.delete(id);
-        void this.playPcmAudio(
+        this.enqueuePcmAudio(
           buffer.chunks.join(""),
           buffer.mimeType,
-        ).catch((err) => this.handleAudioPlaybackError(err));
+        );
       }
       this.setVoiceHud("replying", "Gemini replying", "Native Gemini Live audio is streaming.");
       return;
@@ -1191,6 +1193,13 @@ export class HometownHubMap extends HTMLElement {
     this.setVoiceHud("error", "Audio blocked", message.slice(0, 120));
   }
 
+  private enqueuePcmAudio(base64: string, mimeType: string): void {
+    this.audioQueue = this.audioQueue
+      .catch(() => undefined)
+      .then(() => this.playPcmAudio(base64, mimeType))
+      .catch((err) => this.handleAudioPlaybackError(err));
+  }
+
   private async playPcmAudio(base64: string, mimeType: string): Promise<void> {
     if (!this.audioEnabled) return;
     const sampleRate = this.parsePcmSampleRate(mimeType);
@@ -1226,7 +1235,7 @@ export class HometownHubMap extends HTMLElement {
     bufferSource.onended = () => {
       this.audioSources = this.audioSources.filter(s => s !== bufferSource);
     };
-    const startAt = Math.max(this.audioContext.currentTime, this.audioPlayTime);
+    const startAt = Math.max(this.audioContext.currentTime + 0.02, this.audioPlayTime);
     bufferSource.start(startAt);
     this.audioPlayTime = startAt + buffer.duration;
   }
