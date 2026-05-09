@@ -2373,6 +2373,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
     voice_output_text = ""
     voice_tool_calls: list[dict[str, Any]] = []
     voice_tool_result_texts: list[str] = []
+    voice_audio_sent = False
 
     async def send_voice_state(
         state: str,
@@ -2390,7 +2391,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
         await websocket.send_json(message)
 
     async def send_live_messages(session) -> None:
-        nonlocal voice_input_text, voice_output_text, voice_tool_calls, voice_tool_result_texts
+        nonlocal voice_input_text, voice_output_text, voice_tool_calls, voice_tool_result_texts, voice_audio_sent
         async for message in session.receive():
             if message.setup_complete:
                 await websocket.send_json({"type": "ready", "turn_id": voice_turn_id})
@@ -2429,6 +2430,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
                             data = part.inline_data.data
                             if isinstance(data, bytes):
                                 data = base64.b64encode(data).decode("ascii")
+                            voice_audio_sent = True
                             await websocket.send_json({
                                 "type": "audio",
                                 "data": data,
@@ -2437,12 +2439,24 @@ async def voice_websocket(websocket: WebSocket) -> None:
                             })
                 if content.turn_complete:
                     remembered_text = voice_output_text or " ".join(voice_tool_result_texts)
+                    fallback_text = (" ".join(voice_tool_result_texts) or voice_output_text).strip()
                     _remember_session_turn(
                         voice_session_id,
                         voice_input_text,
                         remembered_text,
                         voice_tool_calls,
                     )
+                    if audio_enabled_for_turn and fallback_text and not voice_audio_sent:
+                        await websocket.send_json({
+                            "type": "speech_fallback",
+                            "text": fallback_text,
+                            "turn_id": voice_turn_id,
+                        })
+                        await send_voice_state(
+                            "replying",
+                            "Gemini replying",
+                            "Using browser audio fallback because native Live audio was silent.",
+                        )
                     await websocket.send_json({
                         "type": "turn_complete",
                         "turn_id": voice_turn_id,
@@ -2550,6 +2564,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
                             voice_output_text = ""
                             voice_tool_calls = []
                             voice_tool_result_texts = []
+                            voice_audio_sent = False
                             await websocket.send_json({
                                 "type": "turn_started",
                                 "turn_id": voice_turn_id,
@@ -2581,6 +2596,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
                         voice_output_text = ""
                         voice_tool_calls = []
                         voice_tool_result_texts = []
+                        voice_audio_sent = False
                         await websocket.send_json({
                             "type": "turn_started",
                             "turn_id": voice_turn_id,
