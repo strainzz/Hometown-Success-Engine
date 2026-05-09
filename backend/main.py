@@ -1810,6 +1810,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
         project="hometown-success-engine",
         location=VOICE_LOCATION,
     )
+    audio_enabled_for_turn = True
 
     async def send_live_messages(session) -> None:
         async for message in session.receive():
@@ -1831,6 +1832,8 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 if content.model_turn and content.model_turn.parts:
                     for part in content.model_turn.parts:
                         if part.inline_data and part.inline_data.data:
+                            if not audio_enabled_for_turn:
+                                continue
                             data = part.inline_data.data
                             if isinstance(data, bytes):
                                 data = base64.b64encode(data).decode("ascii")
@@ -1868,23 +1871,24 @@ async def voice_websocket(websocket: WebSocket) -> None:
                         "text": tool_result_text,
                         "speak_fallback": False,
                     })
-                    try:
-                        audio_data, mime_type = await asyncio.to_thread(
-                            _synthesize_gemini_tts,
-                            tool_result_text,
-                        )
-                        await _send_voice_audio(
-                            websocket,
-                            audio_data,
-                            mime_type,
-                            "gemini_tts",
-                        )
-                    except Exception as tts_error:
-                        logger.warning(f"Gemini TTS fallback failed: {tts_error}")
-                        await websocket.send_json({
-                            "type": "speech_fallback",
-                            "text": _voice_speech_text(tool_result_text),
-                        })
+                    if audio_enabled_for_turn:
+                        try:
+                            audio_data, mime_type = await asyncio.to_thread(
+                                _synthesize_gemini_tts,
+                                tool_result_text,
+                            )
+                            await _send_voice_audio(
+                                websocket,
+                                audio_data,
+                                mime_type,
+                                "gemini_tts",
+                            )
+                        except Exception as tts_error:
+                            logger.warning(f"Gemini TTS fallback failed: {tts_error}")
+                            await websocket.send_json({
+                                "type": "speech_fallback",
+                                "text": _voice_speech_text(tool_result_text),
+                            })
                 if function_responses:
                     await session.send_tool_response(function_responses=function_responses)
 
@@ -1917,6 +1921,8 @@ async def voice_websocket(websocket: WebSocket) -> None:
                     payload = await websocket.receive_json()
                     message_type = payload.get("type")
                     if message_type == "text":
+                        if "audio_enabled" in payload:
+                            audio_enabled_for_turn = bool(payload.get("audio_enabled"))
                         text = str(payload.get("text") or "").strip()
                         if text:
                             await websocket.send_json({

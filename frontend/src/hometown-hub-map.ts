@@ -132,9 +132,11 @@ export class HometownHubMap extends HTMLElement {
   private voiceListening: boolean = false;
   private voiceAwaitingResponse: boolean = false;
   private recognition: any = null;
+  private audioEnabled: boolean = true;
   private audioContext: AudioContext | null = null;
   private audioPlayTime: number = 0;
   private audioChunkBuffers: Map<string, { mimeType: string; total: number; chunks: string[] }> = new Map();
+  private audioSources: AudioBufferSourceNode[] = [];
   private hoveredHubId: string | null = null;
   private selectedStateCode: string | null = null;
   private selectedStateName: string | null = null;
@@ -412,6 +414,61 @@ export class HometownHubMap extends HTMLElement {
     `;
   }
 
+  private setAudioButton(): void {
+    const btn = this.querySelector("#hubmap-audio-btn") as HTMLButtonElement;
+    if (!btn) return;
+    const iconColor = this.audioEnabled ? "#152969" : "#484645";
+    btn.setAttribute("aria-label", this.audioEnabled ? "Turn audio off" : "Turn audio on");
+    btn.setAttribute("title", this.audioEnabled ? "Audio on" : "Audio off");
+    btn.style.background = this.audioEnabled ? "#ffffff" : "#f8f7f5";
+    btn.style.borderColor = this.audioEnabled ? "#152969" : "#b9bfd2";
+    btn.style.opacity = this.audioEnabled ? "1" : "0.72";
+    btn.innerHTML = this.audioEnabled ? `
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+           stroke="${iconColor}" stroke-width="2.3"
+           stroke-linecap="round" stroke-linejoin="round"
+           aria-hidden="true">
+        <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+        <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+        <path d="M18.5 5.5a9 9 0 0 1 0 13" />
+      </svg>
+    ` : `
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+           stroke="${iconColor}" stroke-width="2.3"
+           stroke-linecap="round" stroke-linejoin="round"
+           aria-hidden="true">
+        <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+        <path d="M17 9 22 14" />
+        <path d="M22 9 17 14" />
+      </svg>
+    `;
+  }
+
+  private stopAudioPlayback(): void {
+    window.speechSynthesis?.cancel();
+    for (const source of this.audioSources) {
+      try {
+        source.stop();
+      } catch (err) {
+        // Source may already be stopped.
+      }
+    }
+    this.audioSources = [];
+    this.audioChunkBuffers.clear();
+    this.audioPlayTime = this.audioContext?.currentTime || 0;
+  }
+
+  private toggleAudioOutput(): void {
+    this.audioEnabled = !this.audioEnabled;
+    if (!this.audioEnabled) {
+      this.stopAudioPlayback();
+      this.setVoiceStatus("Audio off. Text and map actions still run.");
+    } else {
+      this.setVoiceStatus("Audio on.");
+    }
+    this.setAudioButton();
+  }
+
   private ensureVoiceSocket(): Promise<WebSocket> {
     if (this.voiceSocket && this.voiceSocket.readyState === WebSocket.OPEN) {
       return Promise.resolve(this.voiceSocket);
@@ -528,7 +585,11 @@ export class HometownHubMap extends HTMLElement {
 
     try {
       const socket = await this.ensureVoiceSocket();
-      socket.send(JSON.stringify({ type: "text", text: transcript }));
+      socket.send(JSON.stringify({
+        type: "text",
+        text: transcript,
+        audio_enabled: this.audioEnabled,
+      }));
       this.setVoiceStatus("Gemini Live is answering...");
     } catch (err) {
       this.setVoiceStatus("Using fallback voice through Gemini chat.");
@@ -580,6 +641,7 @@ export class HometownHubMap extends HTMLElement {
   }
 
   private speakText(text: string): void {
+    if (!this.audioEnabled) return;
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text.replace(/\s+/g, " ").trim());
@@ -589,6 +651,7 @@ export class HometownHubMap extends HTMLElement {
   }
 
   private async playPcmAudio(base64: string, mimeType: string): Promise<void> {
+    if (!this.audioEnabled) return;
     const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextCtor) return;
     if (!this.audioContext) {
@@ -616,6 +679,10 @@ export class HometownHubMap extends HTMLElement {
     const source = this.audioContext.createBufferSource();
     source.buffer = buffer;
     source.connect(this.audioContext.destination);
+    this.audioSources.push(source);
+    source.onended = () => {
+      this.audioSources = this.audioSources.filter(s => s !== source);
+    };
     const startAt = Math.max(this.audioContext.currentTime, this.audioPlayTime);
     source.start(startAt);
     this.audioPlayTime = startAt + buffer.duration;
@@ -660,6 +727,11 @@ export class HometownHubMap extends HTMLElement {
     const voiceBtn = this.querySelector("#hubmap-voice-btn");
     if (voiceBtn) {
       voiceBtn.addEventListener("click", () => this.toggleVoiceInput());
+    }
+    const audioBtn = this.querySelector("#hubmap-audio-btn");
+    if (audioBtn) {
+      audioBtn.addEventListener("click", () => this.toggleAudioOutput());
+      this.setAudioButton();
     }
 
     const form = this.querySelector("#hubmap-chat-form") as HTMLFormElement;
@@ -1449,6 +1521,25 @@ export class HometownHubMap extends HTMLElement {
                   <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
                   <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                   <path d="M12 19v3" />
+                </svg>
+              </button>
+              <button id="hubmap-audio-btn"
+                      type="button"
+                      aria-label="Turn audio off"
+                      title="Audio on"
+                      style="background: #ffffff; color: #152969;
+                         border: 1.5px solid #152969; border-radius: 50%;
+                         width: 36px; min-width: 36px; height: 36px;
+                         padding: 0; cursor: pointer;
+                         display: flex; align-items: center; justify-content: center;
+                         transition: background 140ms ease, border-color 140ms ease, opacity 140ms ease;">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                     stroke="#152969" stroke-width="2.3"
+                     stroke-linecap="round" stroke-linejoin="round"
+                     aria-hidden="true">
+                  <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+                  <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+                  <path d="M18.5 5.5a9 9 0 0 1 0 13" />
                 </svg>
               </button>
               <button type="submit"
