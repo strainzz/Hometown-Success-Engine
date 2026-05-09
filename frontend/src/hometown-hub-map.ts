@@ -1414,14 +1414,19 @@ export class HometownHubMap extends HTMLElement {
       ? stateHubs.reduce((max, h) => h.total_athletes > max.total_athletes ? h : max)
       : null;
 
-    const totalStatesCount = 52;
+    const rankUniverseCount = this.stateAggregates.length;
     let totalRank: string | number = "-";
-let paraRank: string | number = "-";
+    let paraRank: string | number = "-";
     if (agg) {
-      const sortedByTotal = [...this.stateAggregates].sort((a, b) => b.total_athletes - a.total_athletes);
+      const stateNameFor = (code: string): string =>
+        Object.keys(STATE_NAME_TO_CODE).find(k => STATE_NAME_TO_CODE[k] === code) || code;
+      const sortedByTotal = [...this.stateAggregates].sort((a, b) =>
+        (b.total_athletes - a.total_athletes) || stateNameFor(a.state).localeCompare(stateNameFor(b.state)));
       totalRank = sortedByTotal.findIndex(s => s.state === this.selectedStateCode) + 1;
       const sortedByPara = [...this.stateAggregates].sort((a, b) =>
-        (b.paralympic_count + b.both_count) - (a.paralympic_count + a.both_count));
+        ((b.paralympic_count + b.both_count) - (a.paralympic_count + a.both_count)) ||
+        (b.total_athletes - a.total_athletes) ||
+        stateNameFor(a.state).localeCompare(stateNameFor(b.state)));
       paraRank = sortedByPara.findIndex(s => s.state === this.selectedStateCode) + 1;
     }
 
@@ -1451,12 +1456,12 @@ let paraRank: string | number = "-";
         <div>
           <div style="font-size: 10px; color: #484645; text-transform: uppercase; letter-spacing: 0.8px;">Total Athletes</div>
           <div style="color: #152969; font-size: 20px; font-weight: 700; line-height: 1.1;">${totalAthletes}</div>
-          <div style="font-size: 11px; color: #484645; margin-top: 2px;">Rank <strong style="color: #152969;">#${totalRank}</strong> of ${totalStatesCount}</div>
+          <div style="font-size: 11px; color: #484645; margin-top: 2px;">Rank <strong style="color: #152969;">#${totalRank}</strong> of ${rankUniverseCount} states/territories</div>
           </div>
         <div>
           <div style="font-size: 10px; color: #d31118; text-transform: uppercase; letter-spacing: 0.8px;">Paralympic</div>
           <div style="color: #d31118; font-size: 20px; font-weight: 700; line-height: 1.1;">${paraTotal}</div>
-          <div style="font-size: 11px; color: #484645; margin-top: 2px;">Rank <strong style="color: #d31118;">#${paraRank}</strong> of ${totalStatesCount}</div>
+          <div style="font-size: 11px; color: #484645; margin-top: 2px;">Rank <strong style="color: #d31118;">#${paraRank}</strong> of ${rankUniverseCount} states/territories</div>
         </div>
         <div style="grid-column: span 2;">
           <div style="font-size: 10px; color: #484645; text-transform: uppercase; letter-spacing: 0.8px;">Paralympic Share</div>
