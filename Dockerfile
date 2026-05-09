@@ -13,6 +13,7 @@ COPY backend/ /app/
 COPY pipeline/clustered/hubs.json /app/pipeline/clustered/hubs.json
 COPY pipeline/clustered/athletes.json /app/pipeline/clustered/athletes.json
 COPY pipeline/narratives/hubs.json /app/pipeline/narratives/hubs.json
+COPY pipeline/geo/us-states.json /app/pipeline/geo/us-states.json
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8080
 EXPOSE 8080

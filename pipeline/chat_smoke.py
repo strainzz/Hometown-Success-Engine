@@ -48,12 +48,12 @@ CASES = [
     {
         "prompt": "What rank is Utah by total athletes?",
         "tool": "query_data",
-        "contains": ["Utah", "#28", "52"],
+        "contains": ["Utah", "#27", "52"],
     },
     {
         "prompt": "Compare California and Colorado",
         "tool": "query_data",
-        "contains": ["California", "Colorado", "758", "104"],
+        "contains": ["California", "Colorado", "788", "104", "#16"],
     },
     {
         "prompt": "Which hubs are strongest for skiing?",

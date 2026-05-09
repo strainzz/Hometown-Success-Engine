@@ -1285,10 +1285,14 @@ export class HometownHubMap extends HTMLElement {
       }));
     }
 
-    if (this.athletes.length > 0) {
+    const visibleAthletes = this.selectedStateCode
+      ? this.athletes.filter(a => a.state === this.selectedStateCode)
+      : this.athletes;
+
+    if (visibleAthletes.length > 0) {
       layers.push(new ScatterplotLayer({
         id: "athlete-constellation",
-        data: this.athletes,
+        data: visibleAthletes,
         getPosition: (a: AthleteGeoPoint) => [a.lon, a.lat],
         getRadius: 1500,
         radiusUnits: "meters",

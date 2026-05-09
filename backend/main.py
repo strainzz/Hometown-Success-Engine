@@ -126,10 +126,115 @@ STATE_NAME_TO_CODE = {
     _name.lower(): _code for _code, _name in STATE_CODE_TO_NAME.items()
 }
 
+STATE_GEOJSON_PATHS = [
+    Path(__file__).resolve().parents[1] / "pipeline" / "geo" / "us-states.json",
+    Path(__file__).resolve().parent / "pipeline" / "geo" / "us-states.json",
+    Path("/app") / "pipeline" / "geo" / "us-states.json",
+]
+_STATE_POLYGONS: list[tuple[str, dict[str, Any]]] | None = None
+
+
+def _load_state_polygons() -> list[tuple[str, dict[str, Any]]]:
+    """Load simplified state polygons used by the frontend map.
+
+    The previous state assignment used rectangular bounding boxes. That made
+    plotted constellation dots disagree with state modal counts around irregular
+    borders such as Idaho, Nevada, and Oregon. This classifier uses the same
+    GeoJSON family the frontend renders, then falls back to bounding boxes for
+    territories and simplified-island edge cases.
+    """
+    global _STATE_POLYGONS
+    if _STATE_POLYGONS is not None:
+        return _STATE_POLYGONS
+    geojson_path = next((path for path in STATE_GEOJSON_PATHS if path.exists()), None)
+    if geojson_path is None:
+        logger.warning(
+            "State GeoJSON not found in candidate paths "
+            f"{[str(path) for path in STATE_GEOJSON_PATHS]}; using bbox fallback only."
+        )
+        _STATE_POLYGONS = []
+        return _STATE_POLYGONS
+
+    with geojson_path.open("r", encoding="utf-8") as f:
+        geojson = json.load(f)
+
+    polygons: list[tuple[str, dict[str, Any]]] = []
+    for feature in geojson.get("features", []):
+        name = str(feature.get("properties", {}).get("name") or "").lower()
+        code = STATE_NAME_TO_CODE.get(name)
+        geometry = feature.get("geometry")
+        if code and geometry:
+            polygons.append((code, geometry))
+    _STATE_POLYGONS = polygons
+    return polygons
+
+
+def _point_on_segment(
+    lon: float,
+    lat: float,
+    a: list[float],
+    b: list[float],
+    eps: float = 1e-10,
+) -> bool:
+    ax, ay = float(a[0]), float(a[1])
+    bx, by = float(b[0]), float(b[1])
+    squared_len = (bx - ax) ** 2 + (by - ay) ** 2
+    if squared_len <= eps:
+        return abs(lon - ax) <= eps and abs(lat - ay) <= eps
+    cross = (lon - ax) * (by - ay) - (lat - ay) * (bx - ax)
+    if abs(cross) > eps:
+        return False
+    dot = (lon - ax) * (bx - ax) + (lat - ay) * (by - ay)
+    if dot < -eps:
+        return False
+    return dot <= squared_len + eps
+
+
+def _point_in_ring(lon: float, lat: float, ring: list[list[float]]) -> bool:
+    inside = False
+    if len(ring) < 3:
+        return False
+    j = len(ring) - 1
+    for i in range(len(ring)):
+        pi = ring[i]
+        pj = ring[j]
+        if _point_on_segment(lon, lat, pi, pj):
+            return True
+        xi, yi = float(pi[0]), float(pi[1])
+        xj, yj = float(pj[0]), float(pj[1])
+        intersects = (yi > lat) != (yj > lat)
+        if intersects:
+            x_at_lat = ((xj - xi) * (lat - yi) / ((yj - yi) or 1e-30)) + xi
+            if lon < x_at_lat:
+                inside = not inside
+        j = i
+    return inside
+
+
+def _point_in_polygon(lon: float, lat: float, polygon: list[list[list[float]]]) -> bool:
+    if not polygon or not _point_in_ring(lon, lat, polygon[0]):
+        return False
+    return not any(_point_in_ring(lon, lat, hole) for hole in polygon[1:])
+
+
+def _state_from_geojson(lat: float, lon: float) -> str | None:
+    for code, geometry in _load_state_polygons():
+        geom_type = geometry.get("type")
+        coordinates = geometry.get("coordinates") or []
+        polygons = [coordinates] if geom_type == "Polygon" else coordinates
+        for polygon in polygons:
+            if _point_in_polygon(lon, lat, polygon):
+                return code
+    return None
+
+
 def state_from_latlon(lat: float, lon: float) -> str:
     """Returns 2-letter US state/territory code for a given lat/lon.
     Returns 'XX' as a last-resort fallback only when coordinates are
     outside all known US bounding boxes."""
+    polygon_state = _state_from_geojson(lat, lon)
+    if polygon_state:
+        return polygon_state
     for lat_min, lat_max, lon_min, lon_max, code in STATE_BBOXES:
         if lat_min <= lat <= lat_max and lon_min <= lon <= lon_max:
             return code
