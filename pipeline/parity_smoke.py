@@ -1,5 +1,6 @@
 import hashlib
 import json
+import urllib.parse
 import urllib.request
 
 
@@ -9,7 +10,10 @@ PATHS = ["/health", "/hubs", "/athletes", "/states/aggregate"]
 
 
 def fetch_json(base: str, path: str):
-    with urllib.request.urlopen(base + path, timeout=60) as response:
+    url = base + path
+    if urllib.parse.urlparse(url).scheme not in {"http", "https"}:
+        raise ValueError(f"Unsupported URL scheme for smoke test: {url}")
+    with urllib.request.urlopen(url, timeout=60) as response:  # nosec B310
         return json.loads(response.read().decode("utf-8"))
 
 

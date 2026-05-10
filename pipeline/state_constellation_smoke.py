@@ -1,6 +1,7 @@
 import argparse
 import json
 import sys
+import urllib.parse
 import urllib.request
 from collections import defaultdict
 
@@ -10,7 +11,9 @@ DEFAULT_BASE = "http://127.0.0.1:8080"
 
 def fetch_json(base: str, path: str):
     url = f"{base.rstrip('/')}{path}"
-    with urllib.request.urlopen(url, timeout=30) as response:
+    if urllib.parse.urlparse(url).scheme not in {"http", "https"}:
+        raise ValueError(f"Unsupported URL scheme for constellation smoke test: {url}")
+    with urllib.request.urlopen(url, timeout=30) as response:  # nosec B310
         return json.loads(response.read().decode("utf-8"))
 
 

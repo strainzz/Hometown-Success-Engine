@@ -36,7 +36,14 @@ pipeline/raw_data/
 pipeline/cache/
 pipeline/geocoded/
 pipeline/normalized/
+backend/pipeline_data/
 pipeline/compliance/
+pipeline/clustered/athletes.json
+
+# Local backups/artifacts
+.playwright-cli/
+frontend/src/hometown-hub-map.ts.broken
+frontend/vite-*.log
 
 # Already-committed Dockerfile and supporting
 backend/Dockerfile

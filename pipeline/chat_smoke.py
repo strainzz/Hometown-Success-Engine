@@ -1,6 +1,7 @@
 import argparse
 import json
 import sys
+import urllib.parse
 import urllib.request
 
 
@@ -203,14 +204,17 @@ CASES = [
 
 
 def post_chat(base: str, prompt: str) -> dict:
+    url = base.rstrip("/") + "/chat"
+    if urllib.parse.urlparse(url).scheme not in {"http", "https"}:
+        raise ValueError(f"Unsupported URL scheme for chat smoke test: {url}")
     body = json.dumps({"message": prompt, "history": []}).encode("utf-8")
     req = urllib.request.Request(
-        base.rstrip("/") + "/chat",
+        url,
         data=body,
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=60) as response:
+    with urllib.request.urlopen(req, timeout=60) as response:  # nosec B310
         return json.loads(response.read().decode("utf-8"))
 
 

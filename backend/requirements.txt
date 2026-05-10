@@ -5,5 +5,5 @@ gunicorn==23.0.0
 google-genai==1.74.0
 google-cloud-firestore==2.19.0
 google-cloud-bigquery==3.27.0
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 slowapi==0.1.9

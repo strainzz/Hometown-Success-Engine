@@ -11,7 +11,8 @@ WORKDIR /app
 COPY --from=builder /install /usr/local
 COPY backend/ /app/
 COPY pipeline/clustered/hubs.json /app/pipeline/clustered/hubs.json
-COPY pipeline/clustered/athletes.json /app/pipeline/clustered/athletes.json
+COPY pipeline/clustered/athletes_public.json /app/pipeline/clustered/athletes_public.json
+COPY pipeline/clustered/hometowns_public.json /app/pipeline/clustered/hometowns_public.json
 COPY pipeline/narratives/hubs.json /app/pipeline/narratives/hubs.json
 COPY pipeline/geo/us-states.json /app/pipeline/geo/us-states.json
 ENV PYTHONUNBUFFERED=1

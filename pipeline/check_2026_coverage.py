@@ -47,7 +47,8 @@ for label, clause in QUERIES.items():
     url = f"{ENDPOINT}?{urllib.parse.urlencode({'query': q})}"
     req = urllib.request.Request(url, headers=HEADERS)
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
+        # Fixed HTTPS Wikidata endpoint.
+        with urllib.request.urlopen(req, timeout=30) as r:  # nosec B310
             data = json.loads(r.read())
         b = data["results"]["bindings"]
         count = b[0]["count"]["value"] if b else "0"

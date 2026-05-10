@@ -225,6 +225,7 @@ firebase deploy --only hosting --project YOUR_FIREBASE_PROJECT_ID
 
 - No athlete names, images, or likenesses appear in the public UI.
 - Public responses use aggregate hometown hub data.
+- Runtime deployment uses sanitized public data files: anonymous in-scope athlete map points and aggregate hometown counts with no athlete names or birth dates.
 - Olympic and Paralympic athletes are both represented throughout the product.
 - Geography is framed conditionally. The tool identifies places that could help find or may foster Team USA talent; it does not claim that geography produces athletes.
 - Public map scope is limited to the continental U.S., Alaska, Hawaii, Washington, D.C., and Puerto Rico.

@@ -1330,6 +1330,55 @@ def _build_hometown_index(raw_athletes: list[dict[str, Any]]) -> tuple[list[dict
     return hometowns, by_key, by_name
 
 
+def _index_hometown_aggregates(hometowns: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]], dict[str, list[dict[str, Any]]]]:
+    normalized: list[dict[str, Any]] = []
+    by_key: dict[str, dict[str, Any]] = {}
+    by_name: dict[str, list[dict[str, Any]]] = defaultdict(list)
+
+    for item in hometowns:
+        label = str(item.get("hometown") or "").strip()
+        state_code = str(item.get("state") or "").strip().upper()
+        if not label or not _is_public_state_code(state_code):
+            continue
+        sports = item.get("sports") or {}
+        if isinstance(sports, dict):
+            top_sports = [
+                {"sport": _display_sport(sport), "count": int(count)}
+                for sport, count in sorted(sports.items(), key=lambda pair: (-int(pair[1]), str(pair[0])))[:5]
+            ]
+        else:
+            top_sports = item.get("top_sports") or []
+        hub_id = str(item.get("hub_id") or "")
+        hub = _state["hubs_by_id"].get(hub_id)
+        total = int(item.get("total_athletes") or 0)
+        para_total = int(item.get("paralympic_count") or 0) + int(item.get("both_count") or 0)
+        normalized_item = {
+            "hometown": label,
+            "state": state_code,
+            "lat": item.get("lat"),
+            "lon": item.get("lon"),
+            "total_athletes": total,
+            "olympic_count": int(item.get("olympic_count") or 0),
+            "paralympic_count": int(item.get("paralympic_count") or 0),
+            "both_count": int(item.get("both_count") or 0),
+            "paralympic_share": para_total / total if total else 0.0,
+            "top_sports": top_sports,
+            "sports": sports if isinstance(sports, dict) else {},
+            "hub_id": hub_id,
+            "hub_name": hub.display_name if hub else str(item.get("hub_name") or hub_id),
+            "distance_to_hub_km": item.get("distance_to_hub_km"),
+        }
+        key = _hometown_key(label, state_code)
+        normalized.append(normalized_item)
+        by_key[key] = normalized_item
+        by_name[_ascii_search_text(label)].append(normalized_item)
+
+    normalized.sort(key=lambda row: (-row["total_athletes"], row["hometown"], row["state"]))
+    for matches in by_name.values():
+        matches.sort(key=lambda row: (-row["total_athletes"], row["state"], row["hometown"]))
+    return normalized, by_key, by_name
+
+
 def _extract_state_from_text(value: str) -> tuple[str, str]:
     text = value or ""
     found_code = ""
@@ -2140,15 +2189,20 @@ def _load_data() -> None:
     hubs_path = None
     narratives_path = None
     athletes_path = None
+    hometowns_path = None
 
     for root in candidate_roots:
         candidate_hubs = root / "pipeline" / "clustered" / "hubs.json"
         candidate_narratives = root / "pipeline" / "narratives" / "hubs.json"
-        candidate_athletes = root / "pipeline" / "clustered" / "athletes.json"
+        candidate_athletes = root / "pipeline" / "clustered" / "athletes_public.json"
+        candidate_hometowns = root / "pipeline" / "clustered" / "hometowns_public.json"
+        if not candidate_athletes.exists():
+            candidate_athletes = root / "pipeline" / "clustered" / "athletes.json"
         if candidate_hubs.exists() and candidate_narratives.exists() and candidate_athletes.exists():
             hubs_path = candidate_hubs
             narratives_path = candidate_narratives
             athletes_path = candidate_athletes
+            hometowns_path = candidate_hometowns if candidate_hometowns.exists() else None
             logger.info(f"Loading data from: {root}")
             break
 
@@ -2157,7 +2211,8 @@ def _load_data() -> None:
         tried = [str(r) for r in candidate_roots]
         raise RuntimeError(
             f"Data files not found in any candidate location: {tried}. "
-            f"Looked for pipeline/clustered/hubs.json, pipeline/narratives/hubs.json, pipeline/clustered/athletes.json."
+            f"Looked for pipeline/clustered/hubs.json, pipeline/narratives/hubs.json, "
+            f"and pipeline/clustered/athletes_public.json or athletes.json."
         )
     if not hubs_path.exists():
         raise RuntimeError(f"Hubs file not found: {hubs_path}")
@@ -2185,8 +2240,13 @@ def _load_data() -> None:
 
     with athletes_path.open("r", encoding="utf-8") as f:
         raw_athletes = json.load(f)
+    raw_hometowns = None
+    if hometowns_path and hometowns_path.exists():
+        with hometowns_path.open("r", encoding="utf-8") as f:
+            raw_hometowns = json.load(f)
     
     athletes_geo_points = []
+    public_hometown_athletes = []
     state_counts = defaultdict(lambda: {"olympic": 0, "paralympic": 0, "both": 0})
     state_sports: dict[str, Counter] = defaultdict(Counter)
 
@@ -2201,22 +2261,24 @@ def _load_data() -> None:
             st = state_from_latlon(parsed_lat, parsed_lon)
             status = a.get("status")
 
-            athletes_geo_points.append(
-                AthleteGeoPoint(
-                    hub_id=a.get("hub_id", "UNKNOWN"),
-                    lat=round(parsed_lat, 4),
-                    lon=round(parsed_lon, 4),
-                    status=status,
-                    state=st
+            if _is_public_state_code(st):
+                athletes_geo_points.append(
+                    AthleteGeoPoint(
+                        hub_id=a.get("hub_id", "UNKNOWN"),
+                        lat=round(parsed_lat, 4),
+                        lon=round(parsed_lon, 4),
+                        status=status,
+                        state=st
+                    )
                 )
-            )
+                if raw_hometowns is None:
+                    public_hometown_athletes.append(a)
 
-            if st != "XX" and status in ("olympic", "paralympic", "both"):
+            if _is_public_state_code(st) and status in ("olympic", "paralympic", "both"):
                 state_counts[st][status] += 1
-                if _is_public_state_code(st):
-                    for sport in a.get("sports") or []:
-                        if sport:
-                            state_sports[st][str(sport)] += 1
+                for sport in a.get("sports") or []:
+                    if sport:
+                        state_sports[st][str(sport)] += 1
 
     state_aggregates = []
     for st, counts in state_counts.items():
@@ -2246,8 +2308,19 @@ def _load_data() -> None:
     _state["narratives"] = narratives
     _state["athletes_geo_points"] = athletes_geo_points
     _state["state_aggregates"] = state_aggregates
+    if raw_hometowns is not None:
+        for hometown in raw_hometowns:
+            state_code = str(hometown.get("state") or "").upper()
+            if not _is_public_state_code(state_code):
+                continue
+            for sport, count in (hometown.get("sports") or {}).items():
+                if sport:
+                    state_sports[state_code][str(sport)] += int(count)
     _state["state_sports"] = state_sports
-    hometowns, hometowns_by_key, hometowns_by_name = _build_hometown_index(raw_athletes)
+    if raw_hometowns is not None:
+        hometowns, hometowns_by_key, hometowns_by_name = _index_hometown_aggregates(raw_hometowns)
+    else:
+        hometowns, hometowns_by_key, hometowns_by_name = _build_hometown_index(public_hometown_athletes)
     _state["hometowns"] = hometowns
     _state["hometowns_by_key"] = hometowns_by_key
     _state["hometowns_by_name"] = hometowns_by_name
@@ -2293,7 +2366,8 @@ def health_check() -> dict:
         "status": "ok",
         "hubs_loaded": len(_state["hubs"]),
         "narratives_loaded": len(_state["narratives"]),
-        "athletes_loaded": len(_state["athletes_geo_points"]),
+        "athletes_loaded": sum(h.total_athletes for h in _state["hubs"]),
+        "public_athlete_points_loaded": len(_state["athletes_geo_points"]),
         "states_with_athletes": len(_state["state_aggregates"]),
     }
 
@@ -3861,5 +3935,5 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 "type": "error",
                 "message": str(e)[:200],
             })
-        except Exception:
-            pass
+        except Exception as send_error:
+            logger.debug(f"Unable to send voice WebSocket error response: {send_error}")

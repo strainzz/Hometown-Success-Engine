@@ -42,7 +42,8 @@ def fetch_one(lat: float, lon: float) -> dict:
     }
     url = f"{BASE_URL}?{urllib.parse.urlencode(params)}"
 
-    with urllib.request.urlopen(url, timeout=30) as r:
+    # Fixed HTTPS Open-Meteo endpoint.
+    with urllib.request.urlopen(url, timeout=30) as r:  # nosec B310
         data = json.loads(r.read())
 
     daily = data.get("daily", {})

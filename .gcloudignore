@@ -20,6 +20,9 @@ frontend/node_modules/
 .git/
 .vscode/
 .idea/
+.firebaserc
+.firebase/
+.playwright-cli/
 
 # OS
 .DS_Store
@@ -40,5 +43,12 @@ pipeline/raw_data/
 pipeline/cache/
 pipeline/geocoded/
 pipeline/normalized/
+pipeline/compliance/
+backend/pipeline_data/
+pipeline/clustered/athletes.json
 
-# DO NOT exclude pipeline/clustered/athletes.json — needed by Dockerfile
+# Local backups/artifacts
+frontend/src/hometown-hub-map.ts.broken
+frontend/vite-*.log
+
+# pipeline/clustered/athletes_public.json is the sanitized deploy/runtime file.

@@ -3,8 +3,8 @@ google-cloud-firestore==2.19.0
 google-cloud-storage==2.18.0
 google-genai==1.74.0
 pandas==2.2.0
-requests==2.32.0
-python-dotenv==1.0.1
+requests==2.33.0
+python-dotenv==1.2.2
 httpx>=0.28.1
 scikit-learn>=1.5.0
 websockets>=16.0
