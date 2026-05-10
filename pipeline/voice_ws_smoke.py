@@ -51,6 +51,16 @@ async def run_case(base: str) -> bool:
             "contains": ["Arizona"],
         },
         {
+            "prompt": "Show me the number 24 ranked state.",
+            "expected_tools": ["select_state"],
+            "contains": ["Maryland", "number 24"],
+        },
+        {
+            "prompt": "Show me the state right in the middle of the rankings.",
+            "expected_tools": ["select_state"],
+            "contains": ["Oklahoma", "number 26"],
+        },
+        {
             "prompt": "Is geography producing athletes?",
             "expected_tools": ["explain_engine"],
             "contains": ["does not produce athletes"],

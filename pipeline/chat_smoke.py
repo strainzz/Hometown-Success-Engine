@@ -108,6 +108,18 @@ CASES = [
         "tool_args": {"state_code": "ND"},
     },
     {
+        "prompt": "Show me the number 24 ranked state.",
+        "tool": "select_state",
+        "contains": ["Maryland", "#24", "59 athletes"],
+        "tool_args": {"state_code": "MD"},
+    },
+    {
+        "prompt": "Show me the state right in the middle of the rankings.",
+        "tool": "select_state",
+        "contains": ["Oklahoma", "#26", "56 athletes"],
+        "tool_args": {"state_code": "OK"},
+    },
+    {
         "prompt": "Which hub has the fewest athletes?",
         "tool": "select_hub",
         "contains": ["Rochester Region, NY", "26 athletes total"],

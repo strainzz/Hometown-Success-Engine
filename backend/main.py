@@ -656,6 +656,7 @@ Help users explore the map and understand the data. Call tools to move the map o
 # TOOL RULES
 - If the user asks for the top, highest, leading, best, or number-one Paralympic Hot Spot, select the top Hot Spot hub so the map moves to it.
 - If the user asks which state leads, has the most, or has the least/fewest/lowest of a metric, select that state so the map moves to it.
+- If the user asks for a specific rank position, middle, median, midpoint, center, or halfway point of rankings, select that state or hub so the map moves to it.
 - If the user asks to show, highlight, filter, or view Paralympic Hot Spots, call filter_to_paralympic.
 - If the user asks to reset, clear, start over, or go back to the national view, call reset_view.
 - If the user asks what the dots, circles, colors, legend, state shading, Alaska/Hawaii/Puerto Rico insets, or Hot Spots mean, call explain_map.
@@ -1047,6 +1048,70 @@ def _ranked_states(metric: str, min_athletes: int | None = None) -> list[StateAg
             _state_name(s.state),
         ),
     )
+
+
+def _middle_ranked_hub(metric: str, sport: str | None = None) -> Hub | None:
+    ranked = _ranked_hubs(metric, sport)
+    if not ranked:
+        return None
+    return ranked[(len(ranked) - 1) // 2]
+
+
+def _middle_ranked_state(metric: str, min_athletes: int | None = None) -> StateAggregate | None:
+    ranked = _ranked_states(metric, min_athletes)
+    if not ranked:
+        return None
+    return ranked[(len(ranked) - 1) // 2]
+
+
+def _ranked_hub_at_position(
+    rank_position: int,
+    metric: str,
+    sport: str | None = None,
+) -> Hub | None:
+    ranked = _ranked_hubs(metric, sport)
+    if rank_position < 1 or rank_position > len(ranked):
+        return None
+    return ranked[rank_position - 1]
+
+
+def _ranked_state_at_position(
+    rank_position: int,
+    metric: str,
+    min_athletes: int | None = None,
+) -> StateAggregate | None:
+    ranked = _ranked_states(metric, min_athletes)
+    if rank_position < 1 or rank_position > len(ranked):
+        return None
+    return ranked[rank_position - 1]
+
+
+def _is_middle_rank_request(message: str) -> bool:
+    msg = _normal_search_text(message)
+    middle_terms = ["middle", "median", "midpoint", "center", "centre", "halfway"]
+    rank_terms = ["rank", "ranking", "rankings", "ranked", "list"]
+    return any(term in msg for term in middle_terms) and any(term in msg for term in rank_terms)
+
+
+def _extract_rank_position_request(message: str) -> int | None:
+    msg = message or ""
+    lowered = _normal_search_text(msg)
+    rank_terms = ["rank", "ranking", "rankings", "ranked", "number", "num", "#"]
+    if not any(term in lowered for term in rank_terms):
+        return None
+    patterns = [
+        r"(?:rank(?:ed|ing)?|number|num|#)\s*#?\s*(\d{1,3})(?:st|nd|rd|th)?",
+        r"#\s*(\d{1,3})(?:st|nd|rd|th)?",
+        r"\b(\d{1,3})(?:st|nd|rd|th)\s+(?:ranked\s+)?(?:state|hub|rank)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, msg, flags=re.IGNORECASE)
+        if match:
+            try:
+                return int(match.group(1))
+            except ValueError:
+                return None
+    return None
 
 
 def _ranked_states_by_sport(sport: str | None, limit: int = 5) -> list[tuple[StateAggregate, int]]:
@@ -1729,6 +1794,33 @@ def _direct_query_tool_call(message: str) -> ChatToolCall | None:
         top_hot_spot = _top_paralympic_hot_spot()
         if top_hot_spot:
             return ChatToolCall(name="select_hub", args={"hub_id": top_hot_spot.hub_id})
+
+    rank_position = _extract_rank_position_request(message)
+    if rank_position is not None:
+        if "state" in msg or "states" in msg:
+            ranked_state = _ranked_state_at_position(rank_position, metric)
+            if ranked_state:
+                return ChatToolCall(name="select_state", args={"state_code": ranked_state.state})
+        if "hub" in msg or "hubs" in msg:
+            ranked_hub = _ranked_hub_at_position(
+                rank_position,
+                metric,
+                _extract_sport(message) if metric == "sport_count" else None,
+            )
+            if ranked_hub:
+                return ChatToolCall(name="select_hub", args={"hub_id": ranked_hub.hub_id})
+
+    if _is_middle_rank_request(message):
+        if "state" in msg or "states" in msg:
+            middle_state = _middle_ranked_state(metric)
+            if middle_state:
+                return ChatToolCall(name="select_state", args={"state_code": middle_state.state})
+        middle_hub = _middle_ranked_hub(
+            metric,
+            _extract_sport(message) if metric == "sport_count" else None,
+        )
+        if middle_hub:
+            return ChatToolCall(name="select_hub", args={"hub_id": middle_hub.hub_id})
 
     if "above" in msg and "baseline" in msg:
         hubs = [
@@ -3087,9 +3179,12 @@ def _build_voice_spoken_summary(tool_name: str, args: dict[str, Any], full_resul
         agg = next((s for s in _state["state_aggregates"] if s.state == code), None)
         if not agg:
             return f"{_state_name(code)} is selected. It has no mapped athletes in the current dataset."
+        total_rank, total_universe, _ = _state_rank(code, "total_athletes")
+        rank_text = f" Total athlete rank: number {total_rank} of {total_universe}." if total_rank else ""
         return (
             f"I'm opening {_state_name(code)}. It has {agg.total_athletes} mapped athletes, "
             f"{_state_para_count(agg)} Paralympians, and {agg.paralympic_share * 100:.1f}% Paralympic share."
+            f"{rank_text}"
         )
 
     if tool_name == "reset_view":
