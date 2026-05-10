@@ -1,18 +1,48 @@
 # Hometown Success Engine
 
-> An interactive map of Team USA hometown hubs, built for the Google Cloud x Team USA Challenge.
+> A Gemini-powered Team USA hometown intelligence map for the Google Cloud x Team USA Challenge.
 
-**Live:** [hometown-success-engine-11a06.web.app](https://hometown-success-engine-11a06.web.app/)
+**Live app:** [hometown-success-engine-11a06.web.app](https://hometown-success-engine-11a06.web.app/)
 
-**Demo Video:** Coming soon
+**Demo video:** Coming soon
 
 **Built for:** [Google Cloud x Team USA Challenge, Vibe Code for Gold Challenge 2](https://vibecodeforgoldwithgoogle.devpost.com/)
 
-## What It Is
+## Overview
 
-The Hometown Success Engine maps **5,119 Olympians and Paralympians** from Tokyo 2020 through Milan-Cortina 2026 across **40 Team USA hometown hubs** in the continental U.S., Alaska, Hawaii, Washington, D.C., and Puerto Rico. The project focuses on where mapped athletes are from, using hometown hub counts rather than medal counts so the experience is inclusive of all mapped athletes.
+The Hometown Success Engine maps **5,119 Olympians and Paralympians** from Tokyo 2020 through Milan-Cortina 2026 across **40 Team USA hometown hubs** in the continental U.S., Alaska, Hawaii, Washington, D.C., and Puerto Rico.
 
-Ten hubs are flagged as **Paralympic Hot Spots**, meaning their Paralympic share is **7.5% or higher**. The current national Paralympic baseline is **4.7%**:
+Instead of ranking places by medals, the engine focuses on where mapped athletes are from. That makes the tool more inclusive of all Olympians and Paralympians while giving analysts, judges, and Team USA stakeholders a way to explore how hometown geography, sport mix, climate, and regional context are associated with athlete development.
+
+The product does not claim that geography guarantees outcomes or produces athletes. It uses conditional language throughout: regions **could help find**, **may foster**, **may explain**, or **are associated with** patterns in the mapped hometown data.
+
+## Why It Matters
+
+Challenge 2 asks for a tool that identifies hometown "Hubs" by correlating geography with the sports Team USA is present in, using the number of Olympians and Paralympians from hometown regions instead of medal counts.
+
+This project answers that brief with:
+
+- A national hometown hub map built around aggregate athlete counts, not medals.
+- Paralympic Hot Spot detection using a clear, deterministic threshold.
+- Sport, state, region, and hometown analysis connected directly to the map.
+- Gemini text and native voice interaction that can explain the data, move the map, rank places, and answer judge-style questions.
+- Conditional, association-based language that avoids implying geography guarantees athletic success.
+
+## Public Dataset Snapshot
+
+| Metric | Value |
+|---|---:|
+| Mapped Olympians and Paralympians | 5,119 |
+| Hometown hubs | 40 |
+| In-scope state regions | 52 |
+| Paralympic Hot Spots | 10 |
+| National Paralympic baseline | 4.7% |
+| Hot Spot threshold | 7.5% |
+| Public data range | Tokyo 2020 through Milan-Cortina 2026 |
+
+## Paralympic Hot Spots
+
+A **Paralympic Hot Spot** is any hometown hub where the Paralympic share is **7.5% or higher**. The current national Paralympic baseline is **4.7%**.
 
 | Hub | Paralympic Share | Athletes |
 |---|---:|---:|
@@ -27,7 +57,32 @@ Ten hubs are flagged as **Paralympic Hot Spots**, meaning their Paralympic share
 | Portland Region, OR | 7.7% | 65 |
 | Allegan Region, MI | 7.7% | 39 |
 
-The map is interactive: users can select a hub, inspect hub profiles, view climate and geographic context, filter Paralympic Hot Spots, explore state summaries, ask hometown questions, compare regions, and ask Gemini to drive the map directly.
+## Core Experience
+
+- Explore 40 hometown hubs on a Google Maps and deck.gl interface.
+- Toggle Paralympic Hot Spots and compare them against the 4.7% national baseline.
+- Inspect hub profiles with athlete totals, Olympic and Paralympic split, ranks, top sports, climate, and geographic context.
+- Click states to view aggregate counts, ranks, Paralympic share, and top hub context.
+- Ask exact hometown questions such as "How many athletes are from Boise, Idaho?"
+- Ask ranking questions such as "What state has the highest Paralympic share?" or "Show me the number 24 ranked state."
+- Ask sport questions such as "Which hubs are strongest for skiing?" or "Which states are strongest for winter sports?"
+- Use Gemini text or Gemini Live voice to move the map, explain the data, and answer analysis questions.
+
+## Judge Demo Prompts
+
+These prompts are designed to show the map, data, and Gemini tool layer working together:
+
+- "What do the dots mean?"
+- "Why does this matter for Team USA?"
+- "Show the top Paralympic Hot Spot."
+- "Show places above the national baseline."
+- "Tell me about Vail."
+- "How many athletes are from Boise, Idaho?"
+- "What state has the highest Paralympic share?"
+- "Show me the number 24 ranked state."
+- "Which hubs are strongest for skiing?"
+- "Compare California and Colorado."
+- "Reset the map and then show Arizona."
 
 ## How It Works
 
@@ -35,8 +90,8 @@ The map is interactive: users can select a hub, inspect hub profiles, view clima
 Firebase Hosting
   Vite + TypeScript Web Component
   Google Maps vector map
-  deck.gl state, hub, and athlete layers
-  Ask Gemini map, data, and voice panel
+  deck.gl state, hub, and hometown point layers
+  Gemini text, map control, and voice panel
         |
         v
 FastAPI on Cloud Run
@@ -53,21 +108,22 @@ Vertex AI Gemini
   grounded tool-result narration
 ```
 
-**Data pipeline:** Ingest public roster facts, normalize hometown data, geocode places, group hometowns into hubs, compute hub composition, flag Paralympic Hot Spots, fetch climate context, and generate hub profiles.
+**Data pipeline:** Ingest public roster facts, normalize hometown data, geocode places, group hometowns into hubs, compute hub and state aggregates, flag Paralympic Hot Spots, fetch climate context, and generate hub narratives.
 
-**Backend:** Serves hub data, profiles, athlete geo points, state aggregates, and the Gemini interaction layer from FastAPI on Cloud Run.
+**Backend:** FastAPI on Cloud Run serves hub data, public athlete map points, aggregate hometown data, state summaries, profiles, chat, and Gemini Live voice.
 
-**Frontend:** A vanilla TypeScript Web Component renders the Google Maps + deck.gl experience and dispatches Gemini tool calls into map actions.
+**Frontend:** A Vite and TypeScript Web Component renders the Google Maps and deck.gl interface, then dispatches Gemini tool calls into map actions.
 
 ## Gemini Interaction Layer
 
-The chat panel is not a chatbot bolted onto a map. It is a data and navigation layer that uses Gemini Function Calling to connect plain-language questions to the live map model. Voice mode streams microphone audio to Gemini Live through the Cloud Run backend, so spoken questions can move the map and Gemini replies with grounded native audio.
+Gemini is wired as an interaction layer for the map, not a separate chatbot. Typed chat and Gemini Live voice share the same schema, deterministic routing, result builder, and safety rules.
 
 Gemini receives:
 
-1. A system instruction with the current 5,119-athlete, 40-hub, 10-Hot-Spot dataset summary.
-2. The current hub lookup table, Hot Spot list, in-scope state regions, ranking rules, sport aliases, hometown lookup index, and allowed tools.
-3. The conversation history and latest user message.
+1. Current dataset constants: 5,119 mapped athletes, 40 hubs, 10 Hot Spots, 4.7% baseline, 7.5% threshold, and 52 in-scope state regions.
+2. Hub, state, sport, ranking, Hot Spot, and hometown lookup context.
+3. Allowed tool definitions for map movement, data queries, explanations, comparisons, and hometown focus.
+4. Recent session context so follow-up questions can refer to the last hub, state, or hometown.
 
 Gemini can call these tools:
 
@@ -84,23 +140,22 @@ Gemini can call these tools:
 | `highlight_hubs(hub_ids, label, reason)` | Highlight multiple hubs for list-style map questions |
 | `query_data(...)` | Answer rankings, comparisons, profiles, totals, sport, region, and Hot Spot questions |
 
-The data tool supports:
+Supported interaction types include:
 
-- Summary questions: "How many athletes and hubs?"
-- Hub rankings: "Rank hubs by Paralympic share."
-- State rankings: "What rank is Utah by total athletes?"
-- Exact ranking positions: "Show me the number 24 ranked state."
-- Middle ranking questions: "Show me the state right in the middle of the rankings."
-- Profiles: "Tell me about Vail."
-- Comparisons: "Compare California and Colorado."
-- Sport questions: "Which hubs are strongest for skiing?"
-- Regional questions: "Show Mountain West hubs."
-- Hometown questions: "How many athletes are from Boise, Idaho?"
-- Map literacy questions: "What do the dots mean?"
+- Dataset summaries
+- Hub and state rankings
+- Exact rank lookups
+- Middle-of-ranking requests
+- Hub, state, and hometown profiles
+- Region filters
+- Sport group rankings
+- Hub and state comparisons
+- Map literacy explanations
+- Project, methodology, source, scope, and challenge-fit explanations
 
-Tool results are generated from runtime data before Gemini explains them, so answers include grounded counts, ranks, percentages, top sports, Hot Spot status, climate, and geographic context. The system avoids individual athlete names and avoids any claim that geography guarantees outcomes, using conditional phrasing such as "could help find," "may foster," and "is associated with."
+Tool results are computed from runtime data before Gemini explains them. This keeps responses grounded in exact counts, ranks, percentages, top sports, Hot Spot status, climate, and geographic context.
 
-Voice interaction uses Gemini Live native audio with the same tool schema. The frontend streams 16kHz PCM microphone chunks to `/voice/ws`, the backend handles Live API function calls, and the chat HUD shows listening, map-tool, speaking, interrupted, and error states for judge demos. Voice turns render compact **Map readout** cards so deterministic tool facts stay visually separate from Gemini's spoken audio.
+Voice mode uses Gemini Live native audio through `/voice/ws`. The frontend streams microphone audio to Cloud Run, the backend handles Gemini Live function calls, and the UI shows compact **Map readout** cards so deterministic data remains visually separate from Gemini's spoken response.
 
 ## Tech Stack
 
@@ -125,16 +180,17 @@ Voice interaction uses Gemini Live native audio with the same tool schema. The f
 - Python 3.12
 - FastAPI and Pydantic
 - google-genai SDK
-- HDBSCAN-based hometown hub grouping
-- Open-Meteo climate normals
+- HDBSCAN-style hometown hub grouping
+- Open-Meteo climate context
 
 ## Prerequisites
 
 - Python 3.12
 - Node.js 20 or newer
-- Google Cloud CLI and Firebase CLI
+- Google Cloud CLI
+- Firebase CLI
 - A Google Cloud project with Vertex AI, Cloud Run, Firebase Hosting, and Maps JavaScript API enabled
-- Local Google Cloud credentials, either through `gcloud auth application-default login` or a service account path in `GOOGLE_APPLICATION_CREDENTIALS`
+- Local Google Cloud credentials through `gcloud auth application-default login` or a service account path in `GOOGLE_APPLICATION_CREDENTIALS`
 
 ## Run Locally
 
@@ -148,7 +204,9 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-Create local environment variables. Use your own project, Maps key, and map ID values. See `.env.example` for the expected variable names. Do not commit local `.env` files, service account files, API keys, or generated credentials.
+Create local environment variables using your own Google Cloud project, Maps API key, and map ID. See `.env.example` for expected names.
+
+Do not commit local `.env` files, service account files, API keys, generated credentials, or raw athlete-level data.
 
 ### Backend
 
@@ -159,6 +217,8 @@ $env:GEMINI_LIVE_MODEL="gemini-live-2.5-flash-native-audio"
 $env:GEMINI_VOICE_NAME="Kore"
 python -m uvicorn backend.main:app --host 127.0.0.1 --port 8080 --reload
 ```
+
+The backend should be available at [http://127.0.0.1:8080](http://127.0.0.1:8080).
 
 ### Frontend
 
@@ -177,11 +237,25 @@ Open [http://localhost:5173](http://localhost:5173).
 
 ## Verification
 
+Local checks:
+
 ```powershell
+python -m py_compile backend\main.py pipeline\chat_smoke.py pipeline\voice_ws_smoke.py pipeline\state_constellation_smoke.py
 python pipeline\parity_smoke.py
-python pipeline\chat_smoke.py
+python pipeline\chat_smoke.py --base http://127.0.0.1:8080
+python pipeline\voice_ws_smoke.py --base http://127.0.0.1:8080
+python pipeline\state_constellation_smoke.py --base http://127.0.0.1:8080
 cd frontend
 npm run build
+```
+
+Live checks:
+
+```powershell
+python pipeline\parity_smoke.py
+python pipeline\chat_smoke.py --base https://hometown-success-engine-74530725032.us-central1.run.app
+python pipeline\voice_ws_smoke.py --base https://hometown-success-engine-74530725032.us-central1.run.app
+python pipeline\state_constellation_smoke.py --base https://hometown-success-engine-74530725032.us-central1.run.app
 ```
 
 Expected public values:
@@ -189,17 +263,9 @@ Expected public values:
 - 5,119 mapped Olympians and Paralympians
 - 40 Team USA hometown hubs
 - 10 Paralympic Hot Spots
-- 4.7% national Paralympic share
+- 4.7% national Paralympic baseline
 - 7.5% Paralympic Hot Spot threshold
 - 52 in-scope state regions
-
-Full smoke suite:
-
-```powershell
-python pipeline\parity_smoke.py
-python pipeline\chat_smoke.py --base https://hometown-success-engine-74530725032.us-central1.run.app
-python pipeline\voice_ws_smoke.py --base https://hometown-success-engine-74530725032.us-central1.run.app
-```
 
 ## Deploy
 
@@ -221,15 +287,16 @@ npm run build
 firebase deploy --only hosting --project YOUR_FIREBASE_PROJECT_ID
 ```
 
-## Compliance
+## Security and Compliance
 
 - No athlete names, images, or likenesses appear in the public UI.
-- Public responses use aggregate hometown hub data.
+- Gemini responses use aggregate counts only and do not expose athlete names.
 - Runtime deployment uses sanitized public data files: anonymous in-scope athlete map points and aggregate hometown counts with no athlete names or birth dates.
-- Olympic and Paralympic athletes are both represented throughout the product.
+- Olympic and Paralympic athletes are represented throughout the product.
 - Geography is framed conditionally. The tool identifies places that could help find or may foster Team USA talent; it does not claim that geography produces athletes.
 - Public map scope is limited to the continental U.S., Alaska, Hawaii, Washington, D.C., and Puerto Rico.
-- Raw athlete-level data is excluded from git for NIL safety.
+- Raw athlete-level data is excluded from git, Docker builds, and Cloud Run source uploads.
+- Local credential files, API keys, service account files, generated credentials, Firebase local artifacts, and development logs are ignored.
 
 ## License
 
