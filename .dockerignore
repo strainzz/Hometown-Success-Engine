@@ -21,6 +21,16 @@ frontend/node_modules
 .DS_Store
 Thumbs.db
 
+# Secrets/local env
+.env
+.env*
+frontend/.env
+frontend/.env*
+*.pem
+*.key
+*service*account*.json
+*ServiceAccount*.json
+
 # Pipeline raw data (large, not needed in container)
 pipeline/raw_data/
 pipeline/cache/

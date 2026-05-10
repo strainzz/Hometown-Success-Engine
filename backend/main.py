@@ -25,6 +25,12 @@ logger = logging.getLogger(__name__)
 VOICE_MODEL_ID = os.getenv("GEMINI_LIVE_MODEL", "gemini-live-2.5-flash-native-audio")
 VOICE_NAME = os.getenv("GEMINI_VOICE_NAME", "Kore")
 VOICE_LOCATION = os.getenv("GEMINI_LIVE_LOCATION", "us-central1")
+GOOGLE_CLOUD_PROJECT = (
+    os.getenv("GOOGLE_CLOUD_PROJECT")
+    or os.getenv("GCP_PROJECT_ID")
+    or "hometown-success-engine"
+)
+GEMINI_LOCATION = os.getenv("GEMINI_LOCATION") or os.getenv("VERTEX_AI_LOCATION") or "global"
 
 # Approximate bounding boxes for all 50 US states + DC + territories.
 # Format: (lat_min, lat_max, lon_min, lon_max, state_code)
@@ -2888,8 +2894,8 @@ async def chat(req: ChatRequest) -> ChatResponse:
 
         client = genai.Client(
             vertexai=True,
-            project="hometown-success-engine",
-            location="global",
+            project=GOOGLE_CLOUD_PROJECT,
+            location=GEMINI_LOCATION,
         )
 
         contents = []
@@ -3319,7 +3325,7 @@ async def _stream_native_voice_summary(
 
     client = genai.Client(
         vertexai=True,
-        project="hometown-success-engine",
+        project=GOOGLE_CLOUD_PROJECT,
         location=VOICE_LOCATION,
     )
 
@@ -3392,7 +3398,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
     await websocket.accept()
     client = genai.Client(
         vertexai=True,
-        project="hometown-success-engine",
+        project=GOOGLE_CLOUD_PROJECT,
         location=VOICE_LOCATION,
     )
     voice_session_id = _session_id(str(websocket.query_params.get("session_id") or ""))

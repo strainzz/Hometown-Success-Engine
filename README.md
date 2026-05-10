@@ -128,20 +128,47 @@ Voice interaction uses Gemini Live native audio with the same tool schema. The f
 - HDBSCAN-based hometown hub grouping
 - Open-Meteo climate normals
 
+## Prerequisites
+
+- Python 3.12
+- Node.js 20 or newer
+- Google Cloud CLI and Firebase CLI
+- A Google Cloud project with Vertex AI, Cloud Run, Firebase Hosting, and Maps JavaScript API enabled
+- Local Google Cloud credentials, either through `gcloud auth application-default login` or a service account path in `GOOGLE_APPLICATION_CREDENTIALS`
+
 ## Run Locally
+
+Clone the repo and create a local Python environment:
+
+```powershell
+git clone https://github.com/strainzz/Hometown-Success-Engine.git
+cd Hometown-Success-Engine
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+Create local environment variables. Use your own project, Maps key, and map ID values. See `.env.example` for the expected variable names. Do not commit local `.env` files, service account files, API keys, or generated credentials.
 
 ### Backend
 
 ```powershell
-cd C:\Users\BigRooster\Documents\Python\Projects\Hometown-Success-Engine
-.\pipeline\.venv\Scripts\Activate.ps1
+$env:GOOGLE_CLOUD_PROJECT="your-google-cloud-project-id"
+$env:GEMINI_LIVE_LOCATION="us-central1"
+$env:GEMINI_LIVE_MODEL="gemini-live-2.5-flash-native-audio"
+$env:GEMINI_VOICE_NAME="Kore"
 python -m uvicorn backend.main:app --host 127.0.0.1 --port 8080 --reload
 ```
 
 ### Frontend
 
 ```powershell
-cd C:\Users\BigRooster\Documents\Python\Projects\Hometown-Success-Engine\frontend
+cd frontend
+@'
+VITE_API_BASE_URL=http://127.0.0.1:8080
+VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
+VITE_GOOGLE_MAPS_MAP_ID=your-google-maps-map-id
+'@ | Set-Content -Encoding utf8 .env.local
 npm install
 npm run dev
 ```
@@ -179,16 +206,19 @@ python pipeline\voice_ws_smoke.py --base https://hometown-success-engine-7453072
 ### Backend
 
 ```powershell
-cd C:\Users\BigRooster\Documents\Python\Projects\Hometown-Success-Engine
-gcloud run deploy hometown-success-engine --source . --region us-central1 --clear-base-image
+gcloud run deploy YOUR_CLOUD_RUN_SERVICE `
+  --source . `
+  --region YOUR_REGION `
+  --project YOUR_GOOGLE_CLOUD_PROJECT_ID `
+  --clear-base-image
 ```
 
 ### Frontend
 
 ```powershell
-cd C:\Users\BigRooster\Documents\Python\Projects\Hometown-Success-Engine\frontend
+cd frontend
 npm run build
-firebase deploy --only hosting
+firebase deploy --only hosting --project YOUR_FIREBASE_PROJECT_ID
 ```
 
 ## Compliance

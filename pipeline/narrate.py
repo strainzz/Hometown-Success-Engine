@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 import re
 from pathlib import Path
 from typing import Literal
@@ -222,8 +223,12 @@ async def main() -> None:
 
     client = genai.Client(
         vertexai=True,
-        project="hometown-success-engine",
-        location="global"
+        project=(
+            os.environ.get("GOOGLE_CLOUD_PROJECT")
+            or os.environ.get("GCP_PROJECT_ID")
+            or "hometown-success-engine"
+        ),
+        location=os.environ.get("GEMINI_LOCATION", "global"),
     )
     
     semaphore = asyncio.Semaphore(4)
