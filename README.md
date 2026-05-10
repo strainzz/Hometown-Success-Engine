@@ -12,7 +12,7 @@
 
 The Hometown Success Engine maps **5,119 Olympians and Paralympians** from Tokyo 2020 through Milan-Cortina 2026 across **40 Team USA hometown hubs** in the continental U.S., Alaska, Hawaii, Washington, D.C., and Puerto Rico.
 
-The capstone feature is **Gemini Live voice interaction**. Users can speak naturally to Gemini and have it control the map: select hubs, open states, highlight Paralympic Hot Spots, answer rankings, compare places, explain the dots and layers, focus hometowns, and reset the view. Gemini voice and Gemini chat share the same full engine context, tool schema, ranking rules, sport aliases, hometown lookup, Hot Spot threshold, climate context, and safety rules.
+The defining feature is **Gemini Live voice interaction**. Users can speak naturally to Gemini and have it control the map: select hubs, open states, highlight Paralympic Hot Spots, answer rankings, compare places, explain the dots and layers, focus hometowns, and reset the view. Gemini voice and Gemini chat share the same full engine context, tool schema, ranking rules, sport aliases, hometown lookup, Hot Spot threshold, climate context, and safety rules.
 
 Instead of ranking places by medals, the engine focuses on where mapped athletes are from. That makes the tool more inclusive of all Olympians and Paralympians while giving analysts, judges, and Team USA stakeholders a way to explore how hometown geography, sport mix, climate, and regional context are associated with athlete development.
 
@@ -24,16 +24,16 @@ Challenge 2 asks for a tool that identifies hometown "Hubs" by correlating geogr
 
 This project answers that brief with:
 
-- Gemini Live native voice as the front-door interaction, letting spoken questions move the map and return grounded audio responses.
+- Gemini Live native voice as the lead interaction, letting spoken questions move the map and return grounded audio responses.
 - Gemini chat using the same full tool schema and context for precise typed analysis.
 - A national hometown hub map built around aggregate athlete counts, not medals.
 - Paralympic Hot Spot detection using a clear, deterministic threshold.
 - Sport, state, region, and hometown analysis connected directly to the map.
 - Conditional, association-based language that avoids implying geography guarantees athletic success.
 
-## Capstone: Gemini Live Voice
+## Gemini Live Voice Integration
 
-Gemini Live voice is the signature interaction in the project. It turns the map from a static dashboard into a conversational exploration tool.
+Gemini Live voice is the signature interaction in the project. It turns the map from a static dashboard into a conversational exploration tool with direct access to the engine's data and controls.
 
 With voice enabled, a user can ask:
 
@@ -46,7 +46,7 @@ With voice enabled, a user can ask:
 
 The voice pipeline streams microphone audio to Cloud Run, routes the request through Gemini Live, calls deterministic map and data tools, moves the map immediately, and returns a compact grounded spoken response. The chat panel also shows a **Map readout** card so exact tool facts stay visible while Gemini speaks.
 
-This makes Gemini more than narration. It is the control surface for the engine.
+This makes Gemini more than narration. It is an interactive control layer for the engine.
 
 ## Public Dataset Snapshot
 
@@ -80,7 +80,7 @@ A **Paralympic Hot Spot** is any hometown hub where the Paralympic share is **7.
 ## Core Experience
 
 - Speak to Gemini Live voice and have it control the map with full engine context.
-- Use Gemini chat for the same grounded map and data controls in text form.
+- Use Gemini chat for the same grounded controls in text form.
 - Explore 40 hometown hubs on a Google Maps and deck.gl interface.
 - Toggle Paralympic Hot Spots and compare them against the 4.7% national baseline.
 - Inspect hub profiles with athlete totals, Olympic and Paralympic split, ranks, top sports, climate, and geographic context.
@@ -88,7 +88,7 @@ A **Paralympic Hot Spot** is any hometown hub where the Paralympic share is **7.
 - Ask exact hometown questions such as "How many athletes are from Boise, Idaho?"
 - Ask ranking questions such as "What state has the highest Paralympic share?" or "Show me the number 24 ranked state."
 - Ask sport questions such as "Which hubs are strongest for skiing?" or "Which states are strongest for winter sports?"
-- Use Gemini chat or Gemini Live voice to move the map, explain the data, answer analysis questions, and keep conversational context across turns.
+- Ask follow-up questions while Gemini keeps conversational context across hubs, states, hometowns, rankings, and map actions.
 
 ## Example Prompts
 
@@ -138,7 +138,7 @@ Vertex AI Gemini
 
 ## Gemini Interaction Layer
 
-Gemini is the technical center of the product. It is wired as the interaction layer for the map, not a separate chatbot. Gemini Live voice is the capstone experience, and typed chat uses the same schema, deterministic routing, result builder, session context, and safety rules.
+Gemini is the technical center of the product. It is wired as the interaction layer for the map, not a separate chatbot. Gemini Live voice is the signature experience, and typed chat uses the same schema, deterministic routing, result builder, session context, and safety rules.
 
 Gemini receives:
 
