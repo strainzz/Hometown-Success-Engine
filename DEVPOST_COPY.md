@@ -6,11 +6,11 @@ Hometown Success Engine
 
 ## Tagline
 
-A Gemini-powered Team USA hometown hub map for finding regional patterns in Olympic and Paralympic athlete data.
+A Gemini-powered Team USA hometown intelligence engine for exploring Olympic and Paralympic athlete geography.
 
 ## Short Description
 
-The Hometown Success Engine maps 5,119 Olympians and Paralympians from Tokyo 2020 through Milan-Cortina 2026 across 40 hometown hubs. It uses Google Maps, deck.gl, Cloud Run, Firebase Hosting, and Gemini text and voice interactions to help users explore where Team USA athletes are from, which regions stand out by sport, and which hubs show elevated Paralympic representation.
+The Hometown Success Engine maps 5,119 Olympians and Paralympians from Tokyo 2020 through Milan-Cortina 2026 across 40 hometown hubs. Gemini chat and Gemini Live voice are the core interaction layer: they understand the engine's map schema, data scope, rankings, hometown lookup, sport groups, Hot Spot rules, and map controls so users can ask natural questions and have Gemini move the map, explain the data, compare places, and answer grounded analysis questions.
 
 ## Inspiration
 
@@ -29,7 +29,7 @@ Users can:
 - Identify 10 Paralympic Hot Spots, defined as hubs with Paralympic share at or above 7.5%.
 - Compare each hub against the 4.7% national Paralympic baseline.
 - Click states to view aggregate counts, rankings, Paralympic share, and top hub context.
-- Ask Gemini text or Gemini Live voice questions that can move the map, select hubs, open states, highlight Hot Spots, explain the data, answer ranking questions, and focus exact hometowns.
+- Ask Gemini chat or Gemini Live voice questions that can move the map, select hubs, open states, highlight Hot Spots, explain the data, answer ranking questions, compare places, and focus exact hometowns.
 
 Example prompts:
 
@@ -43,7 +43,7 @@ Example prompts:
 
 ## How It Uses Google Cloud And Gemini
 
-The project uses Google Cloud as the runtime layer and Gemini as the map interaction layer.
+The project uses Google Cloud as the runtime layer and Gemini as the interactive intelligence layer. Gemini is the most technically elevated part of the project because it turns natural language into precise map and data actions while staying grounded in deterministic backend results.
 
 - **Cloud Run:** Hosts the FastAPI backend, data endpoints, Gemini tool routing, and Gemini Live WebSocket proxy.
 - **Firebase Hosting:** Hosts the Vite and TypeScript frontend.
@@ -51,7 +51,7 @@ The project uses Google Cloud as the runtime layer and Gemini as the map interac
 - **Vertex AI Gemini 2.5 Flash:** Handles function-calling chat for map and data questions.
 - **Gemini Live native audio:** Lets users ask spoken questions that move the map and receive grounded spoken responses.
 
-Gemini is connected to deterministic tools such as `select_hub`, `select_state`, `filter_to_paralympic`, `focus_hometown`, `highlight_hubs`, `explain_map`, `explain_engine`, and `query_data`. Tool results are computed from runtime data first, then Gemini explains them. This keeps answers grounded in exact counts, ranks, percentages, top sports, Hot Spot status, climate, and geographic context.
+Gemini is connected to deterministic tools such as `select_hub`, `select_state`, `filter_to_paralympic`, `focus_hometown`, `highlight_hubs`, `explain_map`, `explain_engine`, and `query_data`. Both chat and voice share this schema, session context, ranking logic, safety rules, and map controls. Tool results are computed from runtime data first, then Gemini explains them. This keeps answers grounded in exact counts, ranks, percentages, top sports, Hot Spot status, climate, and geographic context.
 
 ## How It Was Built
 
@@ -87,7 +87,7 @@ The language is intentionally conditional. The engine does not claim geography p
 
 The hardest part was making the Gemini layer reliable enough for judge testing. A natural language question like "What state has the highest Paralympic share?" cannot be treated like a generic chat response. It has to select the correct metric, apply the correct ranking universe, move the map to the winning state, and explain the result without inventing anything.
 
-The final interaction layer uses deterministic routing, shared typed-chat and voice tools, strict ranking rules, in-scope geography rules, and smoke tests for judge-style prompts.
+The final interaction layer uses deterministic routing, shared typed-chat and voice tools, strict ranking rules, in-scope geography rules, and smoke tests for natural-language evaluation prompts.
 
 Another challenge was keeping the constellation dots, state panels, hub panels, and Gemini answers aligned. The project now uses sanitized public runtime data and smoke checks so local and live data stay in parity.
 
@@ -96,7 +96,7 @@ Another challenge was keeping the constellation dots, state panels, hub panels, 
 - Built an end-to-end Google Cloud hosted map experience.
 - Mapped 5,119 Olympians and Paralympians across 40 hometown hubs.
 - Added deterministic Paralympic Hot Spot detection with a 7.5% threshold.
-- Built Gemini text and native voice interactions that can control the map.
+- Built Gemini chat and native voice interactions that can control the map with shared context and deterministic data grounding.
 - Added exact ranking, middle ranking, sport ranking, hometown lookup, comparison, and map-literacy support.
 - Hardened public deployment data so aggregate map interaction works without exposing athlete names or sensitive local files.
 - Added smoke tests for local/live parity, Gemini chat, Gemini voice, and state constellation accuracy.
