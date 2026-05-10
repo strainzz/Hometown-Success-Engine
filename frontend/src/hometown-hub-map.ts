@@ -826,6 +826,10 @@ export class HometownHubMap extends HTMLElement {
       if (this.voiceTurnHadReadout && this.isGenericVoiceFiller(message.text)) {
         return;
       }
+      if (this.voiceTurnHadReadout) {
+        this.setVoiceHud("replying", "Gemini speaking", "Using the map readout above.");
+        return;
+      }
       this.appendVoiceModelText(message.text, Boolean(message.final));
       this.setVoiceHud("replying", "Gemini speaking", message.text);
       return;

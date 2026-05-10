@@ -3235,10 +3235,13 @@ async def _stream_native_voice_summary(
             config=genai_types.LiveConnectConfig(
                 response_modalities=[genai_types.Modality.AUDIO],
                 system_instruction=(
-                    "You are the Hometown Success Engine voice narrator. "
-                    "Speak the provided final answer directly and naturally in one or two concise sentences. "
+                    "You are a strict read-aloud voice channel for the Hometown Success Engine. "
+                    "The user message contains final answer text to speak. "
+                    "Speak only that final answer text directly and naturally. "
                     "Preserve climate wording precisely: say 'average annual temperature', "
                     "'annual precipitation', or 'elevation'; never say a temperature is 'the climate'. "
+                    "Do not answer the final answer as if it were a question. "
+                    "Do not ask for the map, context, clarification, or another request. "
                     "Do not add facts, do not call tools, and do not mention that this is a retry. "
                     "Never say 'understood', never acknowledge instructions, and never add a readiness phrase like 'ready when you are'."
                 ),
@@ -3256,7 +3259,7 @@ async def _stream_native_voice_summary(
             await session.send_client_content(
                 turns=genai_types.Content(
                     role="user",
-                    parts=[genai_types.Part(text=text)],
+                    parts=[genai_types.Part(text=f"FINAL ANSWER TO READ ALOUD:\n{text}")],
                 ),
                 turn_complete=True,
             )
@@ -3264,14 +3267,10 @@ async def _stream_native_voice_summary(
                 if message.server_content:
                     content = message.server_content
                     if content.output_transcription and content.output_transcription.text:
-                        if _is_voice_filler_text(content.output_transcription.text):
-                            continue
-                        await websocket.send_json({
-                            "type": "output_transcript",
-                            "text": content.output_transcription.text,
-                            "final": bool(getattr(content.output_transcription, "finished", False)),
-                            "turn_id": turn_id,
-                        })
+                        # The visible chat already has a deterministic Map readout card for
+                        # this turn. Do not render a second model bubble from the read-aloud
+                        # session, because Live can occasionally paraphrase off-script.
+                        continue
                     if content.model_turn and content.model_turn.parts:
                         for part in content.model_turn.parts:
                             if part.inline_data and part.inline_data.data:
@@ -3310,9 +3309,12 @@ async def voice_websocket(websocket: WebSocket) -> None:
         f"{_build_chatbot_system_prompt()}\n\n"
         "VOICE MODE RULES:\n"
         "- You are speaking through Gemini Live native audio.\n"
-        "- After every tool/function response, speak a concise grounded answer out loud.\n"
+        "- After every tool/function response, the function response field 'result' is the final spoken answer.\n"
+        "- Speak only that result directly. Do not paraphrase it into a new request.\n"
+        "- Never ask the user to provide a map, context, or clarification after a tool result.\n"
         "- Do not stop silently after a tool call.\n"
-        "- Keep spoken answers short enough for a live demo, but include the key counts and map action."
+        "- Keep spoken answers short enough for a live demo, but include the key counts and map action.\n"
+        "- Never say 'understood', never acknowledge instructions, and never add a readiness phrase like 'ready when you are'."
     )
     if voice_context:
         voice_system_instruction = (
@@ -3370,6 +3372,12 @@ async def voice_websocket(websocket: WebSocket) -> None:
                     })
                 if content.output_transcription and content.output_transcription.text:
                     if _is_voice_filler_text(content.output_transcription.text):
+                        continue
+                    if voice_spoken_result_text:
+                        # Tool turns already show the deterministic Map readout. Suppress
+                        # Live's secondary transcript so it cannot contradict the grounded
+                        # readout in the chat UI.
+                        voice_output_text = voice_spoken_result_text
                         continue
                     voice_output_text = (
                         f"{voice_output_text} {content.output_transcription.text}".strip()
@@ -3467,6 +3475,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
                                 name=call.name or "",
                                 response={
                                     "result": combined_spoken,
+                                    "instruction": "Speak the result exactly. Do not ask for the map or more context.",
                                     "scheduling": "INTERRUPT",
                                 },
                             )
@@ -3496,6 +3505,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
                                 name=tool_name,
                                 response={
                                     "result": spoken_summary,
+                                    "instruction": "Speak the result exactly. Do not ask for the map or more context.",
                                     "scheduling": "INTERRUPT",
                                 },
                             )
