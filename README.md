@@ -1,6 +1,6 @@
 # Hometown Success Engine
 
-> A Gemini-powered Team USA hometown intelligence engine for the Google Cloud x Team USA Challenge.
+> A Gemini Live voice-powered Team USA hometown intelligence engine for the Google Cloud x Team USA Challenge.
 
 **Live app:** [hometown-success-engine-11a06.web.app](https://hometown-success-engine-11a06.web.app/)
 
@@ -12,9 +12,9 @@
 
 The Hometown Success Engine maps **5,119 Olympians and Paralympians** from Tokyo 2020 through Milan-Cortina 2026 across **40 Team USA hometown hubs** in the continental U.S., Alaska, Hawaii, Washington, D.C., and Puerto Rico.
 
-Instead of ranking places by medals, the engine focuses on where mapped athletes are from. That makes the tool more inclusive of all Olympians and Paralympians while giving analysts, judges, and Team USA stakeholders a way to explore how hometown geography, sport mix, climate, and regional context are associated with athlete development.
+The capstone feature is **Gemini Live voice interaction**. Users can speak naturally to Gemini and have it control the map: select hubs, open states, highlight Paralympic Hot Spots, answer rankings, compare places, explain the dots and layers, focus hometowns, and reset the view. Gemini voice and Gemini chat share the same full engine context, tool schema, ranking rules, sport aliases, hometown lookup, Hot Spot threshold, climate context, and safety rules.
 
-Gemini is the primary interaction layer. Gemini chat and Gemini Live voice share full context of the engine, including the map schema, hub data, state rankings, sport aliases, hometown lookup, Hot Spot rules, climate context, and allowed map controls. Users can ask natural questions and Gemini can select hubs, open states, highlight regions, explain the map, answer rankings, compare places, focus hometowns, and reset the view.
+Instead of ranking places by medals, the engine focuses on where mapped athletes are from. That makes the tool more inclusive of all Olympians and Paralympians while giving analysts, judges, and Team USA stakeholders a way to explore how hometown geography, sport mix, climate, and regional context are associated with athlete development.
 
 The product does not claim that geography guarantees outcomes or produces athletes. It uses conditional language throughout: regions **could help find**, **may foster**, **may explain**, or **are associated with** patterns in the mapped hometown data.
 
@@ -24,11 +24,29 @@ Challenge 2 asks for a tool that identifies hometown "Hubs" by correlating geogr
 
 This project answers that brief with:
 
+- Gemini Live native voice as the front-door interaction, letting spoken questions move the map and return grounded audio responses.
+- Gemini chat using the same full tool schema and context for precise typed analysis.
 - A national hometown hub map built around aggregate athlete counts, not medals.
 - Paralympic Hot Spot detection using a clear, deterministic threshold.
 - Sport, state, region, and hometown analysis connected directly to the map.
-- Gemini chat and Gemini Live voice interactions with full map, data, ranking, sport, hometown, and project context.
 - Conditional, association-based language that avoids implying geography guarantees athletic success.
+
+## Capstone: Gemini Live Voice
+
+Gemini Live voice is the signature interaction in the project. It turns the map from a static dashboard into a conversational exploration tool.
+
+With voice enabled, a user can ask:
+
+- "Show the top Paralympic Hot Spot."
+- "Tell me about Vail."
+- "What do the dots mean?"
+- "How many athletes are from Boise, Idaho?"
+- "What state has the highest Paralympic share?"
+- "Reset the map and then show Arizona."
+
+The voice pipeline streams microphone audio to Cloud Run, routes the request through Gemini Live, calls deterministic map and data tools, moves the map immediately, and returns a compact grounded spoken response. The chat panel also shows a **Map readout** card so exact tool facts stay visible while Gemini speaks.
+
+This makes Gemini more than narration. It is the control surface for the engine.
 
 ## Public Dataset Snapshot
 
@@ -61,6 +79,8 @@ A **Paralympic Hot Spot** is any hometown hub where the Paralympic share is **7.
 
 ## Core Experience
 
+- Speak to Gemini Live voice and have it control the map with full engine context.
+- Use Gemini chat for the same grounded map and data controls in text form.
 - Explore 40 hometown hubs on a Google Maps and deck.gl interface.
 - Toggle Paralympic Hot Spots and compare them against the 4.7% national baseline.
 - Inspect hub profiles with athlete totals, Olympic and Paralympic split, ranks, top sports, climate, and geographic context.
@@ -118,7 +138,7 @@ Vertex AI Gemini
 
 ## Gemini Interaction Layer
 
-Gemini is the technical center of the product. It is wired as the interaction layer for the map, not a separate chatbot. Typed chat and Gemini Live voice share the same schema, deterministic routing, result builder, session context, and safety rules.
+Gemini is the technical center of the product. It is wired as the interaction layer for the map, not a separate chatbot. Gemini Live voice is the capstone experience, and typed chat uses the same schema, deterministic routing, result builder, session context, and safety rules.
 
 Gemini receives:
 
@@ -157,7 +177,7 @@ Supported interaction types include:
 
 Tool results are computed from runtime data before Gemini explains them. This keeps responses grounded in exact counts, ranks, percentages, top sports, Hot Spot status, climate, and geographic context while still letting users interact conversationally.
 
-Voice mode uses Gemini Live native audio through `/voice/ws`. The frontend streams microphone audio to Cloud Run, the backend handles Gemini Live function calls, and the UI shows compact **Map readout** cards so deterministic data remains visually separate from Gemini's spoken response.
+Voice mode uses Gemini Live native audio through `/voice/ws`. The frontend streams microphone audio to Cloud Run, the backend handles Gemini Live function calls, dispatches map tools, and returns compact grounded spoken responses. The UI shows **Map readout** cards so deterministic data remains visually separate from Gemini's spoken response.
 
 ## Tech Stack
 
