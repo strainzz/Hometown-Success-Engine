@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-04
 **Author:** AJ Lawrence (Strainz)
-**Project:** Hometown Success Engine — Google × Team USA Hackathon
+**Project:** Hometown Success Engine - Google Cloud x Team USA Challenge
 
 ## Purpose
 
