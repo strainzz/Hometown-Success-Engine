@@ -6,7 +6,7 @@
 
 **Cloud Run health:** [hometown-success-engine-74530725032.us-central1.run.app/health](https://hometown-success-engine-74530725032.us-central1.run.app/health)
 
-**Demo video:** [YouTube demo](https://youtu.be/2abtm3V71AE)
+**Demo video:** [YouTube demo](https://youtu.be/t2DXQcB7jo8)
 
 **Built for:** [Google Cloud x Team USA Challenge, Vibe Code for Gold Challenge 2](https://vibecodeforgoldwithgoogle.devpost.com/)
 
